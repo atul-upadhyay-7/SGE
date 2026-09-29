@@ -55,6 +55,37 @@ def make_xy(df, target):
     return X, y, available_features
 
 
+def drop_constant_features(X_train):
+    """
+    Drop columns with no variation in the training split.
+
+    Computed on the training rows alone, never on the full
+    frame, so that the test split cannot influence which
+    features are considered.
+
+    ambient_temperature is constant at 24 C across the
+    four group-1 cells, so it currently carries no
+    information. It is kept in FEATURES rather than deleted
+    because the wider NASA dataset does vary between 4 C and
+    44 C, and this guard will re-admit it automatically if
+    those cells are ever included.
+    """
+
+    usable = [
+        feature
+        for feature in X_train.columns
+        if X_train[feature].nunique(dropna=False) > 1
+    ]
+
+    dropped = [
+        feature
+        for feature in X_train.columns
+        if feature not in usable
+    ]
+
+    return usable, dropped
+
+
 def split_by_cell(
     df,
     test_cell

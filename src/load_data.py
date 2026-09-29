@@ -10,8 +10,77 @@ import pandas as pd
 from scipy.io import loadmat
 
 
-RAW_DIR = Path("data/raw")
 PROCESSED_DIR = Path("data/processed")
+
+# Directories searched, in order, for the NASA .mat files.
+# data/raw is the documented drop location and is gitignored.
+# The BMS Dataset folder ships a copy in the repository,
+# so the pipeline stays runnable without a manual download.
+RAW_DIR_CANDIDATES = [
+    Path("data/raw"),
+    Path("BMS Dataset/Battery_DataSet/Battery_DataSet")
+]
+
+
+def resolve_raw_dir():
+    """
+    Return the first candidate directory that holds .mat files.
+    """
+
+    for candidate in RAW_DIR_CANDIDATES:
+
+        if candidate.is_dir() and any(
+            candidate.glob("*.mat")
+        ):
+
+            return candidate
+
+    searched = "\n  ".join(
+        str(path) for path in RAW_DIR_CANDIDATES
+    )
+
+    raise FileNotFoundError(
+        "No .mat files found in any of:\n"
+        f"  {searched}\n\n"
+        "Download the NASA Battery Dataset and place the "
+        ".mat files in data/raw/."
+    )
+
+
+def discover_cells(raw_dir):
+    """
+    Return the sorted cell ids present in a directory.
+    """
+
+    return sorted(
+        path.stem.upper()
+        for path in raw_dir.glob("*.mat")
+    )
+
+
+# Only these cells are used for modelling.
+#
+# The repository ships all 34 NASA cells, but the other 30
+# are not usable for State-of-Health work:
+#
+#   - Groups G4/G6/G8/G9 contain mid-life capacity collapse
+#     and recovery (B0042 drops to 0.09 Ah then returns to
+#     1.48 Ah), which corrupts any capacity-derived target.
+#   - Groups G2/G3 barely age within the test window
+#     (B0025 fades 4% over 28 cycles), so they carry no
+#     degradation signal.
+#   - Groups G5/G6/G7 switch ambient temperature partway
+#     through, so a single cell mixes 4 C and 24 C regimes.
+#
+# Group G1 (24 C, 2 A constant current) is the only group
+# with a clean, full, monotonically decaying trajectory:
+# 1.86 Ah down to 1.19-1.43 Ah over 132-168 discharge cycles.
+CELLS = [
+    "B0005",
+    "B0006",
+    "B0007",
+    "B0018"
+]
 
 
 def to_scalar(value):
@@ -274,26 +343,39 @@ def parse_battery_file(mat_path):
 
 def parse_all_cells():
 
-    cells = [
-        "B0005",
-        "B0006",
-        "B0007",
-        "B0018"
+    raw_dir = resolve_raw_dir()
+
+    print("Reading .mat files from:")
+    print(raw_dir)
+
+    cells = discover_cells(
+        raw_dir
+    )
+
+    available = set(cells)
+
+    missing = [
+        cell for cell in CELLS
+        if cell not in available
     ]
+
+    if missing:
+
+        raise FileNotFoundError(
+            "These required cells are not present in "
+            f"{raw_dir}:\n  "
+            f"{', '.join(missing)}\n\n"
+            "Found instead:\n  "
+            f"{', '.join(cells) if cells else '(no .mat files)'}"
+        )
 
     all_data = []
 
-    for cell in cells:
+    for cell in CELLS:
 
         file_path = (
-            RAW_DIR / f"{cell}.mat"
+            raw_dir / f"{cell}.mat"
         )
-
-        if not file_path.exists():
-
-            raise FileNotFoundError(
-                f"Missing file: {file_path}"
-            )
 
         df = parse_battery_file(
             file_path
