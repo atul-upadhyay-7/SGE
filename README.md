@@ -1,6 +1,6 @@
 # SGE — Battery Predictive Maintenance System
 
-An end-to-end machine-learning pipeline and interactive monitoring dashboard for predicting the **State of Health (SOH)** and **Remaining Useful Life (RUL)** of lithium-ion batteries. Built on the NASA Battery Dataset, the system trains per-cell and global XGBoost models using a rigorous leave-one-cell-out cross-validation protocol and serves results through a Grafana-themed Streamlit dashboard.
+An end-to-end machine-learning pipeline and interactive monitoring dashboard for predicting the **State of Health (SOH)** and **Remaining Useful Life (RUL)** of lithium-ion batteries. Built on the NASA Battery Dataset, the system trains per-cell and global XGBoost models using a rigorous leave-one-cell-out cross-validation protocol and serves results through a native **Grafana** dashboard backed by a custom Flask JSON API and SQLite database.
 
 ---
 
@@ -129,7 +129,11 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 │   ├── train_rul.py                      # RUL model training pipeline
 │   └── anomaly.py                        # Anomaly detection (placeholder)
 ├── dashboard/
-│   └── app.py                            # Grafana-themed Streamlit dashboard
+│   ├── load_to_sqlite.py                 # Loads processed CSVs to SQLite
+│   ├── grafana_api.py                    # Flask API for Grafana JSON datasource
+│   ├── grafana_datasource.yml            # Grafana datasource provisioning
+│   ├── grafana_dashboard.yml             # Grafana dashboard provisioning
+│   └── battery_pdm_dashboard.json        # Grafana dashboard layout
 ├── notebooks/                            # Jupyter notebooks for EDA
 ├── requirements.txt
 └── README.md
@@ -220,34 +224,51 @@ python src/train_rul.py
 - `models/rul_xgb_*.joblib` — Trained model artifacts
 - `data/processed/rul_*.csv` — Results, degradation rates, predictions
 
-### Step 5 — Launch the Dashboard
+### Step 5 — Prepare Dashboard Data
+
+Load the processed CSV results into a SQLite database:
 
 ```bash
-streamlit run dashboard/app.py
+python dashboard/load_to_sqlite.py
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+### Step 6 — Launch the Grafana API
 
-### One-liner (full pipeline)
+Start the Flask JSON API server which Grafana uses to fetch data:
 
 ```bash
-python src/load_data.py && python src/preprocessing.py && python src/train_soh.py && python src/train_rul.py && streamlit run dashboard/app.py
+nohup python dashboard/grafana_api.py > /dev/null 2>&1 &
 ```
+
+### Step 7 — Provision Grafana
+
+*Assuming Grafana is installed and running on port 3050:*
+
+```bash
+# Provision datasource
+sudo cp dashboard/grafana_datasource.yml /etc/grafana/provisioning/datasources/
+
+# Provision dashboard
+sudo mkdir -p /etc/grafana/provisioning/dashboards
+sudo cp dashboard/grafana_dashboard.yml /etc/grafana/provisioning/dashboards/
+sudo cp dashboard/battery_pdm_dashboard.json /etc/grafana/provisioning/dashboards/
+
+# Restart Grafana
+sudo systemctl restart grafana-server
+```
+
+Open **[http://localhost:3050](http://localhost:3050)** in your browser to view the **Battery PDM (Grafana)** dashboard.
 
 ---
 
 ## Dashboard
 
-The interactive dashboard is built with Streamlit using a **Grafana-inspired dark theme** and Plotly charts. It has six pages:
+The dashboard is built natively in **Grafana** using the JSON API datasource plugin. It provides real-time visualizations of:
 
-| Page | Description |
-|------|-------------|
-| **Overview** | KPI metrics, SOH/capacity degradation curves, voltage & temperature trends, model registry |
-| **SOH Analysis** | Actual vs predicted SOH with residual overlays, model comparison, bias analysis, feature importance |
-| **RUL Analysis** | RUL predictions per cell, model score comparison, null baselines, degradation rate charts |
-| **Feature Explorer** | Interactive time series for any feature, correlation heatmap, per-cell distributions |
-| **Data Inspector** | Browse any processed CSV — schema, statistics, null analysis, data preview |
-| **Pipeline Logs** | Structured execution logs with level/source filtering, source code viewer |
+- **SOH Degradation Over Cycles**: Tracking capacity fade across battery cells.
+- **Capacity Fade**: Absolute Amp-hour capacity loss.
+- **Predicted vs Actuals**: Real-time overlay of XGBoost predictions vs actual target values for both SOH and RUL.
+- **Model Summaries**: Interactive tables detailing Nested CV results and feature importance.
 
 ---
 
@@ -296,11 +317,12 @@ All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held 
 
 | Category | Libraries |
 |----------|-----------|
-| Data | `pandas`, `numpy`, `scipy` |
+| Data | `pandas`, `numpy`, `scipy`, `sqlite3` |
 | ML | `scikit-learn`, `xgboost` |
 | Explainability | `shap` |
-| Visualization | `matplotlib`, `seaborn`, `plotly` |
-| Dashboard | `streamlit` |
+| Visualization | `matplotlib`, `seaborn` |
+| API Backend | `flask`, `flask-cors` |
+| Dashboard | `Grafana`, `simpod-json-datasource` |
 | Serialization | `joblib` |
 
 ---
