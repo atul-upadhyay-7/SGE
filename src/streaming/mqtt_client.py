@@ -91,21 +91,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from soh_service import (
-        FAILED,
-        OK,
-        STALE,
-        WARMING_UP,
-        SohService
-    )
+    from soh_service import SohService
 except ImportError:
-    from .soh_service import (
-        FAILED,
-        OK,
-        STALE,
-        WARMING_UP,
-        SohService
-    )
+    from .soh_service import SohService
 
 
 LOGGER = logging.getLogger(__name__)
@@ -126,6 +114,16 @@ TELEMETRY_QOS = 1
 # retained, so at-most-once is enough. Losing one copy costs
 # nothing, because the same value arrives a second later.
 SOH_QOS = 0
+
+# Payload fields that change on their own as the clock moves,
+# regardless of whether the battery did. They are excluded when
+# deciding whether a payload is worth republishing, because a
+# value that differs only in age is not a new reading. Everything
+# here is still sent to subscribers.
+VOLATILE_PAYLOAD_FIELDS = frozenset({
+    "age_s",
+    "published_at"
+})
 
 # Fields accepted in a telemetry payload, mapped to the
 # SohService argument each fills. Anything else in the payload
@@ -499,6 +497,10 @@ class MqttSohClient:
                     payload["ambient_temperature"]
                 )
 
+        prediction = None
+        closed = False
+        failed = False
+
         with self._lock:
 
             before = self.service.tracker.cycle_index
@@ -522,19 +524,34 @@ class MqttSohClient:
                     timestamp
                 )
 
-                self._publish_status(force=True)
+                failed = True
 
-                return None
+            else:
 
-            self.samples_accepted += 1
+                self.samples_accepted += 1
 
-            self.samples_out_of_order = (
-                self.service.tracker.out_of_order_samples
-            )
+                self.samples_out_of_order = (
+                    self.service.tracker.out_of_order_samples
+                )
 
-            closed = (
-                self.service.tracker.cycle_index > before
-            )
+                closed = (
+                    self.service.tracker.cycle_index > before
+                )
+
+        # Both publishes happen after the lock is released.
+        # _publish_status acquires this same lock to read the
+        # service state, and _lock is a plain Lock rather than
+        # an RLock, so calling it from inside the block above
+        # would deadlock the ingest thread. That would be far
+        # worse than the failure being reported here: the
+        # client would stop accepting telemetry entirely, and
+        # the fault would present as a silent disconnect rather
+        # than as a failed prediction.
+        if failed:
+
+            self._publish_status(force=True)
+
+            return None
 
         if closed and prediction is not None:
 
@@ -567,9 +584,16 @@ class MqttSohClient:
         Publish the current latched reading.
 
         Skips when nothing meaningful has changed, unless forced.
-        The per-second loop passes force=False so a still value
-        is not rewritten, and a cycle close passes force=True so
-        the new number goes out at once.
+        An unforced call is for a caller that already knows the
+        reading has not moved.
+
+        The periodic loop forces. Its job is a heartbeat, and
+        age_s only tells a subscriber that a reading is fresh if
+        something republishes it as the clock advances. Suppressing
+        those repeats would freeze the staleness signal at whatever
+        it was when the value last changed, which is precisely
+        backwards: a device that goes silent would leave a payload
+        that looks permanently fresh.
         """
 
         with self._lock:
@@ -588,7 +612,20 @@ class MqttSohClient:
             self.samples_out_of_order
         )
 
-        if not force and state == self._last_published:
+        # Same reasoning as published_at, applied to age_s: the
+        # clock moves between two calls even when the battery has
+        # not, and a payload that differs only in age is the same
+        # reading. Compared without them, but still sent.
+        comparable = {
+            key: value
+            for key, value in state.items()
+            if key not in VOLATILE_PAYLOAD_FIELDS
+        }
+
+        if (
+            not force
+            and comparable == self._last_published
+        ):
 
             return
 
@@ -615,7 +652,7 @@ class MqttSohClient:
 
             return
 
-        self._last_published = state
+        self._last_published = comparable
         self.publishes += 1
 
     def _publish_loop(self):
@@ -626,7 +663,12 @@ class MqttSohClient:
 
             try:
 
-                self._publish_status()
+                # Forced, because this loop is the heartbeat
+                # described at SOH_QOS: the reading is republished
+                # every interval whether or not it changed, so a
+                # subscriber's age_s advances and a silent device
+                # becomes visible.
+                self._publish_status(force=True)
 
             except Exception:
 

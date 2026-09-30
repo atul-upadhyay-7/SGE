@@ -14,7 +14,8 @@ The bundle contract is the one written by train_soh.py:
     model      fitted sklearn Pipeline
     features   ordered feature names the pipeline was fit on
     target     target column name
-    trained_on list of cell ids
+    trained_on readable label describing the training set,
+               such as "all cells" or "all cells except B0005"
 
 Features
 --------

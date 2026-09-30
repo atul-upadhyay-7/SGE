@@ -1,0 +1,16 @@
+apiVersion: 1
+providers:
+  - name: 'Battery PDM Dashboards'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    editable: true
+    allowUiUpdates: false
+    options:
+      # Resolved from the environment rather than hardcoded, so
+      # this file works both from a checkout and from a copy in
+      # /etc/grafana/provisioning. Set BATTERY_PDM_ROOT to the
+      # repository root when launching Grafana.
+      path: $__env{BATTERY_PDM_ROOT}/dashboard/provisioning/dashboards
+      foldersFromFilesStructure: false

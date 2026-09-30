@@ -84,19 +84,3 @@ def drop_constant_features(X_train):
     ]
 
     return usable, dropped
-
-
-def split_by_cell(
-    df,
-    test_cell
-):
-
-    train = df[
-        df["cell_id"] != test_cell
-    ].copy()
-
-    test = df[
-        df["cell_id"] == test_cell
-    ].copy()
-
-    return train, test

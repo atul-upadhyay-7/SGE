@@ -84,16 +84,52 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
                                     │ train_soh.py│  │ train_rul.py │
                                     │ (XGBoost)   │  │ (Linear/XGB) │
                                     └──────┬──────┘  └──────┬───────┘
-                                           │                │
-                                    ┌──────▼────────────────▼───────┐
-                                    │     models/ (.joblib)         │
-                                    │     data/processed/ (results) │
-                                    └──────────────┬───────────────┘
-                                                   │
-                                          ┌────────▼────────┐
-                                          │  dashboard/app.py│
-                                          │  (Streamlit)     │
-                                          └─────────────────┘
+                                            │                │
+                                     ┌──────▼────────────────▼───────┐
+                                     │     models/ (.joblib)         │
+                                     │     data/processed/ (results) │
+                                     └──────────────┬───────────────┘
+                                                    │
+       ┌────────────────────────────────────────────▼────────┐
+       │     Grafana dashboard + Flask JSON API (no feeder): │
+       │                                                     │
+       │     battery_pdm.db ← dashboard/load_to_sqlite.py    │
+       │             │                                       │
+       │       grafana_api.py  ← :8099 (datasource)          │
+       │             │                                       │
+       │       Grafana (provisioning/dashboards/*.json)      │
+       │       http://localhost:3050 — Battery PDM (Grafana) │
+       │                                                     │
+       │       SOH/RUL degradations, predicted-vs-actual,    │
+       │       model summaries, anomaly residuals/fade-rate   │
+       │       + events. The live heartbeat monitor below is  │
+       │       the MQTT ingest that feeds future readings.    │
+       └─────────────────────────────────────────────────────┘
+
+### Data heartbeat and monitoring (the live path)
+
+The `src/streaming/` package is the live counterpart to the
+offline pipeline. It ingests per-second samples, assembles them
+into the same cycle-level features `load_data` builds, latches
+the latest SOH reading, and republishes it on MQTT:
+
+```
+src/streaming/cycle_tracker.py   per-second samples → cycle feature rows
+src/streaming/soh_service.py     latched SOH, 1.7 s one-time load, ~2.5 ms per prediction
+src/streaming/mqtt_client.py     MQTT transport (needs a broker)
+src/streaming/replay.py          replays .mat files straight into the live path, no device
+```
+
+The latched reading is republished every second as a heartbeat so
+a subscriber's staleness estimate (`age_s`) keeps moving:
+
+```
+battery_pdm.db → grafana_api.py (:8099) → Grafana dashboard (:3050)
+```
+`SOH degradation`, `Predicted vs Actual`, and the `Model Summary`
+panel are static behind that path; `Anomaly: Residual/Fade rate`
++ `Anomaly Events` are the triage panels for the monitoring
+operator. Data-hungry dev tests live in `tests/` (`pytest`).
 ```
 
 ---
@@ -127,13 +163,11 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 │   ├── evaluation.py                     # Shared scoring and LOCO protocol
 │   ├── train_soh.py                      # SOH model training pipeline
 │   ├── train_rul.py                      # RUL model training pipeline
-│   └── anomaly.py                        # Anomaly detection (placeholder)
+│   ├── anomaly.py                        # Anomaly detection: LOCO residual + capacity event + fade-rate knee
 ├── dashboard/
 │   ├── load_to_sqlite.py                 # Loads processed CSVs to SQLite
 │   ├── grafana_api.py                    # Flask API for Grafana JSON datasource
-│   ├── grafana_datasource.yml            # Grafana datasource provisioning
-│   ├── grafana_dashboard.yml             # Grafana dashboard provisioning
-│   └── battery_pdm_dashboard.json        # Grafana dashboard layout
+│   └── provisioning/                     # Ran with Grafana ≥ 13.x as GF_PATHS_PROVISIONING; see "Run the whole thing" below.
 ├── notebooks/                            # Jupyter notebooks for EDA
 ├── requirements.txt
 └── README.md
@@ -167,7 +201,6 @@ source venv/bin/activate    # Linux / macOS
 
 ```bash
 pip install -r requirements.txt
-pip install plotly           # Required for the dashboard charts
 ```
 
 ### 4. Download the data
@@ -224,7 +257,20 @@ python src/train_rul.py
 - `models/rul_xgb_*.joblib` — Trained model artifacts
 - `data/processed/rul_*.csv` — Results, degradation rates, predictions
 
-### Step 5 — Prepare Dashboard Data
+### Step 5 — Screen the cycles for anomalies (triage)
+
+Flag out-of-norm cycles before anyone retrains or ships:
+
+```bash
+python src/anomaly.py
+```
+
+**Outputs:**
+- `data/processed/anomaly_cycle_report.csv` — every cycle with all detector flags
+- `data/processed/anomaly_events.csv` — only the 33 flagged cycles (5.2%)
+- `data/processed/anomaly_summary.csv` — per-cell count/rate, including knee onset
+
+### Step 6 — Prepare Dashboard Data
 
 Load the processed CSV results into a SQLite database:
 
@@ -232,30 +278,48 @@ Load the processed CSV results into a SQLite database:
 python dashboard/load_to_sqlite.py
 ```
 
-### Step 6 — Launch the Grafana API
+### Step 7 — Launch the Grafana API
 
 Start the Flask JSON API server which Grafana uses to fetch data:
 
 ```bash
-nohup python dashboard/grafana_api.py > /dev/null 2>&1 &
+nohup venv/bin/python dashboard/grafana_api.py > logs/grafana_api.log 2>&1 &
 ```
 
-### Step 7 — Provision Grafana
-
-*Assuming Grafana is installed and running on port 3050:*
+### Step 8 — Run tests
 
 ```bash
-# Provision datasource
-sudo cp dashboard/grafana_datasource.yml /etc/grafana/provisioning/datasources/
-
-# Provision dashboard
-sudo mkdir -p /etc/grafana/provisioning/dashboards
-sudo cp dashboard/grafana_dashboard.yml /etc/grafana/provisioning/dashboards/
-sudo cp dashboard/battery_pdm_dashboard.json /etc/grafana/provisioning/dashboards/
-
-# Restart Grafana
-sudo systemctl restart grafana-server
+venv/bin/python -m pytest tests/ -q
 ```
+
+The suite currently passes 82/82, in ~9 s. It also pins the two
+failure-mode contracts (status flips to `failed` and the heartbeat
+keeps republishing with a moving `age_s`).
+
+### Step 9 — Provision and start Grafana (no sudo needed)
+
+Grafana is the only dashboard in this project. The provisioning
+tree lives in the repo at `dashboard/provisioning/` so a fresh
+checkout never requires copying files into `/etc/grafana`:
+
+```bash
+export BATTERY_PDM_ROOT="$(pwd)"
+GF_PATHS_HOME=/usr/share/grafana \
+GF_PATHS_DATA="$BATTERY_PDM_ROOT/.grafana-data" \
+GF_PATHS_LOGS="$BATTERY_PDM_ROOT/logs" \
+GF_PATHS_PLUGINS=/var/lib/grafana/plugins \
+GF_PATHS_PROVISIONING="$BATTERY_PDM_ROOT/dashboard/provisioning" \
+GF_SERVER_HTTP_PORT=3050 \
+GF_SERVER_HTTP_ADDR=0.0.0.0 \
+grafana-server --homepath /usr/share/grafana
+```
+
+This provisions the **Battery PDM** JSON datasource (pointing at
+`http://localhost:8099`) and the **Battery PDM (Grafana)**
+dashboard (10 panels: SOH/RUL degradations, predicted-vs-actual,
+model summaries, anomaly residuals/fade-rate + events). It needs
+the `simpod-json-datasource` plugin (v0.6.7+, already in
+`/var/lib/grafana/plugins` here) and the Flask API from Step 7.
 
 Open **[http://localhost:3050](http://localhost:3050)** in your browser to view the **Battery PDM (Grafana)** dashboard.
 
@@ -263,12 +327,19 @@ Open **[http://localhost:3050](http://localhost:3050)** in your browser to view 
 
 ## Dashboard
 
-The dashboard is built natively in **Grafana** using the JSON API datasource plugin. It provides real-time visualizations of:
+Grafana is the only dashboard and monitoring surface. Streamlit is
+gone: `dashboard/app.py` was deleted and `streamlit`/`plotly` were
+removed from `requirements.txt`. The dashboard is built natively in
+**Grafana** using the JSON API datasource plugin. It provides
+visualizations of:
 
 - **SOH Degradation Over Cycles**: Tracking capacity fade across battery cells.
 - **Capacity Fade**: Absolute Amp-hour capacity loss.
-- **Predicted vs Actuals**: Real-time overlay of XGBoost predictions vs actual target values for both SOH and RUL.
-- **Model Summaries**: Interactive tables detailing Nested CV results and feature importance.
+- **Predicted vs Actuals**: Overlay of XGBoost predictions vs actual target values for both SOH and RUL.
+- **Model Summaries**: Tables detailing Nested CV results and feature importance.
+- **Anomaly: Residual (SOH – Predicted) with Robust Bounds** + **Flagged events**: points outside median ± 3.5 × MAD — a cycle that behaved unlike anything in the training set. This is the triage view: 33 flagged cycles (5.2%) out of 636.
+- **Anomaly: Fade Rate and Knee Threshold**: a rising trailing fade rate crossing median + 3 × MAD means acceleration, not noise. Only B0006 crosses it, at row 228.
+- **Anomaly Summary / Events**: per-cell counts (B0006: 18 flagged, 10.7%) and the event-level rows with directions.
 
 ---
 

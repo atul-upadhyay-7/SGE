@@ -3,18 +3,20 @@ conftest.py
 -----------
 Shared fixtures.
 
-The committed SOH model cannot be loaded in this environment.
-All ten .joblib files in models/ fail to deserialize under the
-installed XGBoost 3.4.0, including every version in git
-history, so tests that need a working model build a small
-in-memory one instead. That keeps the streaming logic under
-test rather than the artifact, and keeps the suite runnable
-offline.
-
 The fixture model is deliberately trivial. It exists to
 exercise the loading, feature assembly and latching paths, not
 to produce accurate SOH, so it returns a fixed value and the
 tests assert on plumbing and timing rather than accuracy.
+
+The committed artifact under models/ is not used as the
+fixture, and its loadability is environment-dependent: it was
+serialized under a particular XGBoost build, and a
+mismatched one fails to deserialize. Tests that need a
+working model therefore build a small in-memory one instead,
+which keeps the streaming logic under test rather than the
+artifact, and keeps the suite runnable offline. The one test
+that does care about the real file asserts only that the
+probe answers, not that it succeeds.
 """
 
 import sys
@@ -40,31 +42,41 @@ for extra in (ROOT / "src", ROOT / "src" / "streaming"):
         sys.path.insert(0, str(extra))
 
 
-# The features the trained model actually consumes: the full
-# candidate list minus the constant one, which train_soh.py
-# drops.
+# The features the trained model actually consumes, in the
+# order the bundle stores them: features.FEATURES less
+# ambient_temperature, which train_soh.py drops as constant
+# across these four cells. Listed explicitly rather than
+# derived from features.FEATURES so that a change to the real
+# feature set shows up here as a failing suite instead of
+# silently redefining what the tests claim to cover.
+#
+# Note that voltage_range belongs here. It is a genuine model
+# input, produced by load_data.build_cycle_features and emitted
+# by the tracker, and an earlier version of this list carried
+# capacity_ah in its place, which left voltage_range unexercised
+# by every streaming test.
 ACTIVE_FEATURES = [
+    "cycle",
     "voltage_mean",
-    "voltage_std",
     "voltage_min",
     "voltage_max",
+    "voltage_std",
+    "voltage_range",
+    "current_mean",
+    "current_min",
+    "current_max",
+    "current_std",
+    "temperature_mean",
+    "temperature_min",
+    "temperature_max",
+    "temperature_std",
+    "discharge_duration_s",
     "voltage_start",
     "voltage_end",
     "voltage_drop",
     "resistance_proxy_ohm",
-    "current_mean",
-    "current_std",
-    "current_min",
-    "current_max",
-    "temperature_mean",
-    "temperature_std",
-    "temperature_min",
-    "temperature_max",
-    "discharge_duration_s",
-    "capacity_ah",
     "capacity_change_ah",
     "soh_change_pct",
-    "cycle",
 ]
 
 
@@ -127,6 +139,7 @@ def cycle_row():
         "voltage_std": 0.21,
         "voltage_min": 2.55,
         "voltage_max": 4.19,
+        "voltage_range": 1.64,
         "voltage_start": 4.19,
         "voltage_end": 3.05,
         "voltage_drop": 1.14,

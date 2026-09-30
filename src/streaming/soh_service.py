@@ -35,10 +35,31 @@ expiry is a silent failure mode: if the stream stops, or
 cycles stop closing, the device would keep acting on a
 number that no longer reflects the battery. read() therefore
 reports STALE once the value is older than stale_after_s.
+
+predict_timeout_s closes the other direction. A prediction
+that runs long is a breach of the service's latency
+contract, so it is reported as FAILED and not latched, even
+though the number it computed may be perfectly good.
+Presenting a breach as a healthy reading would hide the one
+thing the caller set the budget to find out.
 """
 
+import sys
 import threading
 import time
+from pathlib import Path
+
+# Put this directory and its parent on sys.path before any
+# project import, so the module works both as a script and
+# when imported as src.streaming.soh_service. cycle_tracker
+# in turn imports load_data and predict, which sit one level
+# up, so both directories are needed rather than just this one.
+sys.path.insert(
+    0, str(Path(__file__).resolve().parent)
+)
+sys.path.insert(
+    0, str(Path(__file__).resolve().parent.parent)
+)
 
 import numpy as np
 import pandas as pd
@@ -89,6 +110,10 @@ class SohService:
         bundle: a loaded model bundle. When None the model is
         loaded here, once, at construction.
 
+        predict_timeout_s: budget for one prediction. None
+        disables the check. See predict_cycle() for why an
+        overrun is detected rather than interrupted.
+
         stale_after_s: age at which a latched value stops
         being reported as ok. None disables the check.
         """
@@ -113,6 +138,8 @@ class SohService:
         )
 
         self.stale_after_s = stale_after_s
+
+        self.predict_timeout_s = predict_timeout_s
 
         self._lock = threading.Lock()
 
@@ -226,6 +253,39 @@ class SohService:
                 f"Model returned non-finite SOH: {value}"
             )
 
+        # A prediction that overran its budget is reported as
+        # failed and is not latched. The value itself may well
+        # be correct, but this service was asked to hold a
+        # latency contract and did not meet it, and latching it
+        # would present a breach as a healthy reading. The
+        # previous value is kept for the same reason a failed
+        # prediction keeps it: a stale reading beats none.
+        #
+        # The overrun is detected, not interrupted. A prediction
+        # is a synchronous call into the estimator, and there is
+        # no safe way to abandon it from this thread without
+        # leaving the pipeline in an undefined state. Running
+        # it under a watchdog that cannot cancel it would only
+        # report the same overrun later, so the check is made
+        # here, where the elapsed time is already known.
+        if (
+            self.predict_timeout_s is not None
+            and elapsed > self.predict_timeout_s
+        ):
+
+            message = (
+                "Prediction exceeded its "
+                f"{self.predict_timeout_s}s budget "
+                f"({elapsed * 1000:.1f} ms)"
+            )
+
+            with self._lock:
+
+                self._status = FAILED
+                self._error = f"TimeoutError: {message}"
+
+            raise TimeoutError(message)
+
         with self._lock:
 
             self._soh = value
@@ -287,6 +347,13 @@ class SohService:
                         self._predict_duration_s * 1000, 3
                     )
                 ),
+                "predict_timeout_ms": (
+                    None
+                    if self.predict_timeout_s is None
+                    else round(
+                        self.predict_timeout_s * 1000, 3
+                    )
+                ),
                 "error": self._error
             }
 
@@ -320,6 +387,41 @@ class SohService:
         return True
 
 
+def describe_trained_on(bundle):
+    """
+    Render the bundle's trained_on field as one readable string.
+
+    The training scripts write this as a single descriptive
+    string, such as "all cells" or "all cells except B0005",
+    rather than as a list of ids. Iterating such a value
+    directly would yield one letter per character, so the two
+    shapes are handled separately and anything unexpected falls
+    back to str().
+    """
+
+    trained_on = bundle.get("trained_on")
+
+    if trained_on is None:
+
+        return "unknown"
+
+    if isinstance(trained_on, str):
+
+        return trained_on
+
+    if isinstance(
+        trained_on,
+        (list, tuple, set)
+    ):
+
+        return ", ".join(
+            str(item)
+            for item in trained_on
+        )
+
+    return str(trained_on)
+
+
 def check_model_available(path=None):
     """
     Load the model and report whether inference is possible.
@@ -340,5 +442,5 @@ def check_model_available(path=None):
     return True, (
         f"model ready with {len(bundle['features'])} "
         f"features, trained on "
-        f"{', '.join(map(str, bundle.get('trained_on', [])))}"
+        f"{describe_trained_on(bundle)}"
     )

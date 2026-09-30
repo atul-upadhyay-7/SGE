@@ -7,13 +7,22 @@ matplotlib==3.10.6
 seaborn==0.13.2
 joblib==1.5.2
 shap==0.52.0
-streamlit==1.64.0
+
+# Serves the JSON that the native Grafana dashboard reads.
+# grafana_api.py imports both at module scope, so the API
+# cannot start without them. Grafana itself is the only
+# dashboard: there is no Streamlit app, and rendering is done
+# by Grafana panels rather than by Python chart code.
+flask==3.1.3
+flask-cors==6.0.5
 
 # Test-only. The streaming core is verified with these, against
 # the real .mat files, without a device or a broker.
 pytest==9.1.1
 
-# Deferred until the MQTT adapter lands. The streaming core has
-# no broker dependency, so it stays out of the hot path until
-# then.
-# paho-mqtt==2.1.0
+# MQTT transport for mqtt_client.py. The adapter has landed,
+# so this is no longer deferred: the client raises ImportError
+# at construction without it. The streaming core above still
+# has no broker dependency, because mqtt_client imports paho
+# lazily and only when it builds a real client.
+paho-mqtt==2.1.0

@@ -12,7 +12,6 @@ Endpoints:
 """
 
 import os
-import json
 import sqlite3
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -30,6 +29,25 @@ def get_db():
     return conn
 
 
+def object_exists(conn, name):
+    """
+    Whether a table or view of this name exists in the database.
+
+    Table names reach here straight from a dashboard panel, so
+    the generic branch cannot assume the name is real. The check
+    is a bound parameter rather than string formatting, which
+    keeps it correct for any name at all.
+    """
+
+    row = conn.execute(
+        "SELECT name FROM sqlite_master "
+        "WHERE type IN ('table', 'view') AND name = ?",
+        (name,),
+    ).fetchone()
+
+    return row is not None
+
+
 # ── available targets ──────────────────────────────────────────
 TARGETS = [
     # time-series style (cycle as x-axis)
@@ -41,6 +59,9 @@ TARGETS = [
     "discharge_duration_by_cycle",
     "soh_predicted_vs_actual",
     "rul_predicted_vs_actual",
+    "anomaly_residual_by_cycle",
+    "anomaly_fade_rate_by_cycle",
+    "anomaly_flagged_events",
 
     # table targets
     "table:soh_results",
@@ -53,6 +74,9 @@ TARGETS = [
     "table:rul_null_baselines",
     "table:nasa_ml_dataset",
     "table:model_summary",
+    "table:anomaly_summary",
+    "table:anomaly_events",
+    "table:anomaly_cycle_report",
 ]
 
 
@@ -73,7 +97,6 @@ def query():
 
     for target_obj in body.get("targets", []):
         target = target_obj.get("target", "")
-        target_type = target_obj.get("type", "timeserie")
 
         if target.startswith("table:"):
             results.append(handle_table(target))
@@ -190,6 +213,79 @@ def handle_timeseries(target):
                 "datapoints": [[r["predicted_rul"], r["cycle"]] for r in rows],
             })
 
+    elif target == "anomaly_residual_by_cycle":
+        if not object_exists(conn, "anomaly_cycle_report"):
+            conn.close()
+            return []
+        for cell in ["B0005", "B0006", "B0007", "B0018"]:
+            rows = conn.execute(
+                "SELECT cycle, residual, residual_lower, residual_upper "
+                "FROM anomaly_cycle_report WHERE cell_id = ? ORDER BY cycle",
+                (cell,)
+            ).fetchall()
+            series.append({
+                "target": f"Residual — {cell}",
+                "datapoints": [
+                    [r["residual"], r["cycle"]] for r in rows
+                ],
+            })
+            series.append({
+                "target": f"Lower — {cell}",
+                "datapoints": [
+                    [r["residual_lower"], r["cycle"]] for r in rows
+                ],
+            })
+            series.append({
+                "target": f"Upper — {cell}",
+                "datapoints": [
+                    [r["residual_upper"], r["cycle"]] for r in rows
+                ],
+            })
+
+    elif target == "anomaly_fade_rate_by_cycle":
+        if not object_exists(conn, "anomaly_cycle_report"):
+            conn.close()
+            return []
+        for cell in ["B0005", "B0006", "B0007", "B0018"]:
+            rows = conn.execute(
+                "SELECT cycle, fade_rate_pct_per_cycle, fade_rate_threshold "
+                "FROM anomaly_cycle_report "
+                "WHERE cell_id = ? AND fade_rate_pct_per_cycle IS NOT NULL "
+                "ORDER BY cycle",
+                (cell,)
+            ).fetchall()
+            series.append({
+                "target": f"Fade Rate — {cell}",
+                "datapoints": [
+                    [r["fade_rate_pct_per_cycle"], r["cycle"]] for r in rows
+                ],
+            })
+            series.append({
+                "target": f"Threshold — {cell}",
+                "datapoints": [
+                    [r["fade_rate_threshold"], r["cycle"]] for r in rows
+                ],
+            })
+
+    elif target == "anomaly_flagged_events":
+        if not object_exists(conn, "anomaly_cycle_report"):
+            conn.close()
+            return []
+        for cell in ["B0005", "B0006", "B0007", "B0018"]:
+            rows = conn.execute(
+                "SELECT cycle, residual "
+                "FROM anomaly_cycle_report "
+                "WHERE cell_id = ? AND anomaly = 1 ORDER BY cycle",
+                (cell,)
+            ).fetchall()
+            if rows:
+                series.append({
+                    "target": f"Flagged — {cell}",
+                    "datapoints": [
+                        [r["residual"], r["cycle"]] for r in rows
+                    ],
+                })
+
     conn.close()
     return series
 
@@ -225,13 +321,44 @@ def handle_table(target):
         return {"type": "table", "columns": columns, "rows": rows_data}
 
     # generic table
-    cursor = conn.execute(f"SELECT * FROM [{table_name}]")
-    col_names = [d[0] for d in cursor.description]
-    rows_data = [list(r) for r in cursor.fetchall()]
-    conn.close()
+    if not object_exists(conn, table_name):
+        conn.close()
+        return error_table(
+            f"Unknown table: {table_name}. "
+            "POST /search lists the available targets."
+        )
+
+    try:
+        cursor = conn.execute(f"SELECT * FROM [{table_name}]")
+        col_names = [d[0] for d in cursor.description]
+        rows_data = [list(r) for r in cursor.fetchall()]
+    except sqlite3.Error as error:
+        return error_table(
+            f"Could not read {table_name}: {error}"
+        )
+    finally:
+        conn.close()
 
     columns = [{"text": c, "type": "string"} for c in col_names]
     return {"type": "table", "columns": columns, "rows": rows_data}
+
+
+def error_table(message):
+    """
+    A one-row table carrying a failure, in the panel's own shape.
+
+    An unknown or unreadable table is reported inside the
+    response rather than as an HTTP error. /query answers every
+    panel in one call, so raising here would blank every other
+    panel on the dashboard over a single mistyped target, and
+    the panel at fault would show nothing about why.
+    """
+
+    return {
+        "type": "table",
+        "columns": [{"text": "error", "type": "string"}],
+        "rows": [[message]],
+    }
 
 
 if __name__ == "__main__":

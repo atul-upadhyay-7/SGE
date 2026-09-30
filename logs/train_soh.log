@@ -1,0 +1,37 @@
+
+========== SOH DATASET ==========
+
+Rows     : 636
+Features : 21
+Dropped (no variation in the training cells): ['ambient_temperature']
+
+Per-cell SOH range:
+         count    min    max
+cell_id                     
+B0005      168  69.35  100.0
+B0006      168  56.69  100.0
+B0007      168  74.06  100.0
+B0018      132  72.29  100.0
+
+
+========== BASELINE LADDER (leave-one-cell-out) ==========
+                 MAE    RMSE      R2
+model                               
+RandomForest  3.4261  3.9314  0.8292
+XGBoost       3.4382  4.0059  0.8323
+Linear        4.3741  4.6248  0.7152
+Ridge         7.9672  8.0963  0.1833
+
+Constant baselines (mean MAE):
+baseline
+oracle_cell_mean        8.7207
+constant_global_mean    9.2226
+constant_train_mean     9.5681
+Name: MAE, dtype: float64
+
+
+========== HYPERPARAMETER SEARCH ==========
+
+Running nested leave-one-cell-out search, n_iter=20.
+This takes a few minutes.
+Running the optimistic comparison.

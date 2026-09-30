@@ -12,6 +12,17 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(BASE, "data", "processed")
 DB_PATH = os.path.join(BASE, "data", "battery_pdm.db")
 
+# Merged views, and the per-cell tables each one is built from.
+# The prediction tables are written by train_soh.py and
+# train_rul.py, so on a checkout that has only run the data
+# pipeline they are simply not there yet.
+MERGED_VIEWS = {
+    "soh_predictions_all": "soh_predictions",
+    "rul_predictions_all": "rul_predictions",
+}
+
+CELLS = ["B0005", "B0006", "B0007", "B0018"]
+
 
 def main():
     if os.path.exists(DB_PATH):
@@ -30,23 +41,56 @@ def main():
 
         print(f"  {table_name:40s}  {len(df):>6} rows  {len(df.columns):>3} cols")
 
-    # create a view that merges SOH predictions from all cells
-    conn.execute("""
-        CREATE VIEW IF NOT EXISTS soh_predictions_all AS
-        SELECT * FROM soh_predictions_B0005
-        UNION ALL SELECT * FROM soh_predictions_B0006
-        UNION ALL SELECT * FROM soh_predictions_B0007
-        UNION ALL SELECT * FROM soh_predictions_B0018
-    """)
+    loaded = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
 
-    # create a view that merges RUL predictions from all cells
-    conn.execute("""
-        CREATE VIEW IF NOT EXISTS rul_predictions_all AS
-        SELECT * FROM rul_predictions_B0005
-        UNION ALL SELECT * FROM rul_predictions_B0006
-        UNION ALL SELECT * FROM rul_predictions_B0007
-        UNION ALL SELECT * FROM rul_predictions_B0018
-    """)
+    # SQLite does not resolve the names in a CREATE VIEW until
+    # the view is read, so a view over a missing table is
+    # created without complaint and only fails later, from
+    # whatever queries it. Each view is therefore built from
+    # the member tables that are actually present.
+    for view_name, prefix in MERGED_VIEWS.items():
+        members = [
+            f"{prefix}_{cell}"
+            for cell in CELLS
+            if f"{prefix}_{cell}" in loaded
+        ]
+
+        if not members:
+            print(
+                f"  {view_name:40s}  skipped, no {prefix}_* tables found"
+            )
+            continue
+
+        select = " UNION ALL ".join(
+            f"SELECT * FROM [{member}]"
+            for member in members
+        )
+
+        conn.execute(
+            f"CREATE VIEW IF NOT EXISTS [{view_name}] AS {select}"
+        )
+
+        if len(members) < len(CELLS):
+            missing = sorted(
+                set(CELLS)
+                - {
+                    member.rsplit("_", 1)[1]
+                    for member in members
+                }
+            )
+            print(
+                f"  {view_name:40s}  built from {len(members)} cells, "
+                f"missing {', '.join(missing)}"
+            )
+        else:
+            print(
+                f"  {view_name:40s}  built from {len(members)} cells"
+            )
 
     conn.commit()
 
@@ -56,7 +100,13 @@ def main():
     print(f"\nDatabase: {DB_PATH}")
     print(f"Tables/views: {len(tables)}")
     for t in tables:
-        count = conn.execute(f"SELECT COUNT(*) FROM [{t[0]}]").fetchone()[0]
+        try:
+            count = conn.execute(f"SELECT COUNT(*) FROM [{t[0]}]").fetchone()[0]
+        except sqlite3.Error as error:
+            # Reported rather than raised, so one unreadable
+            # object does not hide the state of the rest.
+            print(f"  {t[0]:40s}  unreadable: {error}")
+            continue
         print(f"  {t[0]:40s}  {count:>6} rows")
 
     conn.close()

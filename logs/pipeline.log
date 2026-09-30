@@ -1,0 +1,447 @@
+
+############################################################
+# STEP: 1. Load raw .mat files
+# CMD : src/load_data.py
+# START: 2026-09-30 15:31:23
+############################################################
+Reading .mat files from:
+data/raw
+
+Loading B0005...
+MAT variables: dict_keys(['__header__', '__version__', '__globals__', 'B0005'])
+B0005: 168 discharge cycles
+
+Loading B0006...
+MAT variables: dict_keys(['__header__', '__version__', '__globals__', 'B0006'])
+B0006: 168 discharge cycles
+
+Loading B0007...
+MAT variables: dict_keys(['__header__', '__version__', '__globals__', 'B0007'])
+B0007: 168 discharge cycles
+
+Loading B0018...
+MAT variables: dict_keys(['__header__', '__version__', '__globals__', 'B0018'])
+B0018: 132 discharge cycles
+
+Saved:
+data/processed/nasa_cycle_features_raw.csv
+
+Dataset shape:
+(636, 22)
+
+Cycles per cell:
+         min  max  count
+cell_id                 
+B0005      2  614    168
+B0006      2  614    168
+B0007      2  614    168
+B0018      3  319    132
+# ---- END: 1. Load raw .mat files (exit=0, 15:31:25) ----
+
+############################################################
+# STEP: 2. Preprocess + targets
+# CMD : src/preprocessing.py
+# START: 2026-09-30 15:31:25
+############################################################
+
+Saved: data/processed/nasa_ml_dataset.csv
+
+Dataset shape: (636, 34)
+
+Battery summary:
+         cycles  initial_soh  ...  fade_pct_per_cycle  early_fade_pct_per_cycle
+cell_id                       ...                                              
+B0005       168        100.0  ...             -0.0567                   -0.0184
+B0006       168        100.0  ...             -0.0875                   -0.0887
+B0007       168        100.0  ...             -0.0499                   -0.0216
+B0018       132        100.0  ...             -0.1001                   -0.1297
+
+[4 rows x 8 columns]
+
+EOL threshold: 80.0% SOH
+
+Rows trainable for RUL (pre-EOL): 361 of 636
+# ---- END: 2. Preprocess + targets (exit=0, 15:31:26) ----
+
+############################################################
+# STEP: 3. Train SOH (nested LOCO)
+# CMD : src/train_soh.py
+# START: 2026-09-30 15:31:26
+############################################################
+
+========== SOH DATASET ==========
+
+Rows     : 636
+Features : 21
+Dropped (no variation in the training cells): ['ambient_temperature']
+
+Per-cell SOH range:
+         count    min    max
+cell_id                     
+B0005      168  69.35  100.0
+B0006      168  56.69  100.0
+B0007      168  74.06  100.0
+B0018      132  72.29  100.0
+
+
+========== BASELINE LADDER (leave-one-cell-out) ==========
+                 MAE    RMSE      R2
+model                               
+RandomForest  3.4261  3.9314  0.8292
+XGBoost       3.4382  4.0059  0.8323
+Linear        4.3741  4.6248  0.7152
+Ridge         7.9672  8.0963  0.1833
+
+Constant baselines (mean MAE):
+baseline
+oracle_cell_mean        8.7207
+constant_global_mean    9.2226
+constant_train_mean     9.5681
+Name: MAE, dtype: float64
+
+
+========== HYPERPARAMETER SEARCH ==========
+
+Running nested leave-one-cell-out search, n_iter=20.
+This takes a few minutes.
+Running the optimistic comparison.
+
+Per-cell results:
+             model test_cell    MAE   RMSE     R2  inner_mae
+    XGBoost_nested     B0005 2.5346 3.3702 0.8914     4.8245
+    XGBoost_nested     B0006 6.7624 7.1587 0.6638     1.5050
+    XGBoost_nested     B0007 1.7988 2.2301 0.9309     4.0378
+    XGBoost_nested     B0018 1.8218 2.2802 0.9248     3.9026
+XGBoost_optimistic     B0005 0.3997 0.5066 0.9975     2.9752
+XGBoost_optimistic     B0006 0.6869 0.9830 0.9937     2.9752
+XGBoost_optimistic     B0007 0.4049 0.5325 0.9961     2.9752
+XGBoost_optimistic     B0018 0.5111 0.6388 0.9941     2.9752
+
+Nested (honest)   mean MAE : 3.2294
+Optimistic        mean MAE : 0.5007
+Optimism from tuning on the test folds : -2.7287
+
+
+========== PER-CELL DIAGNOSIS (nested model) ==========
+test_cell   MAE   bias  actual_min  actual_max  predicted_min  predicted_max  under_prediction
+    B0005 2.535 -1.894      69.349       100.0      61.195999      99.825996           372.011
+    B0006 6.762  6.762      56.689       100.0      69.616997     100.067001             0.000
+    B0007 1.799 -0.758      74.057       100.0      76.527000      98.327003           214.790
+    B0018 1.822 -1.368      72.294       100.0      74.329002      95.810997           210.498
+
+Worst cell: B0006 with MAE 6.76.
+It degrades to 56.7% SOH but the model only ever predicts down to 69.6%.
+A tree ensemble trained on cells that never fade this hard
+extrapolates by averaging toward the training floor, so
+severe degradation is systematically under-predicted.
+This is a data-coverage limit, not a tuning problem: no
+hyperparameter setting can invent a degradation the
+training cells never exhibited.
+
+
+========== FINAL MODEL (all cells) ==========
+Parameters chosen with leave-one-cell-out over all four cells:
+  model__colsample_bytree      1.0
+  model__learning_rate         0.01
+  model__max_depth             2
+  model__min_child_weight      1
+  model__n_estimators          800
+  model__reg_alpha             0.1
+  model__reg_lambda            2.0
+  model__subsample             0.7
+
+Leave-one-cell-out MAE of these parameters (optimistic): 2.9752
+
+
+========== FEATURE IMPORTANCE (all-cell model) ==========
+             feature  importance  rank
+        voltage_mean     0.39904     1
+     temperature_std     0.19655     2
+         current_std     0.15041     3
+        voltage_drop     0.10988     4
+discharge_duration_s     0.03922     5
+        current_mean     0.03859     6
+         voltage_end     0.02197     7
+               cycle     0.02153     8
+       voltage_start     0.00796     9
+         voltage_max     0.00535    10
+     temperature_max     0.00174    11
+         current_min     0.00143    12
+resistance_proxy_ohm     0.00126    13
+         current_max     0.00101    14
+  capacity_change_ah     0.00098    15
+      soh_change_pct     0.00098    16
+    temperature_mean     0.00094    17
+         voltage_std     0.00047    18
+     temperature_min     0.00047    19
+         voltage_min     0.00020    20
+       voltage_range     0.00000    21
+
+
+========== SUMMARY ==========
+
+Hand-tuned XGBoost  MAE : 3.4382
+Nested-search XGBoost MAE: 3.2294
+Best constant baseline   : 8.7207 (oracle_cell_mean)
+Oracle ceiling          : 9.5681 (constant_train_mean)
+
+Saved models to models
+Saved results to data/processed
+# ---- END: 3. Train SOH (nested LOCO) (exit=0, 15:51:07) ----
+
+############################################################
+# STEP: 4. Train RUL
+# CMD : src/train_rul.py
+# START: 2026-09-30 15:51:07
+############################################################
+
+========== RUL DATASET ==========
+
+Target      : rul_cycles_80 (cycles until 80% SOH)
+Rows        : 361 of 636
+Range       : 0 to 443 cycles
+
+Per-cell available life:
+         count    max    mean
+cell_id                      
+B0005      101  354.0  190.19
+B0006       61  200.0  111.31
+B0007      124  443.0  235.24
+B0018       75  182.0   88.39
+
+
+========== MODEL SCORES (leave-one-cell-out) ==========
+                         MAE     RMSE     R2
+model        drop                           
+Linear       cycle    85.972   98.403 -0.987
+XGBoost      cycle    87.570  103.996 -0.550
+RandomForest cycle    88.183  104.228 -0.676
+             (none)   95.026  110.678 -0.861
+XGBoost      (none)   99.265  116.178 -1.036
+Linear       (none)  110.254  119.722 -1.464
+Ridge        cycle   137.941  146.035 -2.311
+             (none)  158.800  165.667 -3.004
+
+
+========== NULL BASELINES (mean MAE over cells) ==========
+baseline
+oracle_cell_mean         77.778
+constant_global_mean     93.116
+constant_train_mean     103.468
+Name: MAE, dtype: float64
+
+
+========== VERDICT ==========
+
+Best model    : Linear (cycle)
+  MAE         : 85.97 cycles
+Best constant : oracle_cell_mean
+  MAE         : 77.78 cycles
+
+The model does NOT beat a constant predictor.
+RUL is dominated by the held-out cell's own future
+trajectory, which no cycle-level feature reveals.
+Four cells provide only three training examples of
+how a cell degrades. See the README for the full analysis.
+
+
+========== DEGRADATION RATE (usable metric) ==========
+cell_id  eol_cycle  observed_final_soh  fade_pct_per_cycle  early_fade_pct_per_cycle  early_vs_full_ratio
+  B0005        356             79.7427             -0.0567                   -0.0184               0.3244
+  B0006        202             79.0458             -0.0875                   -0.0887               1.0133
+  B0007        445             79.7326             -0.0499                   -0.0216               0.4337
+  B0018        185             79.9634             -0.1001                   -0.1297               1.2954
+
+The early-life rate is measured over the first 40 cycles only.
+It is systematically shallower than the full-life rate
+because SOH degradation is convex: a shallow shoulder
+followed by an accelerating knee. A BMS extrapolating
+RUL from early data alone must correct for this bias.
+
+
+========== ONLINE EXTRAPOLATION ESTIMATOR ==========
+cell_id  n_evaluated  fitted_slope  implied_eol  actual_eol    MAE  constant_MAE
+  B0005           61         -0.02      1028.32         356 672.32         58.71
+  B0006           21         -0.09       207.90         202   5.90         20.05
+  B0007           84         -0.02       903.18         445 458.18         81.14
+  B0018           35         -0.13       162.03         185  19.23         21.20
+
+Mean MAE           : 288.91 cycles
+Mean constant MAE  : 45.27 cycles
+
+
+Saved models to models
+Saved results to data/processed
+# ---- END: 4. Train RUL (exit=0, 15:51:54) ----
+
+############################################################
+# STEP: 5. Anomaly detection
+# CMD : src/anomaly.py
+# START: 2026-09-30 15:51:54
+############################################################
+
+========== ANOMALY DETECTION ==========
+
+Rows            : 636
+Cells           : 4
+Residual K      : 3.5 (robust sigma)
+Capacity jump   : 2.0% of reference
+Knee window     : 20 cycles
+Knee K          : 3.0 (robust sigma)
+
+Scoring every cell with a model that never saw it.
+
+
+========== PER-CELL SUMMARY ==========
+cell_id  cycles  any_anomaly  any_rate_pct  residual_anomalies  residual_sigma  capacity_anomalies  knee_cycles_judged  knee_anomalies  knee_rate_pct  first_knee_cycle
+  B0005     168            5         2.976                   0           1.956                   5                 148               0          0.000               NaN
+  B0006     168           18        10.714                   9           1.510                   9                 148               1          0.676             228.0
+  B0007     168            2         1.190                   0           2.426                   2                 148               0          0.000               NaN
+  B0018     132            8         6.061                   0           1.917                   8                 112               0          0.000               NaN
+
+
+========== FLAG COUNTS ==========
+residual              : 9
+capacity event        : 24
+knee                  : 1
+any detector          : 33
+
+Flagged cycles  : 33 of 636 (5.2%)
+
+Residual direction:
+  faster than expected : 1
+  slower than expected : 8
+
+More cycles read better than the model expected
+than worse. On this dataset that is far more
+consistent with discharge measurement scatter
+than with genuine recovery, which a fading
+cell does not produce. These warrant a
+calibration check before they are read as good
+news.
+
+
+========== FLAGGED CYCLES ==========
+cell_id  cycle     soh  predicted_soh  residual  capacity_jump_pct  fade_rate_pct_per_cycle                                 anomaly_reasons
+  B0005     42  99.490      96.523003     2.967              2.383                      NaN                               capacity:recovery
+  B0005     86  99.748      96.686996     3.061              2.571                   -0.023                               capacity:recovery
+  B0005    150  96.614      93.374001     3.240              3.099                    0.014                               capacity:recovery
+  B0005    313  86.498      86.747002    -0.250              4.758                    0.015                               capacity:recovery
+  B0005    316  84.237      84.403999    -0.167             -2.261                    0.041                            capacity:abrupt_loss
+  B0006      2 100.000      99.734001     0.266                NaN                      NaN                   residual:slower_than_expected
+  B0006      4  99.499      99.464996     0.034             -0.501                      NaN                   residual:slower_than_expected
+  B0006      6  98.919      99.446999    -0.528             -0.580                      NaN                   residual:slower_than_expected
+  B0006      8  98.916      99.289001    -0.372             -0.002                      NaN                   residual:slower_than_expected
+  B0006     10  98.290      99.296997    -1.007             -0.627                      NaN                   residual:slower_than_expected
+  B0006     12  98.947      99.339996    -0.393              0.657                      NaN                   residual:slower_than_expected
+  B0006     14  98.907      99.140999    -0.233             -0.039                      NaN                   residual:slower_than_expected
+  B0006     16  96.730      99.223999    -2.493             -2.177                      NaN                            capacity:abrupt_loss
+  B0006     42  97.263      99.223999    -1.961              5.505                      NaN residual:slower_than_expected,capacity:recovery
+  B0006     62  93.420      98.472000    -5.052             -2.190                    0.094                            capacity:abrupt_loss
+  B0006     86  94.568      99.146004    -4.578              3.319                    0.016                               capacity:recovery
+  B0006     90  92.478      98.483002    -6.006             -2.090                    0.040                            capacity:abrupt_loss
+  B0006    150  89.603      96.239998    -6.638              5.960                    0.021                               capacity:recovery
+  B0006    228  76.212      84.447998    -8.236             -0.500                    0.172                                            knee
+  B0006    266  75.186      82.934998    -7.749              2.096                    0.078                               capacity:recovery
+  B0006    313  78.296      84.747002    -6.451              7.464                   -0.044                               capacity:recovery
+  B0006    316  75.977      82.259003    -6.282             -2.319                   -0.010                            capacity:abrupt_loss
+  B0006    600  56.689      69.669998   -12.980             -1.021                    0.075                   residual:faster_than_expected
+  B0007    313  89.306      88.392998     0.913              5.191                   -0.011                               capacity:recovery
+  B0007    316  85.984      84.132004     1.852             -3.322                    0.029                            capacity:abrupt_loss
+  B0018     66  94.298      90.595001     3.704              2.250                    0.094                               capacity:recovery
+  B0018    102  90.353      86.787003     3.566              3.345                    0.069                               capacity:recovery
+  B0018    117  93.084      87.780998     5.303              7.075                    0.007                               capacity:recovery
+  B0018    141  90.223      86.346001     3.877              3.661                   -0.038                               capacity:recovery
+  B0018    212  79.235      77.487000     1.748              2.421                    0.071                               capacity:recovery
+  B0018    223  78.414      77.970001     0.444              2.109                    0.092                               capacity:recovery
+  B0018    259  78.729      77.358002     1.371              5.591                    0.011                               capacity:recovery
+  B0018    294  76.919      76.379997     0.538              4.346                   -0.048                               capacity:recovery
+
+
+========== KNEE ONSET ==========
+cell_id  first_knee_cycle  knee_anomalies
+  B0006             228.0               1
+
+
+========== LIMITS ==========
+
+These detectors rank cycles for inspection.
+They do not diagnose a cause, and a flag is not
+proof of a fault.
+
+SOH is referenced to each cell's own first
+measured capacity, so a cell already partly aged
+when first seen will read high throughout and its
+early cycles may be flagged as apparent recovery.
+
+Thresholds are multiples of a robust sigma computed
+from four cells. They are set for this dataset and
+would need re-deriving for a different chemistry or
+a wider fleet.
+
+Saved results to data/processed
+# ---- END: 5. Anomaly detection (exit=0, 15:52:13) ----
+
+############################################################
+# STEP: 6. Load results into SQLite
+# CMD : dashboard/load_to_sqlite.py
+# START: 2026-09-30 15:52:13
+############################################################
+  anomaly_cycle_report                         636 rows   52 cols
+  anomaly_events                                33 rows   52 cols
+  anomaly_summary                                4 rows   11 cols
+  nasa_cycle_features_raw                      636 rows   22 cols
+  nasa_ml_dataset                              636 rows   34 cols
+  rul_degradation_rates                          4 rows    6 cols
+  rul_null_baselines                            96 rows    4 cols
+  rul_predictions_B0005                        101 rows   36 cols
+  rul_predictions_B0006                         61 rows   36 cols
+  rul_predictions_B0007                        124 rows   36 cols
+  rul_predictions_B0018                         75 rows   36 cols
+  rul_results                                   32 rows    6 cols
+  soh_baselines                                 16 rows    5 cols
+  soh_bias_report                                4 rows    8 cols
+  soh_feature_importance                        21 rows    3 cols
+  soh_nested_results                             4 rows    6 cols
+  soh_null_baselines                            12 rows    4 cols
+  soh_predictions_B0005                        168 rows   35 cols
+  soh_predictions_B0006                        168 rows   35 cols
+  soh_predictions_B0007                        168 rows   35 cols
+  soh_predictions_B0018                        132 rows   35 cols
+  soh_results                                    4 rows    4 cols
+  soh_predictions_all                       built from 4 cells
+  rul_predictions_all                       built from 4 cells
+
+Database: /home/harsh/Documents/battery-pdm/data/battery_pdm.db
+Tables/views: 24
+  anomaly_cycle_report                         636 rows
+  anomaly_events                                33 rows
+  anomaly_summary                                4 rows
+  nasa_cycle_features_raw                      636 rows
+  nasa_ml_dataset                              636 rows
+  rul_degradation_rates                          4 rows
+  rul_null_baselines                            96 rows
+  rul_predictions_B0005                        101 rows
+  rul_predictions_B0006                         61 rows
+  rul_predictions_B0007                        124 rows
+  rul_predictions_B0018                         75 rows
+  rul_predictions_all                          361 rows
+  rul_results                                   32 rows
+  soh_baselines                                 16 rows
+  soh_bias_report                                4 rows
+  soh_feature_importance                        21 rows
+  soh_nested_results                             4 rows
+  soh_null_baselines                            12 rows
+  soh_predictions_B0005                        168 rows
+  soh_predictions_B0006                        168 rows
+  soh_predictions_B0007                        168 rows
+  soh_predictions_B0018                        132 rows
+  soh_predictions_all                          636 rows
+  soh_results                                    4 rows
+
+Done.
+# ---- END: 6. Load results into SQLite (exit=0, 15:52:15) ----
+
+############################################################
+# PIPELINE COMPLETE: 2026-09-30 15:52:15
+############################################################

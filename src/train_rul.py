@@ -297,6 +297,14 @@ def main():
         parents=True
     )
 
+    # train_soh.py creates this too. Doing it here means the
+    # script can write its results on a checkout where only the
+    # data pipeline has been run.
+    RESULT_DIR.mkdir(
+        exist_ok=True,
+        parents=True
+    )
+
     print(
         "\n========== RUL DATASET =========="
     )
@@ -524,6 +532,18 @@ def main():
     # ------------------------------------------------------------
     # Persist artefacts
     # ------------------------------------------------------------
+
+    # saved is populated only by the XGBoost run with the full
+    # feature set. Failing here names the cause, instead of
+    # reporting a KeyError on an empty dict if that combination
+    # is ever dropped from the loop above.
+    if not saved:
+
+        raise RuntimeError(
+            "No RUL predictions were collected. "
+            "Expected an XGBoost run with the full feature "
+            "set; check FEATURE_SETS and the model list."
+        )
 
     for prediction in saved["predictions"]:
 

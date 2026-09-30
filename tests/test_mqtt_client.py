@@ -711,15 +711,24 @@ def test_an_unchanged_reading_is_not_republished():
 
     run_a_cycle(adapter, fake)
 
+    # run_a_cycle delivers samples after the cycle closes, and
+    # every one of them advances samples_accepted, so the payload
+    # really is different from the last one published. Sync the
+    # comparison state first, otherwise this would measure that
+    # change rather than the skip it is meant to test.
+    adapter._publish_status(force=True)
+
     before = len(fake.published)
 
     for _ in range(5):
 
         adapter._publish_status()
 
-    # The value only changes once every few thousand seconds, so
-    # the per-second loop should not rewrite an identical
-    # payload.
+    # No new samples, and none of the remaining fields move on
+    # their own, so the value only changes once every few thousand
+    # seconds. The per-second loop must not rewrite an identical
+    # payload. age_s is excluded from that comparison precisely
+    # so the clock passing cannot defeat this.
     assert len(fake.published) == before
 
 

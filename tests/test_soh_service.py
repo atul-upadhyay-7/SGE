@@ -405,9 +405,31 @@ def test_check_model_available_reports_the_real_artifact():
 
     ok, message = check_model_available()
 
-    # The committed model cannot be loaded in this environment,
-    # so this must fail cleanly with a usable message rather than
-    # raising out of a sample loop.
-    assert ok is False
-    assert "xgboost" in message.lower()
+    # Whether the committed artifact loads depends on the
+    # XGBoost build it was serialized with, which is not
+    # something this suite controls. Both outcomes are
+    # acceptable, so the assertion is on the contract rather
+    # than on which one occurs: the call must answer, and it
+    # must answer in words rather than raising out of a
+    # sample loop.
+    assert isinstance(ok, bool)
     assert isinstance(message, str)
+    assert message
+
+    if ok:
+        assert "features" in message
+    else:
+        assert "not found" in message.lower() or "xgboost" in message.lower()
+
+
+def test_check_model_available_fails_cleanly_on_a_missing_model():
+
+    ok, message = check_model_available(
+        "models/does_not_exist.joblib"
+    )
+
+    # A missing file is the common startup failure and must
+    # name the remedy rather than raising.
+    assert ok is False
+    assert "does_not_exist.joblib" in message
+    assert "train_soh.py" in message
