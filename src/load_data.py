@@ -97,6 +97,160 @@ def to_1d(value):
     return arr.reshape(-1)
 
 
+# A cycle needs at least this many valid samples before its
+# statistics describe the cycle rather than measurement noise.
+MIN_CYCLE_SAMPLES = 5
+
+
+def build_cycle_features(
+    voltage,
+    current,
+    temperature,
+    time,
+    capacity=np.nan,
+    ambient_temperature=np.nan,
+    cell_id="UNKNOWN",
+    cycle_number=0
+):
+    """
+    Build the per-cycle feature row from one cycle's
+    measured samples.
+
+    Shared by the offline .mat loader and the streaming
+    cycle tracker so that a cycle produces the same features
+    whether it arrived as a file or one sample per second.
+
+    Returns None when the cycle holds too few valid samples
+    to characterise, which is not an error: a partial cycle
+    at the end of a stream is expected to be too short.
+    """
+
+    voltage = np.asarray(
+        voltage,
+        dtype=float
+    )
+
+    current = np.asarray(
+        current,
+        dtype=float
+    )
+
+    temperature = np.asarray(
+        temperature,
+        dtype=float
+    )
+
+    time = np.asarray(
+        time,
+        dtype=float
+    )
+
+    # Remove invalid values
+    mask = (
+        np.isfinite(voltage)
+        & np.isfinite(current)
+        & np.isfinite(temperature)
+        & np.isfinite(time)
+    )
+
+    voltage = voltage[mask]
+    current = current[mask]
+    temperature = temperature[mask]
+    time = time[mask]
+
+    if len(voltage) < MIN_CYCLE_SAMPLES:
+        return None
+
+    discharge_duration = (
+        time[-1] - time[0]
+    )
+
+    voltage_range = (
+        voltage.max() - voltage.min()
+    )
+
+    current_range = (
+        current.max() - current.min()
+    )
+
+    if abs(current_range) > 1e-8:
+
+        resistance_proxy = (
+            voltage_range / current_range
+        )
+
+    else:
+
+        resistance_proxy = np.nan
+
+    return {
+
+        "cell_id": cell_id,
+
+        "cycle": cycle_number,
+
+        "ambient_temperature":
+            ambient_temperature,
+
+        "capacity_ah":
+            capacity,
+
+        "voltage_mean":
+            voltage.mean(),
+
+        "voltage_min":
+            voltage.min(),
+
+        "voltage_max":
+            voltage.max(),
+
+        "voltage_std":
+            voltage.std(),
+
+        "voltage_range":
+            voltage_range,
+
+        "current_mean":
+            current.mean(),
+
+        "current_min":
+            current.min(),
+
+        "current_max":
+            current.max(),
+
+        "current_std":
+            current.std(),
+
+        "temperature_mean":
+            temperature.mean(),
+
+        "temperature_min":
+            temperature.min(),
+
+        "temperature_max":
+            temperature.max(),
+
+        "temperature_std":
+            temperature.std(),
+
+        "discharge_duration_s":
+            discharge_duration,
+
+        "voltage_start":
+            voltage[0],
+
+        "voltage_end":
+            voltage[-1],
+
+        "voltage_drop":
+            voltage[0] - voltage[-1],
+
+        "resistance_proxy_ohm":
+            resistance_proxy
+    }
+
+
 def parse_battery_file(mat_path):
 
     mat_path = Path(mat_path)
@@ -220,109 +374,19 @@ def parse_battery_file(mat_path):
             ambient_temperature = np.nan
 
         # Remove invalid values
-        mask = (
-            np.isfinite(voltage)
-            & np.isfinite(current)
-            & np.isfinite(temperature)
-            & np.isfinite(time)
+        row = build_cycle_features(
+            voltage=voltage,
+            current=current,
+            temperature=temperature,
+            time=time,
+            capacity=capacity,
+            ambient_temperature=ambient_temperature,
+            cell_id=cell_id,
+            cycle_number=cycle_number
         )
 
-        voltage = voltage[mask]
-        current = current[mask]
-        temperature = temperature[mask]
-        time = time[mask]
-
-        if len(voltage) < 5:
+        if row is None:
             continue
-
-        discharge_duration = (
-            time[-1] - time[0]
-        )
-
-        voltage_range = (
-            voltage.max() - voltage.min()
-        )
-
-        current_range = (
-            current.max() - current.min()
-        )
-
-        if abs(current_range) > 1e-8:
-
-            resistance_proxy = (
-                voltage_range / current_range
-            )
-
-        else:
-
-            resistance_proxy = np.nan
-
-        row = {
-
-            "cell_id": cell_id,
-
-            "cycle": cycle_number,
-
-            "ambient_temperature":
-                ambient_temperature,
-
-            "capacity_ah":
-                capacity,
-
-            "voltage_mean":
-                voltage.mean(),
-
-            "voltage_min":
-                voltage.min(),
-
-            "voltage_max":
-                voltage.max(),
-
-            "voltage_std":
-                voltage.std(),
-
-            "voltage_range":
-                voltage_range,
-
-            "current_mean":
-                current.mean(),
-
-            "current_min":
-                current.min(),
-
-            "current_max":
-                current.max(),
-
-            "current_std":
-                current.std(),
-
-            "temperature_mean":
-                temperature.mean(),
-
-            "temperature_min":
-                temperature.min(),
-
-            "temperature_max":
-                temperature.max(),
-
-            "temperature_std":
-                temperature.std(),
-
-            "discharge_duration_s":
-                discharge_duration,
-
-            "voltage_start":
-                voltage[0],
-
-            "voltage_end":
-                voltage[-1],
-
-            "voltage_drop":
-                voltage[0] - voltage[-1],
-
-            "resistance_proxy_ohm":
-                resistance_proxy
-        }
 
         rows.append(row)
 

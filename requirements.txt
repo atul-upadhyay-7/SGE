@@ -8,3 +8,12 @@ seaborn==0.13.2
 joblib==1.5.2
 shap==0.52.0
 streamlit==1.64.0
+
+# Test-only. The streaming core is verified with these, against
+# the real .mat files, without a device or a broker.
+pytest==9.1.1
+
+# Deferred until the MQTT adapter lands. The streaming core has
+# no broker dependency, so it stays out of the hot path until
+# then.
+# paho-mqtt==2.1.0
