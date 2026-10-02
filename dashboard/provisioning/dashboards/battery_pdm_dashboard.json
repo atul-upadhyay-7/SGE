@@ -198,7 +198,7 @@
     },
     {
       "type": "table",
-      "title": "Anomaly Events: 33 flagged cycles (5.2%)",
+      "title": "Anomaly Events: 32 flagged cycles (5.0%)",
       "description": "The full event-level report. Each row explains which detector(s) fired and in which direction, so a flagged cycle states why it is flagged. The full cycle-level report lives in data/processed/anomaly_cycle_report.csv.",
       "gridPos": { "x": 12, "y": 34, "w": 12, "h": 7 },
       "targets": [

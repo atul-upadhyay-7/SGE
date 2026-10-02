@@ -2,48 +2,14 @@ Database: /home/harsh/Documents/battery-pdm/data/battery_pdm.db
 Starting API server on http://localhost:8099
  * Serving Flask app 'grafana_api'
  * Debug mode: off
-[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:8099
  * Running on http://10.16.44.39:8099
-[33mPress CTRL+C to quit[0m
-127.0.0.1 - - [30/Sep/2026 16:32:12] "POST /search HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:32:32] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:32:32] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:32:32] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:32:32] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:32:32] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:36:42] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:43:06] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:26] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:26] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:26] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:26] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:26] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:26] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:28] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:28] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:28] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:28] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:28] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:28] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:29] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:29] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:29] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 16:48:29] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:14] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:14] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:14] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:14] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:14] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:14] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:17] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:17] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:17] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:17] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:17] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:17] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:18] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:18] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:18] "POST /query HTTP/1.1" 200 -
-127.0.0.1 - - [30/Sep/2026 17:18:18] "POST /query HTTP/1.1" 200 -
+Press CTRL+C to quit
+127.0.0.1 - - [02/Oct/2026 14:36:27] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [02/Oct/2026 14:37:07] "POST /query HTTP/1.1" 200 -
+127.0.0.1 - - [02/Oct/2026 14:37:07] "POST /query HTTP/1.1" 200 -
+127.0.0.1 - - [02/Oct/2026 14:37:07] "POST /query HTTP/1.1" 200 -
+127.0.0.1 - - [02/Oct/2026 14:37:08] "POST /query HTTP/1.1" 200 -
+127.0.0.1 - - [02/Oct/2026 14:37:08] "POST /query HTTP/1.1" 200 -

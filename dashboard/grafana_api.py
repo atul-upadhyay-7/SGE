@@ -332,6 +332,17 @@ def handle_table(target):
         cursor = conn.execute(f"SELECT * FROM [{table_name}]")
         col_names = [d[0] for d in cursor.description]
         rows_data = [list(r) for r in cursor.fetchall()]
+
+        # Declared types come from PRAGMA table_info, not from
+        # cursor.description: on this interpreter the latter
+        # reports a null type for every column, which is why
+        # every column used to reach Grafana as a string.
+        declared = [
+            row[2]
+            for row in conn.execute(
+                f"PRAGMA table_info([{table_name}])"
+            ).fetchall()
+        ]
     except sqlite3.Error as error:
         return error_table(
             f"Could not read {table_name}: {error}"
@@ -339,8 +350,81 @@ def handle_table(target):
     finally:
         conn.close()
 
-    columns = [{"text": c, "type": "string"} for c in col_names]
+    if len(declared) != len(col_names):
+
+        # PRAGMA and SELECT disagree on the column set, which
+        # would silently misalign names against types. Fall
+        # back to all-string rather than render a table with
+        # the wrong types on it.
+        declared = [None] * len(col_names)
+
+    columns = [
+        {
+            "text": name,
+            "type": sqlite_type_to_frame_type(column_type),
+        }
+        for name, column_type in zip(col_names, declared)
+    ]
+
     return {"type": "table", "columns": columns, "rows": rows_data}
+
+
+# SQLite declared types that carry numbers. The simpod JSON
+# frame format distinguishes "number" from "string", and Grafana
+# uses that to right-align and format numeric columns.
+NUMERIC_SQLITE_TYPES = frozenset(
+    {
+        "INTEGER",
+        "INT",
+        "BIGINT",
+        "SMALLINT",
+        "TINYINT",
+        "REAL",
+        "DOUBLE",
+        "DOUBLE PRECISION",
+        "FLOAT",
+        "NUMERIC",
+        "DECIMAL",
+        "BOOLEAN",
+    }
+)
+
+
+def sqlite_type_to_frame_type(declared):
+    """
+    Map a SQLite declared column type to a simpod JSON frame
+    type.
+
+    Every column used to be declared "string", which made
+    Grafana render MAE and RMSE left-aligned as text with no
+    numeric formatting. Returning "number" for numeric
+    columns lets the table panel format them properly.
+
+    The declared type can be None or empty for expressions and
+    some views, so anything unrecognised falls back to
+    "string" rather than being guessed at.
+    """
+
+    if not declared:
+
+        return "string"
+
+    normalised = str(declared).strip().upper()
+
+    if normalised in NUMERIC_SQLITE_TYPES:
+
+        return "number"
+
+    # SQLite is loosely typed and a numeric column may be
+    # declared with a width or a suffix, e.g. "REAL(10,4)" or
+    # "DOUBLE PRECISION NOT NULL".
+    head = normalised.split("(")[0].split()[0] if normalised else ""
+
+    if head in NUMERIC_SQLITE_TYPES:
+
+        return "number"
+
+    return "string"
 
 
 def error_table(message):

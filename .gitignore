@@ -10,3 +10,9 @@ data/raw/*.mat
 # own SQLite databases and plugin cache, which are machine state,
 # not project source.
 .grafana-data/
+
+# Grafana's own internal logging. Verbose, machine-specific and
+# unrelated to the project; the API log (grafana_api.log) is the
+# one worth keeping.
+logs/grafana.log
+logs/grafana_server.log

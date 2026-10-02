@@ -443,7 +443,7 @@ nohup venv/bin/python dashboard/grafana_api.py > logs/grafana_api.log 2>&1 &
 venv/bin/python -m pytest tests/ -q
 ```
 
-The suite currently passes 118/118, in ~9 s. It also pins the two
+The suite currently passes 133/133, in ~9 s. It also pins the two
 failure-mode contracts (status flips to `failed` and the heartbeat
 keeps republishing with a moving `age_s`), the data-quality failure
 modes, the latency-budget shape, and the leakage guards (a
