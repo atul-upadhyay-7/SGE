@@ -32,6 +32,8 @@ from sklearn.pipeline import Pipeline
 
 from xgboost import XGBRegressor
 
+import features as _features
+
 
 # Defaults tuned by hand and used as the fixed comparison
 # point before any search is run.
@@ -147,15 +149,40 @@ def split_by_cell(df, test_cell):
     return train, test
 
 
+# Columns that are functions of the target, of the cell's
+# lifetime, or of future cycles. None of these may reach a
+# predictive estimator, because none of them can be observed
+# for a cell the model has not already seen.
+#
+# Imported from features.py rather than redefined here. An
+# earlier version of this file carried its own copy, which
+# meant make_xy and assert_no_leakage were guarding against
+# two lists that could quietly diverge: adding a leaky column
+# to one and not the other would weaken the guard without any
+# test failing. train_rul.py similarly keeps only the
+# narrower RUL-specific subset it legitimately needs.
+LEAKY_FEATURES = _features.LEAKY_FEATURES
+
+
 def assert_no_leakage(
     features,
-    leaky_columns
+    leaky_columns=None
 ):
     """
     Guard against a target-derived column reaching the
     estimator. Failing loudly here is much cheaper than
     silently reporting an inflated score.
+
+    leaky_columns defaults to the canonical LEAKY_FEATURES
+    list. Callers that legitimately need a narrower set
+    (RUL predicts a function of the EOL cycle, so it
+    excludes the RUL/EOL columns from its own list) pass it
+    explicitly.
     """
+
+    if leaky_columns is None:
+
+        leaky_columns = LEAKY_FEATURES
 
     leaked = sorted(
         set(features) & set(leaky_columns)
@@ -165,7 +192,13 @@ def assert_no_leakage(
 
         raise ValueError(
             "Target-derived columns reached the "
-            f"estimator: {leaked}"
+            f"estimator: {leaked}\n"
+            "These are functions of the target, of the "
+            "cell's lifetime, or of future cycles, and "
+            "cannot be observed for an unseen cell.\n"
+            "Remove them from the feature list, or narrow "
+            "the leaky_columns argument if this target is "
+            "legitimately defined in terms of them."
         )
 
 

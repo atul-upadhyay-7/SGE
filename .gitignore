@@ -4,3 +4,9 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 data/raw/*.mat
+
+# Grafana state, when launched with the repo-local paths from
+# the README (GF_PATHS_DATA=.grafana-data). This holds Grafana's
+# own SQLite databases and plugin cache, which are machine state,
+# not project source.
+.grafana-data/

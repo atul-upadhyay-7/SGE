@@ -20,19 +20,17 @@ The bundle contract is the one written by train_soh.py:
 Features
 --------
 The model consumes one row per cycle, not one row per
-second, because six of the twenty-two features
-(voltage_end, voltage_drop, resistance_proxy_ohm,
-discharge_duration_s, capacity_change_ah, soh_change_pct)
-are only defined once a cycle has finished. See
-streaming/cycle_tracker.py for how live samples are
-assembled into those cycle rows.
+second, because several features (voltage_end, voltage_drop,
+resistance_proxy_ohm, discharge_duration_s) are only defined
+once a cycle has finished. See streaming/cycle_tracker.py for
+how live samples are assembled into those cycle rows.
 
-soh_change_pct is the first difference of the SOH target
-itself, so it cannot be known for a cell the model has not
-seen. assemble_features() sets it to NaN and lets the
-pipeline's imputer fill it. Dropping the column entirely at
-training time measured slightly better than keeping it
-(LOCO MAE 3.3952 with, 3.3270 without), so nothing is lost.
+No feature is a function of the SOH target. soh_change_pct
+and capacity_change_ah used to be included; both are
+first differences of quantities the target is computed from,
+so neither can be known for a cell the model has not seen.
+They have been removed, and assemble_features no longer
+derives or pads anything to cover their absence.
 """
 
 from pathlib import Path
@@ -255,39 +253,23 @@ def assemble_features(
     """
     Build the model's input matrix from cycle feature rows.
 
-    frame is a DataFrame of one or more cycle rows as
+    frame is a DataFrame of one or more cycle feature rows as
     produced by load_data.parse_battery_file or by
     streaming.cycle_tracker. Columns are returned in the
     exact order the pipeline was fit with, because the
     fitted imputer is positional.
 
-    capacity_change_ah is derived here from measured
-    capacity, which is available in the raw data.
-    soh_change_pct cannot be derived for an unseen cell and
-    is left as NaN for the imputer.
+    Nothing is derived here any more. The previous version
+    derived capacity_change_ah from measured capacity and
+    padded soh_change_pct with NaN so the imputer could fill
+    it; both were target-derived (capacity_ah is the
+    numerator of SOH), so both have been dropped from the
+    feature set. Every column the model now needs must be
+    present in the row, and a missing one is an error rather
+    than something to invent a value for.
     """
 
     frame = frame.copy()
-
-    if "capacity_change_ah" not in frame.columns:
-
-        if "capacity_ah" not in frame.columns:
-
-            raise KeyError(
-                "Cannot predict: capacity_change_ah is "
-                "absent and cannot be derived because "
-                "capacity_ah is absent too."
-            )
-
-        frame["capacity_change_ah"] = (
-            frame.groupby("cell_id")
-            ["capacity_ah"]
-            .diff()
-        )
-
-    if "soh_change_pct" not in frame.columns:
-
-        frame["soh_change_pct"] = np.nan
 
     missing = [
         feature

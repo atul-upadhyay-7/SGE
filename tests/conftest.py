@@ -55,6 +55,16 @@ for extra in (ROOT / "src", ROOT / "src" / "streaming"):
 # by the tracker, and an earlier version of this list carried
 # capacity_ah in its place, which left voltage_range unexercised
 # by every streaming test.
+#
+# capacity_change_ah and soh_change_pct used to be listed
+# here too. Both are target-derived: capacity_ah is the
+# numerator of SOH, and soh_change_pct is the first difference
+# of the target itself. Neither can be computed for a cell the
+# model has not already seen, so neither may be a model input.
+# They were removed from features.FEATURES and from the real
+# artifact; test_predict.py asserts that this list stays free
+# of them, so a reintroduction fails here rather than passing
+# silently.
 ACTIVE_FEATURES = [
     "cycle",
     "voltage_mean",
@@ -75,8 +85,6 @@ ACTIVE_FEATURES = [
     "voltage_end",
     "voltage_drop",
     "resistance_proxy_ohm",
-    "capacity_change_ah",
-    "soh_change_pct",
 ]
 
 

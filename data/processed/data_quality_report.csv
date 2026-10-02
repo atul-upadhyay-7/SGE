@@ -1,0 +1,16 @@
+metric,value
+n_cells,4.0
+n_rows,636.0
+cycles_B0005,168.0
+cycles_B0006,168.0
+cycles_B0007,168.0
+cycles_B0018,132.0
+missing_capacity_change_ah,4.0
+missing_soh_change_pct,4.0
+missing_rul_cycles_80,275.0
+duplicate_rows,0.0
+duplicate_cycle_ids,0.0
+fade_pct_total_B0005,28.6244
+fade_pct_total_B0006,41.7455
+fade_pct_total_B0007,24.2509
+fade_pct_total_B0018,27.7063

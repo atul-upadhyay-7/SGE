@@ -79,7 +79,23 @@ TARGET = "rul_cycles_80"
 
 # Columns that must never reach the estimator. The end-of-life
 # cycle is what RUL is defined against, so passing it in would
-# hand the model the answer.
+# hand the model the answer. The full-lifetime slopes stay
+# forbidden too, for the same reason they are forbidden to the
+# SOH model.
+#
+# This is deliberately NARROWER than evaluation.LEAKY_FEATURES,
+# and the narrower set is not an oversight. The SOH-only
+# columns (soh, capacity_fade_pct, soh_change_pct,
+# capacity_change_ah, capacity_ah, reference_capacity_ah) are
+# allowed here, because this model may legitimately look at
+# measured capacity: current capacity and its differences are
+# observable at cycle t, and remaining life is strongly
+# related to how much capacity is left. The SOH model cannot
+# make that argument, since capacity_ah is the numerator of its
+# own target.
+#
+# Narrowing the guard only has effect if make_xy is told to,
+# which is why both call sites pass leaky_columns explicitly.
 LEAKY_COLUMNS = [
     "eol_cycle_threshold",
     "is_pre_eol",
@@ -138,7 +154,8 @@ def evaluate(
 
     _, _, features = make_xy(
         df,
-        TARGET
+        TARGET,
+        leaky_columns=LEAKY_COLUMNS
     )
 
     features = select_features(
@@ -571,7 +588,8 @@ def main():
 
     _, _, features = make_xy(
         df,
-        TARGET
+        TARGET,
+        leaky_columns=LEAKY_COLUMNS
     )
 
     features = select_features(

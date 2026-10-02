@@ -35,18 +35,85 @@ FEATURES = [
 
     "resistance_proxy_ohm",
 
+    # capacity_change_ah and soh_change_pct were both here.
+    # They are first differences of capacity_ah and of the SOH
+    # target itself, so they are target-derived by
+    # construction and cannot be computed for a cell the model
+    # has not already seen. Dropping them was measured to be
+    # slightly *better*, not worse (mean LOCO MAE 3.2712
+    # without versus 3.3514 with, at default hyperparameters),
+    # so the removal cost nothing here. "Harmless in this
+    # sample" is not the reason they were removed: the reason
+    # is that they are not available at inference time.
+    #
+    # Note there is still no causal replacement for them.
+    # A delta or slope feature computed over a trailing window
+    # is the obvious candidate and is not implemented yet, so
+    # the model currently has no explicit fade-rate input.
+]
+
+# Columns that must never be used as predictive inputs,
+# because they are derived from the target or from future
+# cycles. This is the single canonical list: evaluation.py
+# imports it rather than keeping its own copy, so the two
+# guards cannot drift apart and silently weaken each other.
+LEAKY_FEATURES = [
+    # the target itself and its algebraic restatements
+    "soh",
+    "capacity_fade_pct",
+    "soh_change_pct",
+
+    # first difference of the measured capacity, which is the
+    # numerator of the target
     "capacity_change_ah",
-    "soh_change_pct"
+
+    # the measured capacity and the reference the target is
+    # computed against
+    "capacity_ah",
+    "reference_capacity_ah",
+
+    # remaining life and the end-of-life cycle it is measured
+    # against
+    "rul_cycles",
+    "rul_cycles_80",
+    "eol_cycle_threshold",
+    "eol_cycle_observed",
+    "is_pre_eol",
+
+    # degradation slopes fitted over the full lifetime, which
+    # already encode cycles after the one being predicted
+    "soh_slope_pct_per_cycle",
+    "soh_slope_early_pct_per_cycle",
 ]
 
 
-def make_xy(df, target):
+def make_xy(df, target, leaky_columns=LEAKY_FEATURES):
 
     available_features = [
         feature
         for feature in FEATURES
         if feature in df.columns
     ]
+
+    # Fail loudly rather than returning a matrix that trains
+    # on the answer. This is the single choke point every
+    # training script goes through, so a leaky column added
+    # to FEATURES above cannot reach an estimator unnoticed.
+    leaked = sorted(
+        set(available_features) & set(leaky_columns)
+    )
+
+    if leaked:
+
+        raise ValueError(
+            "Target-derived columns are present in "
+            f"FEATURES and would reach the estimator: {leaked}\n"
+            f"Target is {target!r}. A feature that is a "
+            "function of the target, of the cell's "
+            "lifetime, or of future cycles cannot be "
+            "observed for a cell the model has not seen.\n"
+            "Remove it from FEATURES in src/features.py."
+        )
 
     X = df[available_features].copy()
 

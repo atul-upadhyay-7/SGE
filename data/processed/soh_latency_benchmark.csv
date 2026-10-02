@@ -1,0 +1,8 @@
+stage,milliseconds
+cold_model_load_ms,12.837
+warm_predict_1_ms,11.8648
+warm_predict_soh_1_ms,17.8913
+warm_predict_100_ms,4.1733
+warm_predict_1000_ms,15.7903
+end_to_end_cycle_ms,11.8561
+feature_extraction_ms,0.9654

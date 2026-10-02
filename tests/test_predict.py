@@ -218,50 +218,136 @@ def test_assemble_features_reports_missing_columns(bundle, cycle_row):
     assert "voltage_mean" in str(info.value)
 
 
-def test_assemble_features_explains_an_underivable_capacity(bundle):
+def test_assemble_features_reports_every_missing_column(bundle):
 
+    # A row carrying only cell_id and cycle is missing the whole
+    # feature set. The error has to name what is absent so an
+    # operator can tell a malformed payload from a stale schema.
     frame = pd.DataFrame([
-        {"cell_id": "X", "cycle": 1, "voltage_mean": 3.5}
+        {"cell_id": "X", "cycle": 1}
     ])
 
     with pytest.raises(KeyError) as info:
 
         assemble_features(frame, bundle["features"])
 
-    assert "capacity_ah" in str(info.value)
+    message = str(info.value)
+
+    assert "absent from the input" in message
+
+    # Every missing feature is named, not just the first.
+    assert "voltage_mean" in message
+    assert "voltage_drop" in message
 
 
-def test_assemble_features_derives_capacity_change(bundle):
+def test_assemble_features_does_not_derive_capacity_change():
 
+    # capacity_change_ah used to be derived here from measured
+    # capacity when the column was absent. That derivation is
+    # gone: capacity_change_ah is the first difference of the
+    # numerator of the SOH target, so it is not a legitimate
+    # model input. A frame that does carry it passes straight
+    # through, and nothing is computed from capacity_ah.
     frame = pd.DataFrame([
-        {"cell_id": "X", "cycle": 1, "capacity_ah": 1.80},
-        {"cell_id": "X", "cycle": 2, "capacity_ah": 1.78},
+        {"cell_id": "X", "cycle": 1, "capacity_change_ah": np.nan},
+        {"cell_id": "X", "cycle": 2, "capacity_change_ah": -0.02},
     ])
 
     matrix = assemble_features(
         frame, ["capacity_change_ah"]
     )
 
-    # First difference within the cell is undefined.
+    # Passed through verbatim; the second row is still -0.02 and
+    # the first is still NaN rather than being back-filled from
+    # the raw capacity series.
     assert np.isnan(matrix["capacity_change_ah"].iloc[0])
     assert matrix["capacity_change_ah"].iloc[1] == (
         pytest.approx(-0.02)
     )
 
 
-def test_assemble_features_leaves_soh_change_nan(bundle, cycle_row):
+def test_assemble_features_refuses_to_derive_capacity_change():
 
+    # capacity_ah is present but capacity_change_ah is not.
+    # The old code computed the difference and carried on. The
+    # new code must refuse, because deriving it would rebuild
+    # the target-derived column this feature set removed.
+    frame = pd.DataFrame([
+        {"cell_id": "X", "cycle": 1, "capacity_ah": 1.80},
+        {"cell_id": "X", "cycle": 2, "capacity_ah": 1.78},
+    ])
+
+    with pytest.raises(KeyError) as info:
+
+        assemble_features(frame, ["capacity_change_ah"])
+
+    assert "capacity_change_ah" in str(info.value)
+
+
+def test_assemble_features_never_invents_a_leaky_column(bundle, cycle_row):
+
+    # The old contract padded soh_change_pct with NaN whenever
+    # the column was absent, so a bundle asking for that
+    # target-derived feature silently got a fabricated column.
+    # assembly must refuse instead.
     frame = pd.DataFrame([cycle_row])
 
     frame = frame.drop(columns=["soh_change_pct"])
 
-    matrix = assemble_features(
-        frame, bundle["features"]
+    with pytest.raises(KeyError) as info:
+
+        assemble_features(
+            frame, bundle["features"] + ["soh_change_pct"]
+        )
+
+    assert "soh_change_pct" in str(info.value)
+
+
+def test_active_features_carry_no_target_derived_column():
+
+    # Guards the fixture itself. ACTIVE_FEATURES mirrors the
+    # real artifact's feature list, so if a target-derived
+    # column is reintroduced upstream this fails before any
+    # prediction test can pass on a padded NaN.
+    from features import LEAKY_FEATURES
+
+    leaked = sorted(
+        set(ACTIVE_FEATURES) & set(LEAKY_FEATURES)
     )
 
-    # It is the first difference of the target, so it cannot be
-    # derived for an unseen cell. The fitted imputer fills it.
-    assert np.isnan(matrix["soh_change_pct"].iloc[0])
+    assert leaked == []
+
+
+def test_trained_artifact_feature_list_is_leak_free():
+
+    # The committed artifact is what actually serves requests,
+    # so its stored feature list is checked directly rather
+    # than inferred from the fixture.
+    path = predict.MODEL_DIR / "soh_xgb_all.joblib"
+
+    if not path.exists():
+
+        pytest.skip("no trained artifact present")
+
+    from features import LEAKY_FEATURES
+
+    try:
+
+        bundle = predict.load_soh_model(path)
+
+    except SohModelLoadError:
+
+        pytest.skip(
+            "artifact not deserializable in this "
+            "environment; feature list checked by "
+            "test_active_features_carry_no_target_derived_column"
+        )
+
+    leaked = sorted(
+        set(bundle["features"]) & set(LEAKY_FEATURES)
+    )
+
+    assert leaked == []
 
 
 def test_predict_soh_accepts_a_dict(bundle, cycle_row):

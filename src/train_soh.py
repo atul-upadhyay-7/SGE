@@ -758,14 +758,29 @@ def main():
         f"Nested-search XGBoost MAE: {nested_mae:.4f}"
     )
 
-    print(
-        f"Best constant baseline   : "
-        f"{null_summary.min():.4f} ({null_summary.idxmin()})"
+    # null_summary is sorted ascending by MAE, so min() is the
+    # strongest baseline and max() the weakest. The oracle is
+    # neither to rank against nor to beat: it is a ceiling.
+    # These three lines used to take min()/max() blindly,
+    # which printed the oracle as the "best constant
+    # baseline" and the weakest constant as the "ceiling".
+    # Each label now names the baseline it actually refers
+    # to, so a reader cannot misread the comparison.
+
+    real_baselines = null_summary.drop(
+        ["oracle_cell_mean"],
+        errors="ignore"
     )
 
     print(
-        f"Oracle ceiling          : "
-        f"{null_summary.max():.4f} ({null_summary.idxmax()})"
+        f"Best honest baseline     : "
+        f"{real_baselines.min():.4f} ({real_baselines.idxmin()})"
+    )
+
+    print(
+        f"Oracle ceiling           : "
+        f"{null_summary['oracle_cell_mean']:.4f} "
+        f"(oracle_cell_mean)"
     )
 
     print(
