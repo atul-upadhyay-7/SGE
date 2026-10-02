@@ -488,7 +488,32 @@ model summaries, anomaly residuals/fade-rate + events). It needs
 the `simpod-json-datasource` plugin (v0.6.7+, already in
 `/var/lib/grafana/plugins` here) and the Flask API from Step 7.
 
-Open **[http://localhost:3050](http://localhost:3050)** in your browser to view the **Battery PDM (Grafana)** dashboard.
+Open **[http://localhost:3050/d/battery-pdm-dash/battery-pdm-grafana](http://localhost:3050/d/battery-pdm-dash/battery-pdm-grafana)**
+directly to skip the dashboard list. Credentials are
+`admin` / `admin` unless overridden with
+`GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD`.
+
+To open it without signing in, launch Grafana with anonymous
+access as above:
+
+```bash
+GF_AUTH_ANONYMOUS_ENABLED=true \
+GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer \
+```
+
+#### Why the dashboard time range looks like 1970
+
+The JSON datasource returns the cycle number as each series'
+timestamp, so Grafana reads cycle 2 as epoch millisecond 2. The
+dashboard time range is therefore pinned to the first second
+after the epoch, which covers cycles 2–614.
+
+This matters: with Grafana's default "last 6 hours" range every
+panel reports **"Data outside time range"** with an empty plot
+area even though all the data is present. If you ever see that
+banner, the range has been reset — press **Zoom to data** or pick
+the pinned range in the time picker. The table panels are
+unaffected, since they are not time-based.
 
 ---
 

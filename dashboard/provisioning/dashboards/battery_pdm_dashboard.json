@@ -1,14 +1,23 @@
 {
   "title": "Battery PDM (Grafana)",
   "uid": "battery-pdm-dash",
-  "tags": ["battery", "machine-learning", "pdm"],
+  "tags": [
+    "battery",
+    "machine-learning",
+    "pdm"
+  ],
   "timezone": "browser",
   "schemaVersion": 38,
   "panels": [
     {
       "type": "timeseries",
       "title": "SOH Degradation Over Cycles",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 9 },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
       "targets": [
         {
           "target": "soh_by_cycle",
@@ -32,7 +41,12 @@
     {
       "type": "timeseries",
       "title": "Capacity Fade (Ah)",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 9 },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
       "targets": [
         {
           "target": "capacity_by_cycle",
@@ -56,7 +70,12 @@
     {
       "type": "timeseries",
       "title": "SOH Predicted vs Actual",
-      "gridPos": { "x": 0, "y": 9, "w": 12, "h": 9 },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
       "targets": [
         {
           "target": "soh_predicted_vs_actual",
@@ -77,7 +96,12 @@
     {
       "type": "timeseries",
       "title": "RUL Predicted vs Actual",
-      "gridPos": { "x": 12, "y": 9, "w": 12, "h": 9 },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
       "targets": [
         {
           "target": "rul_predicted_vs_actual",
@@ -98,7 +122,12 @@
     {
       "type": "table",
       "title": "Model Summary",
-      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 7 },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 12,
+        "h": 7
+      },
       "targets": [
         {
           "target": "table:model_summary",
@@ -110,7 +139,12 @@
     {
       "type": "table",
       "title": "SOH Nested CV Results",
-      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 7 },
+      "gridPos": {
+        "x": 12,
+        "y": 18,
+        "w": 12,
+        "h": 7
+      },
       "targets": [
         {
           "target": "table:soh_nested_results",
@@ -121,9 +155,14 @@
     },
     {
       "type": "timeseries",
-      "title": "Anomaly: Residual (SOH – Predicted) with Robust Bounds",
-      "description": "Dashed bounds are median ± 3.5 × MAD. A point beyond the bounds is a cell-specific departure: the cycle behaved unlike any cell that was in the training set. Flagged events are overlaid as markers on the same axis, since they share it.",
-      "gridPos": { "x": 0, "y": 25, "w": 12, "h": 9 },
+      "title": "Anomaly: Residual (SOH \u2013 Predicted) with Robust Bounds",
+      "description": "Dashed bounds are median \u00b1 3.5 \u00d7 MAD. A point beyond the bounds is a cell-specific departure: the cycle behaved unlike any cell that was in the training set. Flagged events are overlaid as markers on the same axis, since they share it.",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 12,
+        "h": 9
+      },
       "targets": [
         {
           "target": "anomaly_residual_by_cycle",
@@ -146,20 +185,66 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Flagged — B0005" },
-            "properties": [{ "id": "custom.pointSize", "value": 7 }]
+            "matcher": {
+              "id": "byName",
+              "options": "Flagged \u2014 B0005"
+            },
+            "properties": [
+              {
+                "id": "custom.pointSize",
+                "value": 7
+              }
+            ]
           },
-          { "matcher": { "id": "byName", "options": "Flagged — B0006" }, "properties": [{ "id": "custom.pointSize", "value": 7 }] },
-          { "matcher": { "id": "byName", "options": "Flagged — B0007" }, "properties": [{ "id": "custom.pointSize", "value": 7 }] },
-          { "matcher": { "id": "byName", "options": "Flagged — B0018" }, "properties": [{ "id": "custom.pointSize", "value": 7 }] }
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Flagged \u2014 B0006"
+            },
+            "properties": [
+              {
+                "id": "custom.pointSize",
+                "value": 7
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Flagged \u2014 B0007"
+            },
+            "properties": [
+              {
+                "id": "custom.pointSize",
+                "value": 7
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Flagged \u2014 B0018"
+            },
+            "properties": [
+              {
+                "id": "custom.pointSize",
+                "value": 7
+              }
+            ]
+          }
         ]
       }
     },
     {
       "type": "timeseries",
       "title": "Anomaly: Trailing Fade Rate and Knee Threshold",
-      "description": "A knee is a rising fade rate that crosses the per-cell median+3×MAD threshold, i.e. acceleration rather than a single noisy cycle. Flagged events are overlaid so a knee coincides visibly with the other detectors.",
-      "gridPos": { "x": 12, "y": 25, "w": 12, "h": 9 },
+      "description": "A knee is a rising fade rate that crosses the per-cell median+3\u00d7MAD threshold, i.e. acceleration rather than a single noisy cycle. Flagged events are overlaid so a knee coincides visibly with the other detectors.",
+      "gridPos": {
+        "x": 12,
+        "y": 25,
+        "w": 12,
+        "h": 9
+      },
       "targets": [
         {
           "target": "anomaly_fade_rate_by_cycle",
@@ -187,7 +272,12 @@
       "type": "table",
       "title": "Anomaly Summary (per cell)",
       "description": "How many cycles each detector flagged and where the fade-rate knee first triggered. This is the triage table: the fewest rows with the most signal.",
-      "gridPos": { "x": 0, "y": 34, "w": 12, "h": 7 },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 12,
+        "h": 7
+      },
       "targets": [
         {
           "target": "table:anomaly_summary",
@@ -200,7 +290,12 @@
       "type": "table",
       "title": "Anomaly Events: 32 flagged cycles (5.0%)",
       "description": "The full event-level report. Each row explains which detector(s) fired and in which direction, so a flagged cycle states why it is flagged. The full cycle-level report lives in data/processed/anomaly_cycle_report.csv.",
-      "gridPos": { "x": 12, "y": 34, "w": 12, "h": 7 },
+      "gridPos": {
+        "x": 12,
+        "y": 34,
+        "w": 12,
+        "h": 7
+      },
       "targets": [
         {
           "target": "table:anomaly_events",
@@ -209,5 +304,22 @@
         }
       ]
     }
-  ]
+  ],
+  "time": {
+    "from": "1970-01-01T00:00:00.000Z",
+    "to": "1970-01-01T00:00:01.000Z"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h"
+    ]
+  },
+  "description": "SOH, RUL, capacity and anomaly views for the four NASA group-1 cells. The x axis is the cycle number, which the JSON datasource returns as the series timestamp, so Grafana reads cycle N as epoch millisecond N. The dashboard time range is therefore pinned to the first second after the epoch to cover cycles 2-614; without it Grafana defaults to the last six hours and every panel reports 'Data outside time range' with an empty plot area."
 }
