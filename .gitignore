@@ -16,3 +16,4 @@ data/raw/*.mat
 # one worth keeping.
 logs/grafana.log
 logs/grafana_server.log
+data/live_pack.db

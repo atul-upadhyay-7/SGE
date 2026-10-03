@@ -1,0 +1,223 @@
+{
+  "title": "Battery Pack Live (3S, MQTT)",
+  "uid": "battery-pack-live",
+  "tags": [
+    "battery",
+    "pack",
+    "live"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "5s",
+  "time": {
+    "from": "1970-01-01T00:00:00.000Z",
+    "to": "1970-01-01T00:00:00.170Z"
+  },
+  "description": "Live 3-cell pack from MQTT. The x axis is the discharge number, which the JSON datasource returns as a timestamp, so discharge N reads as epoch millisecond N and the range is pinned to the first 170 ms (up to 170 discharges). Fault markers in demos are synthetic.",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Pack Status",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "target": "table:live_pack_status",
+          "type": "table",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "id": 1
+    },
+    {
+      "type": "table",
+      "title": "Cell Health and Cycles to Retirement (80% capacity)",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "target": "table:live_pack_cells",
+          "type": "table",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "id": 2
+    },
+    {
+      "type": "table",
+      "title": "Maintenance Alerts",
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "target": "table:live_pack_alerts",
+          "type": "table",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "id": 3
+    },
+    {
+      "type": "timeseries",
+      "title": "SOH per Cell (%)",
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "target": "live_soh_by_cycle",
+          "type": "timeserie",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2
+          },
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "id": 4
+    },
+    {
+      "type": "timeseries",
+      "title": "Pack Voltage Spread (mV, cell imbalance)",
+      "gridPos": {
+        "x": 12,
+        "y": 17,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "target": "live_voltage_spread_by_cycle",
+          "type": "timeserie",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2
+          },
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "id": 5
+    },
+    {
+      "type": "timeseries",
+      "title": "Internal Resistance per Cell",
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "target": "live_resistance_by_cycle",
+          "type": "timeserie",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2
+          },
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "id": 6
+    },
+    {
+      "type": "timeseries",
+      "title": "Peak Temperature per Cell (C)",
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "target": "live_temperature_by_cycle",
+          "type": "timeserie",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2
+          },
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "id": 7
+    },
+    {
+      "type": "timeseries",
+      "title": "Cell Voltage 15 min into Discharge (V)",
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "target": "live_voltage_end_by_cycle",
+          "type": "timeserie",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2
+          },
+          "unit": "volt",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "id": 8
+    }
+  ]
+}
