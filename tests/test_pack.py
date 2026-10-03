@@ -119,11 +119,23 @@ def test_resistance_spike_against_own_baseline():
 
     m = PackMonitor(["a", "b"])
     base = [_reading(k, r=0.10) for k in range(1, 12)]
-    spike = base + [_reading(12, r=0.25)]
-    r = _run(m, {"a": spike, "b": base + [_reading(12, r=0.10)]})
+    spike = base + [_reading(12, r=0.25), _reading(13, r=0.26)]
+    ok = base + [_reading(12, r=0.10), _reading(13, r=0.10)]
+    r = _run(m, {"a": spike, "b": ok})
     spiked = [a for a in r["alerts"] if a["code"] == "RESISTANCE_SPIKE"]
 
     assert [a["cell"] for a in spiked] == ["a"]
+
+
+def test_single_resistance_outlier_is_not_a_spike():
+
+    m = PackMonitor(["a", "b"])
+    base = [_reading(k, r=0.10) for k in range(1, 12)]
+    blip = base + [_reading(12, r=0.25), _reading(13, r=0.10)]
+    ok = base + [_reading(12, r=0.10), _reading(13, r=0.10)]
+    r = _run(m, {"a": blip, "b": ok})
+
+    assert "RESISTANCE_SPIKE" not in codes(r)
 
 
 def test_thermal_levels_and_rate():

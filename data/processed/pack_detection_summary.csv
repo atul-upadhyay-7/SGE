@@ -1,4 +1,4 @@
 fault,n,rule_rate,rule_median_delay,iforest_rate
-cell_sag,24,0.75,1.0,0.3333333333333333
-resistance_spike,24,1.0,0.0,1.0
-thermal,24,1.0,8.0,0.5416666666666666
+cell_sag,24,0.75,1.0,0.20833333333333334
+resistance_spike,24,1.0,1.0,1.0
+thermal,24,1.0,8.0,0.5833333333333334

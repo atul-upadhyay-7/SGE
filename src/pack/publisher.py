@@ -83,7 +83,7 @@ def disturb(cycle, kind, k):
 
         if kind == "resistance_spike":
 
-            v = v - 0.08 * load
+            v = v - 0.15 * load
 
         elif kind == "cell_sag":
 

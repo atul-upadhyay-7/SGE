@@ -131,12 +131,26 @@ def main():
             any(a["code"] == "ANOMALY_ML" for a in r["alerts"])
             for _, r in reports
         )
+        per_code = {
+            f"false_{code.lower()}": sum(
+                any(a["code"] == code for a in r["alerts"])
+                for _, r in reports
+            )
+            for code in (
+                "RESISTANCE_SPIKE",
+                "THERMAL",
+                "IMBALANCE",
+                "WEAK_CELL",
+                "SOH_MISMATCH",
+            )
+        }
         fa.append(
             {
                 "pack": "+".join(pack),
                 "discharges": horizon,
                 "warn_or_critical_discharges": warn,
                 "isolation_forest_flags": ml,
+                **per_code,
             }
         )
 

@@ -311,9 +311,10 @@ class SohService:
             self._last_cycle = {
                 "discharge_index": row.get("discharge_index"),
                 "v_end": row.get("voltage_end"),
+                "v_ref": row.get("v_ref"),
                 "v_mean": row.get("voltage_mean"),
                 "temp_max": row.get("temperature_max"),
-                "resistance_ohm": row.get("resistance_proxy_ohm"),
+                "resistance_ohm": row.get("dcr_ohm"),
                 "load_a": row.get("load_a"),
                 "capacity_ah": row.get("capacity_ah"),
             }

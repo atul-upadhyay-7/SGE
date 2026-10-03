@@ -174,6 +174,8 @@ from collections import deque
 
 import numpy as np
 
+from pack.resistance import estimate_dcr
+
 try:
     from load_data import (
         MIN_CYCLE_SAMPLES,
@@ -241,6 +243,9 @@ CHARGE_DEBOUNCE_SAMPLES = 3
 # cannot reach back into real charge data. Two samples is about
 # six seconds, so a wrong guess for another device is cheap.
 DISCHARGE_LEAD_IN_SAMPLES = 2
+
+# elapsed time into a discharge at which cell voltages are compared
+REF_ELAPSED_S = 900.0
 
 CHARGE = "charge"
 DISCHARGE = "discharge"
@@ -584,6 +589,39 @@ class CycleTracker:
         if row is None:
 
             return None
+
+        # Real DC resistance from the load-on step (R = -dV/dI),
+        # for pack monitoring. Not a model feature. None when the
+        # trace has no usable step.
+        dcr = estimate_dcr(
+            samples[:, 1],
+            samples[:, 2],
+            samples[:, 0],
+            discharge_positive=False,
+            max_dt_s=30.0,
+        )
+        row["dcr_ohm"] = None if dcr is None else dcr["dcr_ohm"]
+
+        # Voltage a fixed time after the load comes on. Cells in
+        # a series pack discharge together, so comparing them at
+        # the same instant is what shows imbalance. End voltage
+        # is not comparable: the bench stops each cell at its own
+        # cutoff (2.7 / 2.2 / 2.5 V for B0005 / B0007 / B0018).
+        loaded = np.flatnonzero(np.abs(samples[:, 2]) > 0.2)
+
+        if len(loaded):
+
+            t_ref = samples[loaded[0], 0] + REF_ELAPSED_S
+
+            row["v_ref"] = (
+                float(np.interp(t_ref, samples[:, 0], samples[:, 1]))
+                if samples[-1, 0] >= t_ref
+                else None
+            )
+
+        else:
+
+            row["v_ref"] = None
 
         row["capacity_change_ah"] = (
             capacity - self._last_capacity_ah

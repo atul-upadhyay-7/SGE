@@ -117,6 +117,8 @@ class CellState:
         self.rul = rul
         self.soh = deque(maxlen=th["fade_window"])
         self.resistance = deque(maxlen=30)
+        self._elev = deque(maxlen=2)
+        self._soh_raw = deque(maxlen=3)
         self.r_baseline = None
         self.latest = {}
 
@@ -128,7 +130,14 @@ class CellState:
 
         if soh is not None and np.isfinite(soh):
 
-            self.soh.append(float(soh))
+            # Median of the last three predictions, so one bad
+            # cycle (dropped samples) cannot trigger a retirement
+            # or mismatch alert on its own.
+            self._soh_raw.append(float(soh))
+            soh = float(np.median(self._soh_raw))
+            reading = dict(reading)
+            reading["soh"] = soh
+            self.soh.append(soh)
 
         r = reading.get("resistance_ohm")
 
@@ -151,8 +160,22 @@ class CellState:
                 )
 
             reading = dict(reading)
-            reading["_r_z"] = _robust_z(self.resistance, r)
+            z = _robust_z(self.resistance, r)
+            reading["_r_z"] = z
             self.resistance.append(float(r))
+
+            # A step-method estimate from one discharge can be a
+            # one-off outlier (missed step, noisy sample). A spike
+            # is reported only when two valid readings in a row
+            # are elevated.
+            high = z >= th["resistance_spike_z"] or (
+                self.r_baseline is not None
+                and r / self.r_baseline >= th["resistance_spike_ratio"]
+            )
+            self._elev.append(bool(high))
+            reading["_r_elev2"] = len(self._elev) == 2 and all(
+                self._elev
+            )
 
         self.latest = reading
 
@@ -385,10 +408,7 @@ class PackMonitor:
 
             z = lat.get("_r_z", 0.0)
 
-            if (
-                ratio is not None
-                and ratio >= th["resistance_spike_ratio"]
-            ) or z >= th["resistance_spike_z"]:
+            if lat.get("_r_elev2"):
 
                 flag(
                     "RESISTANCE_SPIKE",
@@ -502,7 +522,7 @@ class PackMonitor:
                         "IMBALANCE",
                         sev,
                         weakest,
-                        f"End-of-discharge voltage spread is "
+                        f"Cell voltage spread (same instant) is "
                         f"{spread * 1000:.0f} mV; lowest is "
                         f"{weakest}.",
                         spread,

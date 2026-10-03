@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS live_pack_history (
     resistance_ohm REAL,
     temp_max_c REAL,
     voltage_spread_mv REAL,
-    soh_spread_pct REAL
+    soh_spread_pct REAL,
+    UNIQUE (cell_id, discharge_cycle)
 );
 CREATE TABLE IF NOT EXISTS live_pack_alerts (
     severity TEXT,
@@ -144,7 +145,7 @@ class PackBridge:
             {
                 "cycle": last.get("discharge_index") or seen,
                 "soh": payload["soh"],
-                "v_end": last.get("v_end"),
+                "v_end": last.get("v_ref") or last.get("v_end"),
                 "resistance_ohm": last.get("resistance_ohm"),
                 "temp_max": last.get("temp_max"),
                 "load_a": last.get("load_a"),
@@ -205,7 +206,7 @@ class PackBridge:
                 )
 
                 conn.execute(
-                    "INSERT INTO live_pack_history "
+                    "INSERT OR REPLACE INTO live_pack_history "
                     "VALUES (?,?,?,?,?,?,?,?)",
                     (
                         c["cycle"],
