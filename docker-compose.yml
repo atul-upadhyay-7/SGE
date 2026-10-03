@@ -1,0 +1,60 @@
+# Battery pack monitor: Mosquitto + SOH services + pack bridge + JSON API + Grafana.
+#
+#   docker compose up --build                     # core stack, waits for an ESP32
+#   docker compose --profile demo up --build      # + replay of NASA cells with injected faults
+#
+# Grafana: http://localhost:3000  (admin / admin, change it)
+#   dashboards: "Battery Pack Live (3S, MQTT)" and "Battery PDM (Grafana)"
+# Broker for the ESP32: <this machine>:1883
+#
+# STATUS: written but not run with Docker (Docker was not available where it
+# was built). The commands each service runs were run directly and verified.
+
+x-app: &app
+  build: .
+  restart: unless-stopped
+  volumes:
+    - ./data:/app/data
+    - ./models:/app/models
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  soh:                       # three per-cell SOH services
+    <<: *app
+    command: python src/pack/run_pack.py --host mosquitto
+    depends_on: [mosquitto]
+
+  bridge:                    # pack monitor -> data/live_pack.db + bms/pack/PACK1/state
+    <<: *app
+    command: python src/pack/bridge.py --host mosquitto
+    depends_on: [mosquitto]
+
+  api:                       # JSON datasource for Grafana
+    <<: *app
+    command: python dashboard/grafana_api.py
+    ports: ["8099:8099"]
+
+  grafana:
+    image: grafana/grafana-oss:11.2.0
+    ports: ["3000:3000"]
+    environment:
+      GF_INSTALL_PLUGINS: simpod-json-datasource
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./dashboard/provisioning/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [api]
+
+  demo-publisher:            # stand-in for the ESP32; faults are SYNTHETIC
+    <<: *app
+    profiles: ["demo"]
+    restart: "no"
+    command: >
+      python src/pack/publisher.py --host mosquitto --delay 1
+      --fault CELL2:resistance_spike:40 --fault CELL3:thermal:60
+    depends_on: [soh, bridge]
