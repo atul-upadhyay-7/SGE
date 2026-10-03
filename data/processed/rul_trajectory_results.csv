@@ -1,0 +1,5 @@
+test_cell,eol_discharge,n_points,trajectory_mae,fleet_lifetime_baseline_mae
+B0005,100,90,7.5,22.38888888888889
+B0006,60,50,48.38,42.0
+B0007,123,113,21.84070796460177,38.5929203539823
+B0018,74,64,6.375,28.0

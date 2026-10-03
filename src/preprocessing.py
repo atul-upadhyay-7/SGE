@@ -10,6 +10,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from causal import add_causal_features
+
 
 INPUT_FILE = Path(
     "data/processed/nasa_cycle_features_raw.csv"
@@ -284,6 +288,10 @@ def main():
     )
 
     df = create_targets(df)
+
+    # causal load / delta / trailing-slope features, built by
+    # the same class the streaming service runs
+    df = add_causal_features(df)
 
     OUTPUT_FILE.parent.mkdir(
         parents=True,

@@ -40,6 +40,7 @@ sys.path.insert(
 
 import predict
 from cycle_tracker import CycleTracker
+from causal import CausalFeatureTracker
 from predict import (
     assemble_features,
     load_soh_model,
@@ -145,6 +146,12 @@ def measure():
             row_out = tracker.flush()
 
         if row_out is not None:
+
+            # same past-only features the service adds
+            row_out = {
+                **row_out,
+                **CausalFeatureTracker().update(row_out),
+            }
 
             predict_soh(bundle, row_out)
 

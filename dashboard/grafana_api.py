@@ -19,6 +19,16 @@ from flask_cors import CORS
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE, "data", "battery_pdm.db")
 
+# Live pack tables are written by src/pack/bridge.py into their
+# own file, because load_to_sqlite.py rebuilds DB_PATH from
+# scratch and would wipe them. The file is attached as "live"
+# when it exists, so its tables resolve by bare name and the
+# dashboard reads them like any other table.
+LIVE_DB_PATH = os.environ.get(
+    "PDM_LIVE_DB",
+    os.path.join(BASE, "data", "live_pack.db"),
+)
+
 app = Flask(__name__)
 CORS(app)
 
@@ -26,6 +36,10 @@ CORS(app)
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+
+    if os.path.exists(LIVE_DB_PATH):
+        conn.execute("ATTACH DATABASE ? AS live", (LIVE_DB_PATH,))
+
     return conn
 
 
@@ -44,6 +58,13 @@ def object_exists(conn, name):
         "WHERE type IN ('table', 'view') AND name = ?",
         (name,),
     ).fetchone()
+
+    if row is None and os.path.exists(LIVE_DB_PATH):
+        row = conn.execute(
+            "SELECT name FROM live.sqlite_master "
+            "WHERE type IN ('table', 'view') AND name = ?",
+            (name,),
+        ).fetchone()
 
     return row is not None
 
@@ -77,6 +98,16 @@ TARGETS = [
     "table:anomaly_summary",
     "table:anomaly_events",
     "table:anomaly_cycle_report",
+
+    # live pack monitoring (written by src/pack/bridge.py)
+    "live_soh_by_cycle",
+    "live_voltage_end_by_cycle",
+    "live_resistance_by_cycle",
+    "live_temperature_by_cycle",
+    "live_voltage_spread_by_cycle",
+    "table:live_pack_cells",
+    "table:live_pack_alerts",
+    "table:live_pack_status",
 ]
 
 
@@ -113,11 +144,53 @@ def annotations():
 
 # ── time-series handlers ──────────────────────────────────────
 
+# live_pack_history column, legend label, unit scale
+LIVE_SERIES = {
+    "live_soh_by_cycle": ("soh_pct", "SOH %", 1.0),
+    "live_voltage_end_by_cycle": ("v_end_v", "End voltage V", 1.0),
+    "live_resistance_by_cycle": (
+        "resistance_ohm", "Resistance ohm", 1.0
+    ),
+    "live_temperature_by_cycle": ("temp_max_c", "Peak temp C", 1.0),
+    "live_voltage_spread_by_cycle": (
+        "voltage_spread_mv", "Spread mV", 1.0
+    ),
+}
+
+
 def handle_timeseries(target):
     conn = get_db()
     series = []
 
-    if target == "soh_by_cycle":
+    if target in LIVE_SERIES:
+        column, label, scale = LIVE_SERIES[target]
+        try:
+            cells = [
+                r[0]
+                for r in conn.execute(
+                    "SELECT DISTINCT cell_id FROM live_pack_history "
+                    "WHERE cell_id IS NOT NULL ORDER BY cell_id"
+                )
+            ]
+            for cell in cells:
+                rows = conn.execute(
+                    f"SELECT discharge_cycle, {column} FROM "
+                    "live_pack_history WHERE cell_id = ? "
+                    "ORDER BY discharge_cycle",
+                    (cell,),
+                ).fetchall()
+                series.append({
+                    "target": f"{label} - {cell}",
+                    "datapoints": [
+                        [r[1] * scale if r[1] is not None else None,
+                         r[0]]
+                        for r in rows
+                    ],
+                })
+        except sqlite3.Error:
+            pass  # no live data yet: an empty panel, not an error
+
+    elif target == "soh_by_cycle":
         for cell in ["B0005", "B0006", "B0007", "B0018"]:
             rows = conn.execute(
                 "SELECT cycle, soh FROM nasa_ml_dataset WHERE cell_id = ? ORDER BY cycle",

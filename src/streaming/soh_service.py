@@ -66,6 +66,7 @@ import pandas as pd
 
 try:
     from cycle_tracker import CycleTracker
+    from causal import CausalFeatureTracker
     from predict import (
         SohModelLoadError,
         load_soh_model,
@@ -73,6 +74,7 @@ try:
     )
 except ImportError:
     from .cycle_tracker import CycleTracker
+    from ..causal import CausalFeatureTracker
     from ..predict import (
         SohModelLoadError,
         load_soh_model,
@@ -137,6 +139,10 @@ class SohService:
             **tracker_kwargs
         )
 
+        # past-only features (load, last load, deltas, slopes);
+        # the same class that builds them for training
+        self.causal = CausalFeatureTracker()
+
         self.stale_after_s = stale_after_s
 
         self.predict_timeout_s = predict_timeout_s
@@ -150,6 +156,7 @@ class SohService:
         self._status = WARMING_UP
         self._error = None
         self._cycles_seen = 0
+        self._last_cycle = None
 
     def add_sample(
         self,
@@ -215,11 +222,15 @@ class SohService:
         exercise.
         """
 
-        frame = pd.DataFrame([row])
-
         started = time.perf_counter()
 
         try:
+
+            # inside the try so a malformed row is reported as a
+            # failed prediction like any other failure
+            row = {**row, **self.causal.update(row)}
+
+            frame = pd.DataFrame([row])
 
             value = predict_soh(
                 self.bundle, frame
@@ -295,6 +306,17 @@ class SohService:
             self._status = OK
             self._error = None
             self._cycles_seen += 1
+            # measurements from the closed cycle, for pack-level
+            # monitoring (imbalance, resistance, temperature)
+            self._last_cycle = {
+                "discharge_index": row.get("discharge_index"),
+                "v_end": row.get("voltage_end"),
+                "v_mean": row.get("voltage_mean"),
+                "temp_max": row.get("temperature_max"),
+                "resistance_ohm": row.get("resistance_proxy_ohm"),
+                "load_a": row.get("load_a"),
+                "capacity_ah": row.get("capacity_ah"),
+            }
 
         return self.read()
 
@@ -354,6 +376,7 @@ class SohService:
                         self.predict_timeout_s * 1000, 3
                     )
                 ),
+                "last_cycle": self._last_cycle,
                 "error": self._error
             }
 

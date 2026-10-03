@@ -7,8 +7,6 @@ Extract engineered features from battery charge/discharge cycles.
 
 FEATURES = [
 
-    "cycle",
-
     "ambient_temperature",
 
     "voltage_mean",
@@ -50,6 +48,22 @@ FEATURES = [
     # A delta or slope feature computed over a trailing window
     # is the obvious candidate and is not implemented yet, so
     # the model currently has no explicit fade-rate input.
+]
+
+# Absolute cycle count is deliberately not a feature. It carried
+# the train/serve skew (offline index counted every raw sequence
+# entry, streaming counted discharges) and it lets the model
+# memorise the training cells' calendars instead of reading the
+# battery. Age is represented by causal trailing slopes instead.
+# See causal.py: the mentor's load / last load / change in
+# capacity / change in other parameters live there.
+try:
+    from causal import CAUSAL_FEATURES as _CAUSAL
+except ImportError:  # imported as a package module
+    from .causal import CAUSAL_FEATURES as _CAUSAL
+
+FEATURES = FEATURES + [
+    f for f in _CAUSAL if f not in FEATURES
 ]
 
 # Columns that must never be used as predictive inputs,
