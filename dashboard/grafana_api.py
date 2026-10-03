@@ -373,20 +373,28 @@ def handle_table(target):
         # build a summary table
         soh_mae = conn.execute("SELECT AVG(MAE) as v FROM soh_nested_results").fetchone()["v"]
         soh_r2 = conn.execute("SELECT AVG(R2) as v FROM soh_nested_results").fetchone()["v"]
-        rul_best = conn.execute(
-            "SELECT model, AVG(MAE) as mae FROM rul_results GROUP BY model ORDER BY mae LIMIT 1"
-        ).fetchone()
+        traj = None
+        if object_exists(conn, "rul_trajectory_results"):
+            traj = conn.execute(
+                "SELECT AVG(trajectory_mae) AS t, "
+                "AVG(fleet_lifetime_baseline_mae) AS b "
+                "FROM rul_trajectory_results"
+            ).fetchone()
 
         columns = [
             {"text": "Metric", "type": "string"},
             {"text": "Value", "type": "string"},
         ]
         rows_data = [
-            ["SOH Model", "XGBoost (nested CV)"],
-            ["SOH MAE", f"{soh_mae:.4f}%"],
-            ["SOH R²", f"{soh_r2:.4f}"],
-            ["RUL Best Model", rul_best["model"] if rul_best else "N/A"],
-            ["RUL MAE", f"{rul_best['mae']:.1f} cycles" if rul_best else "N/A"],
+            ["SOH Model", "XGBoost (nested leave-one-cell-out)"],
+            ["SOH MAE", f"{soh_mae:.2f}%"],
+            ["SOH R²", f"{soh_r2:.2f}"],
+            ["RUL Method", "Reference-trajectory matching"],
+            [
+                "RUL MAE",
+                f"{traj['t']:.1f} cycles (lifetime baseline {traj['b']:.1f})"
+                if traj else "N/A",
+            ],
             ["Total Cycles", str(conn.execute("SELECT COUNT(*) FROM nasa_ml_dataset").fetchone()[0])],
             ["Cells", "B0005, B0006, B0007, B0018"],
         ]

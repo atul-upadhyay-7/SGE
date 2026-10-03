@@ -95,7 +95,7 @@
     },
     {
       "type": "timeseries",
-      "title": "RUL Predicted vs Actual",
+      "title": "RUL Predicted vs Actual (random-forest baseline, see Model Summary for the trajectory method)",
       "gridPos": {
         "x": 12,
         "y": 9,
