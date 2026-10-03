@@ -26,18 +26,23 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 |--------|-------|
 | Model | XGBoost (nested hyperparameter search) |
 | Validation | Leave-one-cell-out cross-validation |
-| **Mean MAE** | **3.40%** |
-| Mean RMSE | 3.86% |
-| Mean R² | 0.84 |
+| **Mean MAE (nested search)** | **3.47%** |
+| Mean MAE (fixed hyperparameters) | 3.14% |
 
-**Per-cell breakdown (nested, honest):**
+The nested search is noisy with only three training cells per fold, so
+both numbers are shown. 3.47% is the strict figure. Features are causal
+(each cycle uses only itself and earlier cycles, `src/causal.py`), the same
+code runs in training and in the streaming service, and the raw `cycle`
+index was removed because it differed between training and serving.
 
-| Cell | MAE (%) | RMSE (%) | R² |
-|------|---------|----------|----|
-| B0005 | 2.59 | 3.21 | 0.90 |
-| B0006 | 7.32 | 7.70 | 0.61 |
-| B0007 | 1.79 | 2.16 | 0.94 |
-| B0018 | 1.91 | 2.35 | 0.92 |
+**Per-cell breakdown (nested, leave-one-cell-out MAE %):**
+
+| Cell | Nested | Fixed |
+|------|--------|-------|
+| B0005 | 2.38 | 2.08 |
+| B0006 | 7.09 | 6.95 |
+| B0007 | 2.30 | 1.69 |
+| B0018 | 2.13 | 1.84 |
 
 Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 
@@ -48,7 +53,7 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 > cannot be computed for a cell the model has not already
 > seen, so they were removed. The headline MAE moved from the
 > previously reported 3.23% to 3.40% under the re-run nested
-> search; at fixed default hyperparameters the change is
+> search (3.47% after the causal-feature rebuild); at fixed default hyperparameters the change is
 > slightly *better*, not worse (mean LOCO MAE 3.3514 with
 > `soh_change_pct`, 3.2712 without). The 3.40% figure is the
 > leakage-free nested result and is the only one this project
@@ -66,6 +71,13 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 > **Note:** With only four cells, RUL prediction is fundamentally limited by data coverage. The model cannot outperform a constant predictor (oracle cell mean MAE: 77.78 cycles) because each cell's degradation trajectory is unique and the training set provides only three examples of how a cell ages. The best model is 1.49 cycles *worse* than that constant — it is being reported because it is the best of the eight model/feature-set combinations tried, not because it is good. `rul_results.csv` carries both feature sets (`drop` = `(none)` vs `cycle`) so the comparison is reproducible.
 >
 > This number also moved when the target-derived columns were removed from `FEATURES`: the RUL model shares the SOH feature list, so the earlier 85.97 no longer applies. It improved to 79.27, which is coincidental rather than meaningful — the honest read is that RUL is at the noise floor either way.
+
+**Better RUL: reference-trajectory matching** (`src/rul_trajectory.py`, in
+discharge-cycle units, leave-one-cell-out): mean MAE **21.0** vs **32.7** for a
+fleet-lifetime baseline. It loses on the fast-fading B0006 (48.4 vs 42.0).
+Extrapolating the recent fade as a straight line was far worse (MAE above 100)
+and is not used. With four cells this is a demonstration, not a validated life
+model.
 
 ### Battery Degradation Characteristics
 
@@ -516,6 +528,37 @@ the pinned range in the time picker. The table panels are
 unaffected, since they are not time-based.
 
 ---
+
+## Live pack monitor (3S pack, MQTT)
+
+`src/pack/` turns three per-cell SOH streams into a pack view: cell imbalance
+(same-instant voltage spread), persistent weak cell, SOH mismatch, internal
+resistance spike (DC resistance from the load step, against the cell's own
+baseline), thermal levels and rate, an Isolation Forest second opinion, and
+cycles to retirement at **80% capacity** (the brief's threshold).
+
+```bash
+docker compose --profile demo up --build   # broker, SOH services, bridge, API, Grafana, replay with faults
+# open http://localhost:3000  ->  "Battery Pack Live (3S, MQTT)"  (admin / admin)
+```
+
+Without Docker, run `mosquitto`, then `python src/pack/run_pack.py`,
+`python src/pack/bridge.py`, `python dashboard/grafana_api.py`, start Grafana as
+in Step 11, then `python src/pack/publisher.py --delay 1 --fault CELL2:resistance_spike:40`.
+Use `--delay` of 0.7 s or more: faster replay dropped messages in testing.
+
+![architecture](docs/architecture.png)
+
+What is and is not verified, and the sources behind each threshold, are in
+[`docs/RESEARCH.md`](docs/RESEARCH.md). In short: the pipeline (MQTT, SOH
+services, bridge, API, Grafana) was run end to end in a sandbox without Docker;
+`docker-compose.yml` was **not** run; the ESP32 firmware in `firmware/` is
+**not tested on hardware**; all faults in demos are **synthetic**.
+Fault detection on synthetic faults (24 per kind): rules detect 100% of
+resistance spikes and thermal events and 75% of cell sags; Isolation Forest alone
+100% / 58% / 21%. Clean-pack false alarms for resistance spike and thermal: 0 in 564
+discharges (imbalance-type alerts are not meaningful in the offline table; see
+`docs/RESEARCH.md`).
 
 ## Dashboard
 
