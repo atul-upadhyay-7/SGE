@@ -49,6 +49,8 @@ STAGES = [
     ("data_quality", [sys.executable, "src/data_quality.py"]),
     ("train_soh", [sys.executable, "src/train_soh.py"]),
     ("train_rul", [sys.executable, "src/train_rul.py"]),
+    ("rul_trajectory", [sys.executable, "src/rul_trajectory.py"]),
+    ("pack_evaluate", [sys.executable, "src/pack/evaluate.py"]),
     ("anomaly", [sys.executable, "src/anomaly.py"]),
     (
         "benchmark_latency",

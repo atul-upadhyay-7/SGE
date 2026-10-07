@@ -34,6 +34,8 @@ What this script reports
 
 from pathlib import Path
 
+import os
+
 import joblib
 import pandas as pd
 
@@ -107,7 +109,9 @@ PARAM_DISTRIBUTIONS = {
 
 # Kept modest so the nested search stays a few minutes.
 # Raise for a real tuning run.
-N_ITERATIONS = 20
+N_ITERATIONS = int(os.environ.get("SGE_N_ITER", "20"))
+if N_ITERATIONS < 1:
+    raise ValueError("SGE_N_ITER must be a positive integer")
 
 RANDOM_STATE = 42
 
@@ -252,7 +256,7 @@ def optimistic_loco(
         df["cell_id"].unique()
     ):
 
-        _, test_df = split_by_cell(
+        train_df, test_df = split_by_cell(
             df,
             test_cell
         )
@@ -267,8 +271,8 @@ def optimistic_loco(
         )
 
         model.fit(
-            df[features],
-            df[TARGET]
+            train_df[features],
+            train_df[TARGET]
         )
 
         prediction = model.predict(

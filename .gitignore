@@ -17,3 +17,7 @@ data/raw/*.mat
 logs/grafana.log
 logs/grafana_server.log
 data/live_pack.db
+
+artifacts/
+logs/train_*/
+reports/train_report_*

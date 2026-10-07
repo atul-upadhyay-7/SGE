@@ -55,9 +55,7 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 > previously reported 3.23% to 3.40% under the re-run nested
 > search (3.47% after the causal-feature rebuild); at fixed default hyperparameters the change is
 > slightly *better*, not worse (mean LOCO MAE 3.3514 with
-> `soh_change_pct`, 3.2712 without). The 3.40% figure is the
-> leakage-free nested result and is the only one this project
-> stands behind.
+> `soh_change_pct`, 3.2712 without). The 3.40% figure belongs to an older feature build. Re-run results depend on the feature build and pinned library versions; do not combine them.
 
 
 ### RUL Prediction (Remaining Useful Life)
@@ -65,12 +63,10 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 | Metric | Value |
 |--------|-------|
 | Target | Cycles remaining until 80% SOH |
-| Best Model | Linear (with cycle feature dropped) |
-| **Mean MAE** | **79.27 cycles** |
+| Model | XGBoost (published baseline) |
+| **Mean MAE** | **90.72 cycles** (published result CSV) |
 
-> **Note:** With only four cells, RUL prediction is fundamentally limited by data coverage. The model cannot outperform a constant predictor (oracle cell mean MAE: 77.78 cycles) because each cell's degradation trajectory is unique and the training set provides only three examples of how a cell ages. The best model is 1.49 cycles *worse* than that constant — it is being reported because it is the best of the eight model/feature-set combinations tried, not because it is good. `rul_results.csv` carries both feature sets (`drop` = `(none)` vs `cycle`) so the comparison is reproducible.
->
-> This number also moved when the target-derived columns were removed from `FEATURES`: the RUL model shares the SOH feature list, so the earlier 85.97 no longer applies. It improved to 79.27, which is coincidental rather than meaningful — the honest read is that RUL is at the noise floor either way.
+> **Note:** Plain feature-to-RUL regression is a weak demonstration on four cells, not a validated life model. Published result files and re-runs must be checked against baselines; the old 79.27-cycle table was stale. Use the reference-trajectory evaluation below for the stronger demonstration, and report held-out-cell errors.
 
 **Better RUL: reference-trajectory matching** (`src/rul_trajectory.py`, in
 discharge-cycle units, leave-one-cell-out): mean MAE **21.0** vs **32.7** for a
@@ -704,3 +700,18 @@ it is not a production accuracy claim.
 ## License
 
 This project is for academic and research purposes.
+
+## Reproducible training and current limits
+
+Use Python 3.12 with `requirements.txt`. The Docker base matches this version.
+
+```bash
+python train.py --check
+python train.py --quick
+python train.py
+python run_pipeline.py --skip-train
+```
+
+The driver backs up models/results and writes per-stage logs and quality-gate reports. `--quick` is a smoke test, not the headline 20-iteration result. `--only` is diagnostic and never claims a full training pass. The quality gates are smoke checks on four NASA cells, not client acceptance or hardware validation. The suite has 164 tests after this update.
+
+Synthetic resistance-spike and thermal rules detected all injected faults, with zero clean resistance/thermal flags. Other pack rules fire frequently on this dataset; do not claim zero overall false alarms. Real pack data, variable-load validation, Fedora execution, Docker Compose, and ESP32 hardware are still unverified. The retirement threshold stays at 80% pending the team decision; the older tracker plan says 70%.
