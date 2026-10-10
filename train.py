@@ -35,8 +35,10 @@ import shutil
 import subprocess
 import sys
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
+from importlib.metadata import version, PackageNotFoundError
 
 ROOT = Path(__file__).resolve().parent
 PROC = ROOT / "data" / "processed"
@@ -100,9 +102,9 @@ def preflight():
         try:
             mod = __import__(name)
             lines.append(
-                f"ok   {name} {getattr(mod, '__version__', '?')}"
+                f"ok   {name} {version({'sklearn': 'scikit-learn', 'flask_cors': 'flask-cors', 'paho.mqtt.client': 'paho-mqtt'}.get(name, name))}"
             )
-        except ImportError:
+        except (ImportError, PackageNotFoundError):
             ok = False
             lines.append(
                 f"FAIL {name} missing: pip install -r requirements.txt"
@@ -110,15 +112,16 @@ def preflight():
 
     sys.path.insert(0, str(ROOT / "src"))
     try:
-        from load_data import resolve_raw_dir
+        from load_data import CELLS, resolve_raw_dir
 
         os.chdir(ROOT)
         raw = resolve_raw_dir()
         mats = sorted(Path(raw).glob("*.mat"))
         lines.append(f"ok   raw data {raw} ({len(mats)} .mat files)")
-        if len(mats) < 2:
+        missing = [cell for cell in CELLS if not (Path(raw) / f"{cell}.mat").is_file()]
+        if missing:
             ok = False
-            lines.append("FAIL need at least 2 cells for leave-one-out")
+            lines.append(f"FAIL selected cells missing from {raw}: {missing}")
     except Exception as err:
         ok = False
         lines.append(f"FAIL raw data: {err}")
@@ -167,6 +170,22 @@ def run_stage(name, script, log_dir, env):
     }
 
 
+def checked_results(frame, columns, cells=None):
+    """Reject empty, incomplete, duplicate-cell or non-finite score tables."""
+    import numpy as np
+    if frame.empty:
+        raise ValueError("empty result table")
+    if cells is not None:
+        if (set(frame["test_cell"]) != set(cells)
+                or frame["test_cell"].duplicated().any()):
+            raise ValueError("expected exactly one result per selected cell")
+    for col in columns:
+        values = frame[col].to_numpy(dtype=float)
+        if not np.isfinite(values).all() or (values < 0).any():
+            raise ValueError(f"{col} contains non-finite or negative values")
+    return frame
+
+
 def gates(mode):
     """Check results. Returns list of (name, ok, detail)."""
 
@@ -175,6 +194,7 @@ def gates(mode):
 
     out = []
     lim = LIMITS[mode]
+    from load_data import CELLS
 
     for rel in ARTIFACTS:
         out.append(
@@ -182,7 +202,7 @@ def gates(mode):
         )
 
     try:
-        nested = pd.read_csv(PROC / "soh_nested_results.csv")
+        nested = checked_results(pd.read_csv(PROC / "soh_nested_results.csv"), ["MAE"], CELLS)
         mae = float(nested["MAE"].mean())
         worst = float(nested["MAE"].max())
         out.append((
@@ -200,7 +220,8 @@ def gates(mode):
         out.append(("SOH results readable", False, str(err)))
 
     try:
-        traj = pd.read_csv(PROC / "rul_trajectory_results.csv")
+        traj = checked_results(pd.read_csv(PROC / "rul_trajectory_results.csv"),
+                               ["trajectory_mae", "fleet_lifetime_baseline_mae"], CELLS)
         t = float(traj["trajectory_mae"].mean())
         b = float(traj["fleet_lifetime_baseline_mae"].mean())
         out.append((
@@ -212,7 +233,9 @@ def gates(mode):
         out.append(("RUL results readable", False, str(err)))
 
     try:
-        det = pd.read_csv(PROC / "pack_detection_summary.csv")
+        det = checked_results(pd.read_csv(PROC / "pack_detection_summary.csv"), ["rule_rate"])
+        if det["fault"].duplicated().any() or (det["rule_rate"] > 1).any():
+            raise ValueError("invalid or duplicate fault rates")
         det = det.set_index("fault")
         for fault in ("resistance_spike", "thermal"):
             rate = float(det.loc[fault, "rule_rate"])
@@ -221,7 +244,8 @@ def gates(mode):
                 rate >= 0.9,
                 f"{rate:.0%} (verified 100%)",
             ))
-        fa = pd.read_csv(PROC / "pack_false_alarms.csv")
+        fa = checked_results(pd.read_csv(PROC / "pack_false_alarms.csv"),
+                             ["false_resistance_spike", "false_thermal"])
         false = int(
             fa["false_resistance_spike"].sum()
             + fa["false_thermal"].sum()
@@ -236,7 +260,9 @@ def gates(mode):
 
     try:
         import joblib
-        bundle = joblib.load(MODELS / "soh_xgb_all.joblib")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            bundle = joblib.load(MODELS / "soh_xgb_all.joblib")
         df = pd.read_csv(PROC / "nasa_ml_dataset.csv")
         pred = bundle["model"].predict(df[bundle["features"]])
         err = float(np.mean(np.abs(pred - df[bundle["target"]])))
@@ -279,7 +305,8 @@ def write_report(stamp, mode, n_iter, pre, results, gate_rows, prev):
             {"name": n, "ok": bool(o), "detail": d}
             for n, o, d in gate_rows
         ],
-        "previous_artifacts_backup": str(prev.relative_to(ROOT)),
+        "previous_artifacts_backup": str(prev.relative_to(ROOT)) if prev else None,
+        "preflight": pre,
     }
 
     (rep_dir / f"train_report_{stamp}.json").write_text(
@@ -306,13 +333,11 @@ def write_report(stamp, mode, n_iter, pre, results, gate_rows, prev):
     md += ["", "## Gates", "", "| check | ok | detail |", "|---|---|---|"]
     for n, o, d in gate_rows:
         md.append(f"| {n} | {'yes' if o else 'NO'} | {d} |")
-    md += [
-        "",
-        f"Previous models and results were copied to "
-        f"`{prev.relative_to(ROOT)}`. To roll back, copy its `models` "
-        "and `processed` folders over `models/` and `data/processed/`.",
-        "",
-    ]
+    if prev is not None:
+        md += ["", f"Previous models/results backup: `{prev.relative_to(ROOT)}`.",
+               "Copy its models and processed folders back to restore the prior state."]
+    else:
+        md += ["", "Backup disabled by --no-backup. No rollback copy was created."]
     path = rep_dir / f"train_report_{stamp}.md"
     path.write_text("\n".join(md))
 
@@ -367,8 +392,7 @@ def main(argv=None):
     log_dir.mkdir(parents=True, exist_ok=True)
 
     if args.no_backup:
-        prev = ROOT / "artifacts" / "none"
-        prev.mkdir(parents=True, exist_ok=True)
+        prev = None
     else:
         prev = backup(stamp)
 

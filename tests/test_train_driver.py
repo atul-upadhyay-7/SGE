@@ -98,3 +98,64 @@ def test_backup_keeps_original_files(tmp_path, monkeypatch):
     dest = driver.backup("test")
     assert (dest / "models" / "model.txt").read_text() == "original"
     assert (models / "model.txt").read_text() == "original"
+
+
+@pytest.mark.parametrize("values", [[], [np.nan], [np.inf], [-1.]])
+def test_metric_tables_reject_invalid_values(values):
+    with pytest.raises(ValueError):
+        driver.checked_results(pd.DataFrame({"MAE": values}), ["MAE"])
+
+
+@pytest.mark.parametrize("cells", [["A"], ["A", "A"], ["A", "C"]])
+def test_metric_tables_reject_missing_duplicate_wrong_cells(cells):
+    with pytest.raises(ValueError):
+        driver.checked_results(pd.DataFrame({"test_cell": cells, "MAE": [1.] * len(cells)}),
+                               ["MAE"], ["A", "B"])
+
+
+def test_metric_table_accepts_valid_complete_cells():
+    frame = pd.DataFrame({"test_cell": ["B", "A"], "MAE": [2., 1.]})
+    assert driver.checked_results(frame, ["MAE"], ["A", "B"]) is frame
+
+
+def test_no_backup_report_does_not_claim_rollback(tmp_path, monkeypatch):
+    monkeypatch.setattr(driver, "ROOT", tmp_path)
+    passed, path = driver.write_report("test", "quick", 3, ["ok preflight"],
+        [{"stage": "fake", "ok": True, "seconds": 0, "log": "fake.log"}],
+        [("fake", True, "ok")], None)
+    import json
+    data = json.loads(path.with_suffix(".json").read_text())
+    assert data["previous_artifacts_backup"] is None
+    assert data["preflight"] == ["ok preflight"]
+    assert "No rollback copy was created" in path.read_text()
+
+
+def test_preflight_checks_selected_cells_not_file_count(tmp_path, monkeypatch):
+    import load_data
+    (tmp_path / "OTHER1.mat").touch()
+    (tmp_path / "OTHER2.mat").touch()
+    monkeypatch.setattr(load_data, "resolve_raw_dir", lambda: tmp_path)
+    monkeypatch.setattr(driver, "ROOT", tmp_path)
+    ok, lines = driver.preflight()
+    assert not ok
+    assert any("selected cells missing" in line for line in lines)
+
+
+def test_preflight_rejects_wrong_case_raw_filenames(tmp_path, monkeypatch):
+    import load_data
+    for cell in load_data.CELLS:
+        (tmp_path / f"{cell.lower()}.mat").touch()
+    monkeypatch.setattr(load_data, "resolve_raw_dir", lambda: tmp_path)
+    monkeypatch.setattr(driver, "ROOT", tmp_path)
+    assert driver.preflight()[0] is False
+
+
+def test_model_version_warning_fails_gate(monkeypatch):
+    import joblib
+    import warnings
+    def unsafe_load(*args):
+        warnings.warn("incompatible model version", UserWarning)
+    monkeypatch.setattr(joblib, "load", unsafe_load)
+    rows = driver.gates("quick")
+    assert any(name == "model loads" and not ok and "incompatible" in detail
+               for name, ok, detail in rows)
