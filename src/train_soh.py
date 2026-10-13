@@ -50,6 +50,7 @@ from sklearn.model_selection import (
 from evaluation import (
     MODEL_NAMES,
     build_model,
+    coulomb_baseline,
     loco_evaluate,
     score,
     split_by_cell
@@ -368,7 +369,12 @@ def main():
             "Run load_data.py and preprocessing.py first."
         )
 
-    df = pd.read_csv(DATA_FILE)
+    df_all = pd.read_csv(DATA_FILE)
+
+    # The baseline ladder, nested search, and per-cell models are for G1
+    # (the 4 NASA cells), preserving the verified LOCO benchmarks and gate limits.
+    from load_data import CELLS_G1
+    df = df_all[df_all["cell_id"].isin(CELLS_G1)].copy()
 
     _, _, features = make_xy(
         df,
@@ -447,6 +453,13 @@ def main():
         if model_name == "XGBoost":
 
             default_predictions = predictions
+
+    # ── Coulomb (physics) baseline ──
+    # No ML, no train/test split: uses each cell's own first
+    # discharge as the reference, so it is not a held-out score
+    # in the LOCO sense.  It shows what a simple formula can do.
+    coulomb_rows, _ = coulomb_baseline(df, TARGET)
+    all_rows.extend(coulomb_rows)
 
     baseline_frame = pd.DataFrame(
         all_rows
@@ -796,6 +809,104 @@ def main():
         "Saved results to",
         RESULT_DIR
     )
+
+    # ────────────────────────────────────────────────────
+    # 6. Demo model — excludes the cells the publisher replays
+    # ────────────────────────────────────────────────────
+    # publisher.py replays B0005, B0007, B0018.  A model trained
+    # on those cells and then asked to predict them is showing
+    # in-sample performance, which is dishonest.  soh_xgb_demo
+    # trains on everything EXCEPT the demo cells.
+
+    DEMO_CELLS = {"B0005", "B0007", "B0018"}
+    demo_train = df[~df["cell_id"].isin(DEMO_CELLS)]
+
+    if len(demo_train) > 0 and len(demo_train["cell_id"].unique()) >= 1:
+        demo_model = build_model("XGBoost")
+        demo_model.fit(
+            demo_train[features],
+            demo_train[TARGET]
+        )
+
+        demo_bundle = {
+            "model": demo_model,
+            "features": features,
+            "target": TARGET,
+            "trained_on": sorted(
+                demo_train["cell_id"].unique().tolist()
+            ),
+            "excluded": sorted(DEMO_CELLS),
+        }
+
+        joblib.dump(
+            demo_bundle,
+            MODEL_DIR / "soh_xgb_demo.joblib"
+        )
+
+        # Version-proof export: UBJ booster + JSON metadata
+        _save_portable(
+            demo_model, features, TARGET,
+            demo_bundle["trained_on"],
+            MODEL_DIR / "soh_xgb_demo"
+        )
+
+        print(
+            f"\nDemo model saved (trained on "
+            f"{sorted(demo_train['cell_id'].unique().tolist())}, "
+            f"excluding {sorted(DEMO_CELLS)})"
+        )
+
+    # Also save a portable copy of the all-cell model
+    _save_portable(
+        final_model, features, TARGET,
+        sorted(df["cell_id"].unique().tolist()),
+        MODEL_DIR / "soh_xgb_all"
+    )
+
+
+def _save_portable(
+    pipeline, features, target, trained_on, prefix
+):
+    """
+    Save a version-proof copy: XGBoost UBJ booster + JSON
+    metadata (features, target, trained_on, library versions).
+
+    The UBJ format is portable across XGBoost versions,
+    unlike the full Pipeline pickle which embeds the native
+    booster binary. The imputer medians are saved too so
+    the pipeline can be reconstructed.
+    """
+
+    import json
+    import platform
+    import sklearn
+    import xgboost
+
+    prefix = Path(prefix)
+    prefix.parent.mkdir(parents=True, exist_ok=True)
+
+    # Extract booster
+    booster = pipeline.named_steps["model"].get_booster()
+    booster.save_model(str(prefix) + ".ubj")
+
+    # Extract imputer medians
+    imputer = pipeline.named_steps["imputer"]
+    medians = imputer.statistics_.tolist()
+
+    meta = {
+        "features": list(features),
+        "target": target,
+        "trained_on": list(trained_on),
+        "imputer_medians": medians,
+        "library_versions": {
+            "xgboost": xgboost.__version__,
+            "scikit-learn": sklearn.__version__,
+            "python": platform.python_version(),
+        },
+    }
+
+    with open(str(prefix) + ".json", "w") as f:
+        json.dump(meta, f, indent=2)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,6 @@ xgboost==3.4.0
 matplotlib==3.10.6
 seaborn==0.13.2
 joblib==1.5.2
-shap==0.52.0
 
 # Serves the JSON that the native Grafana dashboard reads.
 # grafana_api.py imports both at module scope, so the API

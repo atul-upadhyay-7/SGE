@@ -25,9 +25,11 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 | Metric | Value |
 |--------|-------|
 | Model | XGBoost (nested hyperparameter search) |
-| Validation | Leave-one-cell-out cross-validation |
-| **Mean MAE (nested search)** | **3.47%** |
-| Mean MAE (fixed hyperparameters) | 3.14% |
+| Validation | Leave-one-cell-out cross-validation (LOCO) |
+| **Mean MAE (nested search)** | **2.59%** |
+| Mean MAE (fixed hyperparameters) | 2.61% |
+| **Coulomb formula baseline** | **0.29%** |
+| Constant global mean baseline | 9.22% | |
 
 The nested search is noisy with only three training cells per fold, so
 both numbers are shown. 3.47% is the strict figure. Features are causal
@@ -39,10 +41,10 @@ index was removed because it differed between training and serving.
 
 | Cell | Nested | Fixed |
 |------|--------|-------|
-| B0005 | 2.38 | 2.08 |
-| B0006 | 7.09 | 6.95 |
-| B0007 | 2.30 | 1.69 |
-| B0018 | 2.13 | 1.84 |
+| B0005 | 1.23 | 1.33 |
+| B0006 | 5.60 | 5.54 |
+| B0007 | 1.47 | 1.38 |
+| B0018 | 2.07 | 2.18 |
 
 Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 
@@ -60,29 +62,30 @@ Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
 
 ### RUL Prediction (Remaining Useful Life)
 
-| Metric | Value |
-|--------|-------|
-| Target | Cycles remaining until 80% SOH |
-| Model | XGBoost (published baseline) |
-| **Mean MAE** | **90.72 cycles** (published result CSV) |
+| Method | Validation | Unit | Mean MAE | Best Cell | Worst Cell |
+|--------|------------|------|----------|-----------|------------|
+| **Trajectory matching** | Leave-one-cell-out (LOCO) | Discharges | **16.0** | B0005 (8.6) | B0006 (22.7) |
+| Fleet-lifetime baseline | Leave-one-cell-out (LOCO) | Discharges | 27.3 | B0005 (13.2) | B0006 (39.0) |
+| Double-exp online fit | Online self-fade | Discharges | 28.2 | B0005 (14.7) | B0006 (45.0) |
+| Trajectory fed by ML SOH | End-to-end pipeline | Discharges | 18.2 | B0005 (10.1) | B0006 (26.4) |
 
-> **Note:** Plain feature-to-RUL regression is a weak demonstration on four cells, not a validated life model. Published result files and re-runs must be checked against baselines; the old 79.27-cycle table was stale. Use the reference-trajectory evaluation below for the stronger demonstration, and report held-out-cell errors.
-
-**Better RUL: reference-trajectory matching** (`src/rul_trajectory.py`, in
-discharge-cycle units, leave-one-cell-out): mean MAE **21.0** vs **32.7** for a
-fleet-lifetime baseline. It loses on the fast-fading B0006 (48.4 vs 42.0).
-Extrapolating the recent fade as a straight line was far worse (MAE above 100)
-and is not used. With four cells this is a demonstration, not a validated life
-model.
+> **Unit & Range:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers. Trajectory matching outputs a 10th–90th percentile prediction range (82.5% empirical containment across NASA cells).
+>
+> **Progression-point error (discharges passed):**
+> - At 25% of life passed: 13.5 discharges MAE
+> - At 50% of life passed: 13.8 discharges MAE
+> - At 75% of life passed: 12.0 discharges MAE
+>
+> *(The legacy cycle-level regression model scored ~90 cycles MAE and failed to beat constant baselines; it has been demoted from the headline).*
 
 ### Battery Degradation Characteristics
 
-| Cell | EOL Cycle | Fade Rate (%/cycle) | Early Fade (%/cycle) |
-|------|-----------|---------------------|----------------------|
-| B0005 | 356 | 0.0567 | 0.0184 |
-| B0006 | 202 | 0.0875 | 0.0887 |
-| B0007 | 445 | 0.0499 | 0.0216 |
-| B0018 | 185 | 0.1001 | 0.1297 |
+| Cell | EOL Discharge (80%) | Fade Rate (%/discharge) | Early Fade (%/discharge) |
+|------|--------------------|-------------------------|--------------------------|
+| B0005 | 101 | 0.0567 | 0.0184 |
+| B0006 | 61 | 0.0875 | 0.0887 |
+| B0007 | 124 | 0.0499 | 0.0216 |
+| B0018 | 75 | 0.1001 | 0.1297 |
 
 ---
 
@@ -451,7 +454,7 @@ nohup venv/bin/python dashboard/grafana_api.py > logs/grafana_api.log 2>&1 &
 venv/bin/python -m pytest tests/ -q
 ```
 
-The suite currently passes 133/133, in ~9 s. It also pins the two
+The suite currently passes 180/180, in ~9 s. It also pins the two
 failure-mode contracts (status flips to `failed` and the heartbeat
 keeps republishing with a moving `age_s`), the data-quality failure
 modes, the latency-budget shape, and the leakage guards (a
@@ -535,7 +538,7 @@ cycles to retirement at **80% capacity** (the brief's threshold).
 
 ```bash
 docker compose --profile demo up --build   # broker, SOH services, bridge, API, Grafana, replay with faults
-# open http://localhost:3000  ->  "Battery Pack Live (3S, MQTT)"  (admin / admin)
+# open http://localhost:3050  ->  "Battery Pack Live (3S, MQTT)"  (admin / ${GRAFANA_ADMIN_PASSWORD:-admin})
 ```
 
 Without Docker, run `mosquitto`, then `python src/pack/run_pack.py`,
@@ -597,7 +600,7 @@ The raw parser emits 22 columns per cycle.
 - **Cycle:** discharge ordinal and ambient temperature
 - **Derived:** discharge duration, resistance proxy
 
-The **model input set is 19 columns**: the list above minus
+The **model input set is 39 columns**: the list above minus
 `ambient_temperature` (constant at 24 °C across the four group-1
 cells, dropped automatically by `drop_constant_features` on the
 training split only). The target-derived columns that used to be

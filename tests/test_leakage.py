@@ -76,6 +76,7 @@ def tiny_frame():
 
 @pytest.mark.parametrize("leaky", [
     "soh",
+    "soh_rated",
     "soh_change_pct",
     "capacity_change_ah",
     "capacity_ah",

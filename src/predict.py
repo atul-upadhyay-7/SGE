@@ -34,6 +34,7 @@ derives or pads anything to cover their absence.
 """
 
 from pathlib import Path
+import os
 import joblib
 import numpy as np
 import pandas as pd
@@ -41,9 +42,16 @@ import pandas as pd
 
 MODEL_DIR = Path("models")
 
-DEFAULT_MODEL = (
-    MODEL_DIR / "soh_xgb_all.joblib"
+# The default model can be overridden via environment variable.
+# The demo service sets PDM_SOH_MODEL=models/soh_xgb_demo.joblib
+# so the live prediction uses a model that never saw the demo cells.
+DEFAULT_MODEL = Path(
+    os.environ.get(
+        "PDM_SOH_MODEL",
+        str(MODEL_DIR / "soh_xgb_all.joblib")
+    )
 )
+
 
 # Populated by load_soh_model. Defined here rather than
 # below it so the caching contract is visible before the
@@ -68,6 +76,61 @@ def default_model_path():
     return DEFAULT_MODEL
 
 
+class PortablePipeline:
+    """Portable pipeline reconstructed from UBJ booster and JSON metadata."""
+
+    def __init__(self, booster, imputer_medians, features):
+        self.booster = booster
+        self.imputer_medians = np.array(imputer_medians, dtype=float)
+        self.features = list(features)
+
+    def predict(self, matrix):
+        import xgboost as xgb
+        if isinstance(matrix, pd.DataFrame):
+            X = matrix[self.features].values.copy()
+        else:
+            X = np.array(matrix, copy=True)
+        nan_mask = np.isnan(X)
+        if np.any(nan_mask):
+            inds = np.where(nan_mask)
+            X[inds] = np.take(self.imputer_medians, inds[1])
+        dmat = xgb.DMatrix(X, feature_names=self.features)
+        return self.booster.predict(dmat)
+
+
+def load_portable_bundle(path):
+    """Load a version-proof bundle from .ubj booster + .json metadata."""
+    import json
+    import xgboost as xgb
+
+    prefix = Path(path)
+    if prefix.suffix in {".ubj", ".json", ".joblib"}:
+        prefix = prefix.with_suffix("")
+
+    ubj_path = prefix.with_suffix(".ubj")
+    json_path = prefix.with_suffix(".json")
+
+    if not (ubj_path.exists() and json_path.exists()):
+        return None
+
+    with open(json_path) as f:
+        meta = json.load(f)
+
+    booster = xgb.Booster()
+    booster.load_model(str(ubj_path))
+    pipeline = PortablePipeline(
+        booster, meta["imputer_medians"], meta["features"]
+    )
+
+    return {
+        "model": pipeline,
+        "features": meta["features"],
+        "target": meta.get("target", "soh"),
+        "trained_on": meta.get("trained_on", []),
+        "library_versions": meta.get("library_versions", {}),
+    }
+
+
 def load_soh_model(path=None):
     """
     Load and cache the SOH model.
@@ -87,9 +150,6 @@ def load_soh_model(path=None):
         else default_model_path()
     )
 
-    # Keyed on the resolved path so a caller asking for a
-    # different model does not silently get the cached one.
-
     cache_key = str(
         model_path.resolve()
         if model_path.exists()
@@ -103,6 +163,14 @@ def load_soh_model(path=None):
 
         return _CACHED_BUNDLE
 
+    # Direct portable load if requested
+    if model_path.suffix in {".ubj", ".json"}:
+        portable = load_portable_bundle(model_path)
+        if portable is not None:
+            _CACHED_BUNDLE = portable
+            _CACHED_PATH = cache_key
+            return portable
+
     if not model_path.exists():
 
         raise SohModelLoadError(
@@ -115,6 +183,13 @@ def load_soh_model(path=None):
         bundle = joblib.load(model_path)
 
     except Exception as error:
+
+        # Attempt fallback to portable format (.ubj + .json)
+        portable = load_portable_bundle(model_path)
+        if portable is not None:
+            _CACHED_BUNDLE = portable
+            _CACHED_PATH = cache_key
+            return portable
 
         raise SohModelLoadError(
             _explain_load_failure(

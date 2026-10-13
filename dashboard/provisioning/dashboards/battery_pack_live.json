@@ -10,10 +10,10 @@
   "schemaVersion": 38,
   "refresh": "5s",
   "time": {
-    "from": "1970-01-01T00:00:00.000Z",
-    "to": "1970-01-01T00:00:00.170Z"
+    "from": "2000-01-01T00:00:00.000Z",
+    "to": "2000-07-01T00:00:00.000Z"
   },
-  "description": "Live 3-cell pack from MQTT. The x axis is the discharge number, which the JSON datasource returns as a timestamp, so discharge N reads as epoch millisecond N and the range is pinned to the first 170 ms (up to 170 discharges). Fault markers in demos are synthetic.",
+  "description": "Live 3-cell pack from MQTT. The x-axis maps discharge index n to real dates (2000-01-01 + n days). Fault markers in demos are synthetic.",
   "panels": [
     {
       "type": "table",

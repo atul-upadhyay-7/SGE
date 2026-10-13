@@ -3,20 +3,18 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .pytest_cache/
-data/raw/*.mat
+*.mat
+BMS Dataset/
+data/raw/
+*.db
+data/*.db
+logs/*.log
 
 # Grafana state, when launched with the repo-local paths from
 # the README (GF_PATHS_DATA=.grafana-data). This holds Grafana's
 # own SQLite databases and plugin cache, which are machine state,
 # not project source.
 .grafana-data/
-
-# Grafana's own internal logging. Verbose, machine-specific and
-# unrelated to the project; the API log (grafana_api.log) is the
-# one worth keeping.
-logs/grafana.log
-logs/grafana_server.log
-data/live_pack.db
 
 artifacts/
 logs/train_*/

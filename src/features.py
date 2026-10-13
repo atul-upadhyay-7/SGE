@@ -33,6 +33,17 @@ FEATURES = [
 
     "resistance_proxy_ohm",
 
+    # Voltage-window features: extracted from the 4.0 → 3.4 V
+    # window that every cell traverses regardless of cutoff.
+    # These work from a partial discharge with no first-cycle
+    # reference, making them the basis for the "predict SOH
+    # from a partial discharge" task.
+    "vw_time_s",
+    "vw_capacity_ah",
+    "vw_voltage_mean",
+    "vw_dqdv_peak_v",
+    "vw_dqdv_peak_height",
+
     # capacity_change_ah and soh_change_pct were both here.
     # They are first differences of capacity_ah and of the SOH
     # target itself, so they are target-derived by
@@ -74,6 +85,7 @@ FEATURES = FEATURES + [
 LEAKY_FEATURES = [
     # the target itself and its algebraic restatements
     "soh",
+    "soh_rated",
     "capacity_fade_pct",
     "soh_change_pct",
 

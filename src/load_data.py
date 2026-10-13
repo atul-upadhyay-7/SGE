@@ -58,29 +58,70 @@ def discover_cells(raw_dir):
     )
 
 
-# Only these cells are used for modelling.
+# ── Cell groups ─────────────────────────────────────────────
 #
-# The repository ships all 34 NASA cells, but the other 30
-# are not usable for State-of-Health work:
+# Constant-current (CC) groups suitable for SOH modelling.
+# Other groups are excluded for specific reasons:
+#   G2  – square-wave load (resistance_proxy_ohm is invalid)
+#   G5  – mixed loads, temperature switches mid-life
+#   G6  – fixed 1A & 4A alternating load, 4°C ambient
+#   G8  – test rig crashed; data is incomplete
 #
-#   - Groups G4/G6/G8/G9 contain mid-life capacity collapse
-#     and recovery (B0042 drops to 0.09 Ah then returns to
-#     1.48 Ah), which corrupts any capacity-derived target.
-#   - Groups G2/G3 barely age within the test window
-#     (B0025 fades 4% over 28 cycles), so they carry no
-#     degradation signal.
-#   - Groups G5/G6/G7 switch ambient temperature partway
-#     through, so a single cell mixes 4 C and 24 C regimes.
-#
-# Group G1 (24 C, 2 A constant current) is the only group
-# with a clean, full, monotonically decaying trajectory:
-# 1.86 Ah down to 1.19-1.43 Ah over 132-168 discharge cycles.
+# Every group here discharges at a fixed current level, so
+# the features (especially resistance_proxy_ohm) are
+# consistent across cycles within a cell.
+GROUPS = {
+    "G1": {
+        "cells": ["B0005", "B0006", "B0007", "B0018"],
+        "current_a": 2.0,
+        "temperature_c": 24,
+        "cutoff_v": [2.7, 2.5, 2.2, 2.5],
+    },
+    "G3": {
+        "cells": ["B0029", "B0030", "B0031", "B0032"],
+        "current_a": 4.0,
+        "temperature_c": 43,
+        "cutoff_v": [2.0, 2.2, 2.5, 2.7],
+    },
+    "G4": {
+        "cells": ["B0033", "B0034", "B0036"],
+        "current_a": 4.0,
+        "temperature_c": 24,
+        "cutoff_v": [2.0, 2.2, 2.7],
+    },
+    "G7": {
+        "cells": ["B0045", "B0046", "B0047", "B0048"],
+        "current_a": 1.0,
+        "temperature_c": 4,
+        "cutoff_v": [2.0, 2.2, 2.5, 2.7],
+    },
+    "G9": {
+        "cells": ["B0053", "B0054", "B0055", "B0056"],
+        "current_a": 2.0,
+        "temperature_c": 4,
+        "cutoff_v": [2.0, 2.2, 2.5, 2.7],
+    },
+}
+
+# Flat list of all cells across all CC groups.
 CELLS = [
-    "B0005",
-    "B0006",
-    "B0007",
-    "B0018"
+    cell
+    for group in GROUPS.values()
+    for cell in group["cells"]
 ]
+
+# Lookup: cell_id → group name
+CELL_TO_GROUP = {
+    cell: group_name
+    for group_name, info in GROUPS.items()
+    for cell in info["cells"]
+}
+
+# Backward-compatible alias for code that only expects G1.
+CELLS_G1 = GROUPS["G1"]["cells"]
+
+# Default retirement threshold for SOH-based EOL.
+RETIREMENT_THRESHOLD_PCT = 80
 
 
 def to_scalar(value):
@@ -100,6 +141,95 @@ def to_1d(value):
 # A cycle needs at least this many valid samples before its
 # statistics describe the cycle rather than measurement noise.
 MIN_CYCLE_SAMPLES = 5
+
+# Rated capacity of the 18650 cells in the NASA dataset.
+# Used to compute soh_rated = capacity_ah / RATED_CAPACITY_AH × 100,
+# which does not require the cell's own first cycle as a reference.
+RATED_CAPACITY_AH = 2.0
+
+# Voltage window shared by all cells. Every discharge crosses
+# this range, regardless of cutoff voltage (2.2–2.7 V across
+# cells). Features extracted from this window describe the
+# cell's state without requiring the full discharge.
+VOLTAGE_WINDOW_HIGH = 4.0
+VOLTAGE_WINDOW_LOW = 3.4
+
+
+def _voltage_window_features(voltage, current, time):
+    """
+    Extract features from the voltage window [HIGH → LOW].
+
+    Returns a dict of window features, or a dict of NaNs if the
+    cycle does not fully traverse the window.
+    """
+
+    nan_result = {
+        "vw_time_s": np.nan,
+        "vw_capacity_ah": np.nan,
+        "vw_voltage_mean": np.nan,
+        "vw_dqdv_peak_v": np.nan,
+        "vw_dqdv_peak_height": np.nan,
+    }
+
+    # Find the first sample at or below HIGH
+    below_high = np.where(voltage <= VOLTAGE_WINDOW_HIGH)[0]
+    if len(below_high) == 0:
+        return nan_result
+
+    # Find the first sample at or below LOW after entering the window
+    start_idx = below_high[0]
+    below_low = np.where(
+        voltage[start_idx:] <= VOLTAGE_WINDOW_LOW
+    )[0]
+
+    if len(below_low) == 0:
+        return nan_result
+
+    end_idx = start_idx + below_low[0]
+
+    if end_idx <= start_idx + 2:
+        return nan_result
+
+    # Slice to the window
+    v_win = voltage[start_idx:end_idx + 1]
+    i_win = current[start_idx:end_idx + 1]
+    t_win = time[start_idx:end_idx + 1]
+
+    window_time = t_win[-1] - t_win[0]
+
+    # Capacity in the window: integrate |current| × dt
+    dt = np.diff(t_win)
+    i_mid = (np.abs(i_win[:-1]) + np.abs(i_win[1:])) / 2
+    window_capacity = float(np.sum(i_mid * dt) / 3600.0)
+
+    window_v_mean = float(v_win.mean())
+
+    # dQ/dV: capacity derivative with respect to voltage.
+    # The peak position and height encode the phase transition
+    # voltage and its sharpness, both of which shift with ageing.
+    dv = np.diff(v_win)
+    dq = i_mid * dt / 3600.0  # Ah per step
+
+    # Avoid division by zero in flat-voltage regions
+    nonzero = np.abs(dv) > 1e-6
+    if nonzero.sum() < 3:
+        peak_v = np.nan
+        peak_height = np.nan
+    else:
+        dqdv = np.abs(dq[nonzero] / dv[nonzero])
+        v_mid = (v_win[:-1] + v_win[1:]) / 2
+        v_mid = v_mid[nonzero]
+        peak_idx = np.argmax(dqdv)
+        peak_v = float(v_mid[peak_idx])
+        peak_height = float(dqdv[peak_idx])
+
+    return {
+        "vw_time_s": float(window_time),
+        "vw_capacity_ah": window_capacity,
+        "vw_voltage_mean": window_v_mean,
+        "vw_dqdv_peak_v": peak_v,
+        "vw_dqdv_peak_height": peak_height,
+    }
 
 
 def build_cycle_features(
@@ -183,7 +313,10 @@ def build_cycle_features(
 
         resistance_proxy = np.nan
 
-    return {
+    # Voltage-window features (partial-discharge features)
+    vw = _voltage_window_features(voltage, current, time)
+
+    row = {
 
         "cell_id": cell_id,
 
@@ -249,6 +382,10 @@ def build_cycle_features(
         "resistance_proxy_ohm":
             resistance_proxy
     }
+
+    row.update(vw)
+
+    return row
 
 
 def parse_battery_file(mat_path):

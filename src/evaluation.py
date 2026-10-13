@@ -20,6 +20,7 @@ from sklearn.ensemble import (
 )
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import (
+    ElasticNet,
     LinearRegression,
     Ridge
 )
@@ -29,6 +30,7 @@ from sklearn.metrics import (
     r2_score
 )
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from xgboost import XGBRegressor
 
@@ -43,6 +45,12 @@ DEFAULT_PARAMS = {
 
     "Ridge": {
         "alpha": 1.0
+    },
+
+    "ElasticNet": {
+        "alpha": 0.1,
+        "l1_ratio": 0.5,
+        "max_iter": 10000
     },
 
     "RandomForest": {
@@ -67,10 +75,17 @@ DEFAULT_PARAMS = {
 
 MODEL_NAMES = list(DEFAULT_PARAMS)
 
+# Models that benefit from feature scaling: linear family.
+_SCALED_MODELS = {"Linear", "Ridge", "ElasticNet"}
+
 
 def build_model(name, **overrides):
     """
     Return an unfitted pipeline for a named estimator.
+
+    Linear models (Linear, Ridge, ElasticNet) get a
+    StandardScaler after the imputer so that regularisation
+    and coefficient magnitudes are meaningful.
 
     overrides are merged over the defaults for that name.
     """
@@ -92,20 +107,27 @@ def build_model(name, **overrides):
 
         "Linear": LinearRegression,
         "Ridge": Ridge,
+        "ElasticNet": ElasticNet,
         "RandomForest": RandomForestRegressor,
         "XGBoost": XGBRegressor
 
     }[name]
 
-    return Pipeline([
+    steps = [
         (
             "imputer",
             SimpleImputer(
                 strategy="median"
             )
         ),
-        ("model", estimator_class(**params))
-    ])
+    ]
+
+    if name in _SCALED_MODELS:
+        steps.append(("scaler", StandardScaler()))
+
+    steps.append(("model", estimator_class(**params)))
+
+    return Pipeline(steps)
 
 
 def score(y_true, y_pred):
@@ -353,3 +375,165 @@ def loco_evaluate(
             })
 
     return rows, predictions, baselines
+
+
+def coulomb_baseline(df, target="soh"):
+    """
+    Physics-only SOH estimate per cell, no ML needed.
+
+    SOH_coulomb = (duration × |current_mean|) of this cycle
+                ÷ (duration × |current_mean|) of the cell's
+                  first discharge × 100.
+
+    For constant-current discharges the numerator is
+    proportional to the extracted charge, so this is
+    essentially coulomb counting against the first cycle.
+
+    Returns a list of per-cell result dicts and a list of
+    per-cell DataFrames with the 'coulomb_soh' column.
+    """
+
+    rows = []
+    frames = []
+
+    for cell_id, group in df.groupby("cell_id"):
+
+        group = group.sort_values("cycle").copy()
+
+        q = (
+            group["discharge_duration_s"].abs()
+            * group["current_mean"].abs()
+        )
+
+        q_first = q.iloc[0]
+
+        if q_first == 0 or not np.isfinite(q_first):
+            continue
+
+        group["coulomb_soh"] = q / q_first * 100.0
+
+        mae, rmse, r2 = score(
+            group[target],
+            group["coulomb_soh"]
+        )
+
+        rows.append({
+            "model": "Coulomb",
+            "test_cell": cell_id,
+            "MAE": mae,
+            "RMSE": rmse,
+            "R2": r2
+        })
+
+        frames.append(group)
+
+    return rows, frames
+
+
+def split_by_group(df, test_group, group_col="group"):
+    """
+    Split rows into everything outside test_group and
+    everything inside it.
+    """
+
+    mask = df[group_col] == test_group
+
+    return df[~mask].copy(), df[mask].copy()
+
+
+def logo_evaluate(
+    df,
+    target,
+    features,
+    model_name,
+    prediction_column,
+    group_col="group",
+    leaky_columns=(),
+    with_baselines=True
+):
+    """
+    Leave-one-group-out evaluation for one model.
+
+    Same interface as loco_evaluate but splits on group
+    instead of cell_id, which is the correct protocol when
+    cells within a group share operating conditions.
+
+    Returns (rows, predictions, baselines) where rows is a
+    list of per-group metric dicts with per-cell detail.
+    """
+
+    assert_no_leakage(
+        features,
+        leaky_columns
+    )
+
+    rows = []
+    predictions = []
+    baselines = []
+
+    for test_group in sorted(
+        df[group_col].unique()
+    ):
+
+        train_df, test_df = split_by_group(
+            df,
+            test_group,
+            group_col
+        )
+
+        model = build_model(
+            model_name
+        )
+
+        model.fit(
+            train_df[features],
+            train_df[target]
+        )
+
+        prediction = model.predict(
+            test_df[features]
+        )
+
+        mae, rmse, r2 = score(
+            test_df[target],
+            prediction
+        )
+
+        rows.append({
+            "model": model_name,
+            "test_group": test_group,
+            "MAE": mae,
+            "RMSE": rmse,
+            "R2": r2,
+            "n_cells": test_df["cell_id"].nunique(),
+            "n_cycles": len(test_df),
+        })
+
+        # Per-cell detail within the held-out group
+        frame = test_df.copy()
+        frame[prediction_column] = prediction
+        predictions.append(frame)
+
+        if not with_baselines:
+            continue
+
+        for name, (
+            baseline_mae,
+            value
+        ) in null_baselines(
+            df,
+            target,
+            train_df,
+            test_df
+        ).items():
+
+            baselines.append({
+                "test_group": test_group,
+                "baseline": name,
+                "MAE": baseline_mae,
+                "value": value
+            })
+
+    return rows, predictions, baselines
+
+

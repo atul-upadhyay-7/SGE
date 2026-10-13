@@ -87,6 +87,14 @@ def create_targets(df):
         ["cell_id", "cycle"]
     ).reset_index(drop=True)
 
+    # discharge_index: 1-based sequential count per cell.
+    # This is the unit RUL is measured in. The raw 'cycle'
+    # column may skip numbers (charge cycles are not rows),
+    # so discharge_index is the clean counter.
+    df["discharge_index"] = (
+        df.groupby("cell_id").cumcount() + 1
+    )
+
     # ------------------------------------------------
     # 1. Reference capacity
     # ------------------------------------------------
@@ -117,6 +125,23 @@ def create_targets(df):
 
     df["capacity_fade_pct"] = (
         100 - df["soh"]
+    )
+
+    # ------------------------------------------------
+    # 3b. SOH against rated capacity
+    # ------------------------------------------------
+    # A field battery has no "first cycle" to compare with.
+    # soh_rated uses the fixed rated capacity (2.0 Ah for
+    # these 18650 cells) as the denominator instead.
+    try:
+        from load_data import RATED_CAPACITY_AH
+    except ImportError:
+        from .load_data import RATED_CAPACITY_AH
+
+    df["soh_rated"] = (
+        df["capacity_ah"]
+        / RATED_CAPACITY_AH
+        * 100
     )
 
     # ------------------------------------------------
@@ -153,19 +178,19 @@ def create_targets(df):
     # intercept. It therefore cannot transfer across cells,
     # and leave-one-cell-out validation collapses.
 
-    final_cycle = (
+    final_discharge = (
         df.groupby("cell_id")
-        ["cycle"]
+        ["discharge_index"]
         .transform("max")
     )
 
     df["eol_cycle_observed"] = (
-        final_cycle
+        final_discharge
     )
 
     df["rul_cycles"] = (
         df["eol_cycle_observed"]
-        - df["cycle"]
+        - df["discharge_index"]
     )
 
     # ------------------------------------------------
@@ -175,15 +200,16 @@ def create_targets(df):
     # End of life is defined against capacity rather than
     # against the end of the test window, which makes the
     # target meaningful for a cell that is still healthy.
-    eol_cycle = (
+    # RUL is in discharges (discharge_index), not raw cycles.
+    eol_discharge = (
         df[df["soh"] < EOL_SOH_THRESHOLD]
         .groupby("cell_id")
-        ["cycle"]
+        ["discharge_index"]
         .min()
     )
 
     df["eol_cycle_threshold"] = (
-        df["cell_id"].map(eol_cycle)
+        df["cell_id"].map(eol_discharge)
     )
 
     # A cell that never falls below the threshold in the
@@ -196,21 +222,21 @@ def create_targets(df):
     df["is_pre_eol"] = (
         has_eol
         & (
-            df["cycle"]
+            df["discharge_index"]
             <= df["eol_cycle_threshold"]
         )
     )
 
     df["rul_cycles_80"] = (
         df["eol_cycle_threshold"]
-        - df["cycle"]
+        - df["discharge_index"]
     ).where(df["is_pre_eol"])
 
     # ------------------------------------------------
     # 8. Degradation rate
     # ------------------------------------------------
 
-    # The fade rate in %SOH per cycle. This is the physical
+    # The fade rate in %SOH per discharge. This is the physical
     # quantity that governs RUL, via
     #     remaining life = (soh - threshold) / rate
     # It is reported per cell and is directly interpretable
@@ -228,7 +254,7 @@ def create_targets(df):
             life = group[group["is_pre_eol"]]
 
         full_slopes[cell_id] = ols_slope(
-            life["cycle"],
+            life["discharge_index"],
             life["soh"]
         )
 
@@ -237,7 +263,7 @@ def create_targets(df):
         )
 
         early_slopes[cell_id] = ols_slope(
-            early["cycle"],
+            early["discharge_index"],
             early["soh"]
         )
 

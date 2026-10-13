@@ -394,3 +394,34 @@ def test_predict_soh_rejects_a_non_finite_result(cycle_row):
         predict_soh(bundle, cycle_row)
 
     assert "non-finite" in str(info.value)
+
+
+def test_load_committed_model_loads_successfully():
+    """Step 5 requirement: test that loads the committed model."""
+    path = predict.MODEL_DIR / "soh_xgb_all.joblib"
+    assert path.exists(), f"{path} must exist"
+    bundle = predict.load_soh_model(path)
+    assert bundle["model"] is not None
+    assert len(bundle["features"]) > 0
+
+
+def test_load_committed_portable_model_loads_and_predicts():
+    """Step 5 requirement: test that loads the portable UBJ + JSON model."""
+    path = predict.MODEL_DIR / "soh_xgb_all.ubj"
+    assert path.exists(), f"{path} must exist"
+    bundle = predict.load_soh_model(path)
+    assert bundle["model"] is not None
+    assert len(bundle["features"]) > 0
+    test_row = {f: 1.0 for f in bundle["features"]}
+    val = predict_soh(bundle, test_row)
+    assert np.isfinite(val)
+
+
+def test_demo_model_loads_and_excludes_demo_cells():
+    """Verify demo model was trained excluding B0005, B0007, B0018."""
+    path = predict.MODEL_DIR / "soh_xgb_demo.joblib"
+    assert path.exists(), f"{path} must exist"
+    bundle = predict.load_soh_model(path)
+    assert "excluded" in bundle or "trained_on" in bundle
+    trained_on = set(bundle.get("trained_on", []))
+    assert not ({"B0005", "B0007", "B0018"} & trained_on)

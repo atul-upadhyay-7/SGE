@@ -85,6 +85,11 @@ ACTIVE_FEATURES = [
     "voltage_end",
     "voltage_drop",
     "resistance_proxy_ohm",
+    "vw_time_s",
+    "vw_capacity_ah",
+    "vw_voltage_mean",
+    "vw_dqdv_peak_v",
+    "vw_dqdv_peak_height",
 ]
 
 
@@ -164,6 +169,11 @@ def cycle_row():
         "capacity_ah": 1.86,
         "capacity_change_ah": np.nan,
         "soh_change_pct": np.nan,
+        "vw_time_s": 1200.0,
+        "vw_capacity_ah": 0.65,
+        "vw_voltage_mean": 3.72,
+        "vw_dqdv_peak_v": 3.65,
+        "vw_dqdv_peak_height": 0.012,
     }
 
     return row

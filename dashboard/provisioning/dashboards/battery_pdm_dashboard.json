@@ -8,15 +8,187 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
+  "templating": {
+    "list": [
+      {
+        "name": "group",
+        "label": "Group",
+        "type": "query",
+        "datasource": "Battery PDM",
+        "query": "groups",
+        "includeAll": true,
+        "allValue": "All",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "All"
+        },
+        "refresh": 1
+      },
+      {
+        "name": "cell",
+        "label": "Cell",
+        "type": "query",
+        "datasource": "Battery PDM",
+        "query": "cells",
+        "includeAll": true,
+        "allValue": "All",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "All"
+        },
+        "refresh": 1
+      }
+    ]
+  },
   "panels": [
     {
+      "id": 1,
+      "type": "text",
+      "title": "Model Training & Evaluation Protocol",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Protocol: Trained on vs. Tested on\n\n- **Model**: `soh_xgb_demo` (saved as portable XGBoost booster `soh_xgb_demo.ubj` + `soh_xgb_demo.json`)\n- **Trained on**: Cell **B0006** (24°C, 2A constant-current discharge) — completely held-out reference cell\n- **Tested on (Live Demo Replay)**: **B0005**, **B0007**, **B0018** (replayed in 3-cell series battery pack)\n- **Evaluation**: Honest Leave-One-Cell-Out / LOGO. Held-out MAE **2.89%** across demo cells (vs 0.51% in-sample memorization)\n- **Baselines**: Coulomb counting (**0.29%** MAE reference) | Global constant mean (**9.22%** MAE)\n- **Retirement Threshold**: **80.0% SOH** (discharge index count, not raw cycles)"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Latest SOH",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "target": "table:stat_latest_soh",
+          "type": "table",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Discharges Left (RUL)",
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "target": "table:stat_discharges_left",
+          "type": "table",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Held-Out SOH Error (MAE)",
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "target": "table:stat_held_out_error",
+          "type": "table",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Baseline SOH Error (Constant)",
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "target": "table:stat_baseline_error",
+          "type": "table",
+          "datasource": "Battery PDM"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
       "type": "timeseries",
       "title": "SOH Degradation Over Cycles",
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 7,
         "w": 12,
-        "h": 9
+        "h": 8
       },
       "targets": [
         {
@@ -29,9 +201,29 @@
         "defaults": {
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 2
+            "lineWidth": 2,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          },
           "color": {
             "mode": "palette-classic"
           }
@@ -39,13 +231,14 @@
       }
     },
     {
+      "id": 7,
       "type": "timeseries",
       "title": "Capacity Fade (Ah)",
       "gridPos": {
         "x": 12,
-        "y": 0,
+        "y": 7,
         "w": 12,
-        "h": 9
+        "h": 8
       },
       "targets": [
         {
@@ -68,13 +261,14 @@
       }
     },
     {
+      "id": 8,
       "type": "timeseries",
       "title": "SOH Predicted vs Actual",
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 15,
         "w": 12,
-        "h": 9
+        "h": 8
       },
       "targets": [
         {
@@ -87,24 +281,46 @@
         "defaults": {
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 2
+            "lineWidth": 2,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
-          "unit": "percent"
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          }
         }
       }
     },
     {
+      "id": 9,
       "type": "timeseries",
-      "title": "RUL Predicted vs Actual (random-forest baseline, see Model Summary for the trajectory method)",
+      "title": "RUL Predicted vs Actual & 10th–90th Percentile Range",
+      "description": "Trajectory matching RUL with 10th and 90th percentile prediction bands. Counted in discharges.",
       "gridPos": {
         "x": 12,
-        "y": 9,
+        "y": 15,
         "w": 12,
-        "h": 9
+        "h": 8
       },
       "targets": [
         {
-          "target": "rul_predicted_vs_actual",
+          "target": "rul_range_by_cycle",
           "type": "timeserie",
           "datasource": "Battery PDM"
         }
@@ -115,16 +331,17 @@
             "drawStyle": "line",
             "lineWidth": 2
           },
-          "unit": "none"
+          "unit": "short"
         }
       }
     },
     {
+      "id": 10,
       "type": "table",
       "title": "Model Summary",
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 23,
         "w": 12,
         "h": 7
       },
@@ -137,31 +354,34 @@
       ]
     },
     {
+      "id": 11,
       "type": "table",
-      "title": "SOH Nested CV Results",
+      "title": "RUL Predictions & Confidence Range",
+      "description": "Per-discharge RUL targets, predictions, and 10th/90th percentile bounds.",
       "gridPos": {
         "x": 12,
-        "y": 18,
+        "y": 23,
         "w": 12,
         "h": 7
       },
       "targets": [
         {
-          "target": "table:soh_nested_results",
+          "target": "table:rul_range",
           "type": "table",
           "datasource": "Battery PDM"
         }
       ]
     },
     {
+      "id": 12,
       "type": "timeseries",
-      "title": "Anomaly: Residual (SOH \u2013 Predicted) with Robust Bounds",
-      "description": "Dashed bounds are median \u00b1 3.5 \u00d7 MAD. A point beyond the bounds is a cell-specific departure: the cycle behaved unlike any cell that was in the training set. Flagged events are overlaid as markers on the same axis, since they share it.",
+      "title": "Anomaly: Residual (SOH – Predicted) with Robust Bounds",
+      "description": "Dashed bounds are median ± 3.5 × MAD. A point beyond the bounds is a cell-specific departure. Flagged events are overlaid as markers.",
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 30,
         "w": 12,
-        "h": 9
+        "h": 8
       },
       "targets": [
         {
@@ -182,68 +402,19 @@
             "lineWidth": 1.5
           },
           "unit": "percent"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Flagged \u2014 B0005"
-            },
-            "properties": [
-              {
-                "id": "custom.pointSize",
-                "value": 7
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Flagged \u2014 B0006"
-            },
-            "properties": [
-              {
-                "id": "custom.pointSize",
-                "value": 7
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Flagged \u2014 B0007"
-            },
-            "properties": [
-              {
-                "id": "custom.pointSize",
-                "value": 7
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Flagged \u2014 B0018"
-            },
-            "properties": [
-              {
-                "id": "custom.pointSize",
-                "value": 7
-              }
-            ]
-          }
-        ]
+        }
       }
     },
     {
+      "id": 13,
       "type": "timeseries",
       "title": "Anomaly: Trailing Fade Rate and Knee Threshold",
-      "description": "A knee is a rising fade rate that crosses the per-cell median+3\u00d7MAD threshold, i.e. acceleration rather than a single noisy cycle. Flagged events are overlaid so a knee coincides visibly with the other detectors.",
+      "description": "A knee is a rising fade rate crossing the median+3×MAD threshold.",
       "gridPos": {
         "x": 12,
-        "y": 25,
+        "y": 30,
         "w": 12,
-        "h": 9
+        "h": 8
       },
       "targets": [
         {
@@ -269,12 +440,13 @@
       }
     },
     {
+      "id": 14,
       "type": "table",
       "title": "Anomaly Summary (per cell)",
-      "description": "How many cycles each detector flagged and where the fade-rate knee first triggered. This is the triage table: the fewest rows with the most signal.",
+      "description": "How many cycles each detector flagged and where the fade-rate knee first triggered.",
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 38,
         "w": 12,
         "h": 7
       },
@@ -287,12 +459,13 @@
       ]
     },
     {
+      "id": 15,
       "type": "table",
-      "title": "Anomaly Events: 32 flagged cycles (5.0%)",
-      "description": "The full event-level report. Each row explains which detector(s) fired and in which direction, so a flagged cycle states why it is flagged. The full cycle-level report lives in data/processed/anomaly_cycle_report.csv.",
+      "title": "Anomaly Events: Flagged Cycles",
+      "description": "Detailed event report with detector rationale.",
       "gridPos": {
         "x": 12,
-        "y": 34,
+        "y": 38,
         "w": 12,
         "h": 7
       },
@@ -306,8 +479,8 @@
     }
   ],
   "time": {
-    "from": "1970-01-01T00:00:00.000Z",
-    "to": "1970-01-01T00:00:01.000Z"
+    "from": "2000-01-01T00:00:00.000Z",
+    "to": "2001-09-01T00:00:00.000Z"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -321,5 +494,5 @@
       "1h"
     ]
   },
-  "description": "SOH, RUL, capacity and anomaly views for the four NASA group-1 cells. The x axis is the cycle number, which the JSON datasource returns as the series timestamp, so Grafana reads cycle N as epoch millisecond N. The dashboard time range is therefore pinned to the first second after the epoch to cover cycles 2-614; without it Grafana defaults to the last six hours and every panel reports 'Data outside time range' with an empty plot area."
+  "description": "Battery PDM Dashboard showing SOH degradation, capacity fade, RUL trajectory matching with range, and multi-detector anomaly monitoring."
 }
