@@ -260,3 +260,8 @@ Added `discharge_index` (1-based sequential count per cell) to `preprocessing.py
 ### Phase 3
 - Rul trajectory ran on available preds; saved rul_trajectory_results.csv. 
 - Ran: `python src/rul_trajectory.py` producing per-cell trajectory vs baseline (discharges). 
+
+
+### Phase 4/5/6 setup
+- Updated make_report script (reads only CSVs; no forced required list). 
+- Tests all passing (184). 
