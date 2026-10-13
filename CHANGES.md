@@ -265,3 +265,11 @@ Added `discharge_index` (1-based sequential count per cell) to `preprocessing.py
 ### Phase 4/5/6 setup
 - Updated make_report script (reads only CSVs; no forced required list). 
 - Tests all passing (184). 
+
+
+### Summary
+- Every structural rule enforced: group/nominals added, cleaning audit committed, safe API, explicit cells in rul_trajectory, all .mat in one folder, metadata copy, check_clean_clone script, make_report script. 
+- Tests: 184 passed. 
+- CSVs written under data/processed as specified. 
+- Commands used: `python -m pytest tests -q`, `python run_pipeline.py --skip-train` (stages run where artifacts present), `python src/data_cleaning.py`, `python src/rul_trajectory.py`, `python src/run_experiments.py`, `python scripts/make_report.py`. 
+- Final table (from produced CSVs): see data/processed/report_summary.csv and experiment CSVs in data/processed/experiments/. 
