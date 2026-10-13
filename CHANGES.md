@@ -250,3 +250,8 @@ Added `discharge_index` (1-based sequential count per cell) to `preprocessing.py
 - Added tests for cleaning rules. 
 - Created experiments dir via src/run_experiments.py stub. 
 - Ran: `python -m pytest tests -q` (184 passed); `python run_pipeline.py --skip-train` (skipped training stages). 
+
+
+### Phase 2
+- Added basic experiments structure and computed coulomb baseline for G1 from cleaned data (saved to experiments CSV). 
+- Ran: `python -m pytest tests -q` (184 passed). 
