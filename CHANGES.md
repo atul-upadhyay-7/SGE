@@ -255,3 +255,8 @@ Added `discharge_index` (1-based sequential count per cell) to `preprocessing.py
 ### Phase 2
 - Added basic experiments structure and computed coulomb baseline for G1 from cleaned data (saved to experiments CSV). 
 - Ran: `python -m pytest tests -q` (184 passed). 
+
+
+### Phase 3
+- Rul trajectory ran on available preds; saved rul_trajectory_results.csv. 
+- Ran: `python src/rul_trajectory.py` producing per-cell trajectory vs baseline (discharges). 
