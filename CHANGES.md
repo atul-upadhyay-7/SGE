@@ -243,3 +243,10 @@ Added `discharge_index` (1-based sequential count per cell) to `preprocessing.py
 - download_dataset.sh puts all .mat files in one folder (no forced copy of 4). 
 - Added data/metadata/metadata.csv copy; added scripts/check_clean_clone.sh and scripts/make_report.py. 
 - Ran: `python -m pytest tests -q` (all pass), `python run_pipeline.py --skip-train` attempted (some downstream stages depend on full training artifacts; non-blocking for stated fixes). 
+
+
+### Phase 1
+- Added src/data_cleaning.py producing cell_audit.csv and cleaned dataset; identified surviving cells (G1 full, G3 partial discharges, B0053 etc per audit). 
+- Added tests for cleaning rules. 
+- Created experiments dir via src/run_experiments.py stub. 
+- Ran: `python -m pytest tests -q` (184 passed); `python run_pipeline.py --skip-train` (skipped training stages). 
