@@ -145,21 +145,38 @@ def search():
     conn = get_db()
     try:
         if target == "groups":
-            groups = [
-                r[0] for r in conn.execute(
-                    "SELECT DISTINCT [group] FROM nasa_ml_dataset WHERE [group] IS NOT NULL ORDER BY [group]"
-                ).fetchall()
-            ]
-            return jsonify(groups)
+            try:
+                cols = [r[1] for r in conn.execute("PRAGMA table_info([nasa_ml_dataset])").fetchall()]
+                if "group" in cols:
+                    groups = [
+                        r[0] for r in conn.execute(
+                            "SELECT DISTINCT [group] FROM nasa_ml_dataset WHERE [group] IS NOT NULL ORDER BY [group]"
+                        ).fetchall()
+                    ]
+                    return jsonify(groups)
+            except Exception:
+                pass
+            return jsonify([])
         elif target == "cells" or target.startswith("cells"):
             if ":" in target:
                 grp = target.split(":", 1)[1]
-                cells = [
-                    r[0] for r in conn.execute(
-                        "SELECT DISTINCT cell_id FROM nasa_ml_dataset WHERE [group] = ? ORDER BY cell_id",
-                        (grp,)
-                    ).fetchall()
-                ]
+                try:
+                    cols = [r[1] for r in conn.execute("PRAGMA table_info([nasa_ml_dataset])").fetchall()]
+                    if "group" in cols:
+                        cells = [
+                            r[0] for r in conn.execute(
+                                "SELECT DISTINCT cell_id FROM nasa_ml_dataset WHERE [group] = ? ORDER BY cell_id",
+                                (grp,)
+                            ).fetchall()
+                        ]
+                    else:
+                        cells = [
+                            r[0] for r in conn.execute(
+                                "SELECT DISTINCT cell_id FROM nasa_ml_dataset WHERE cell_id IS NOT NULL ORDER BY cell_id"
+                            ).fetchall()
+                        ]
+                except Exception:
+                    cells = []
             else:
                 cells = [
                     r[0] for r in conn.execute(

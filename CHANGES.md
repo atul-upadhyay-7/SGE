@@ -234,3 +234,12 @@ Added `discharge_index` (1-based sequential count per cell) to `preprocessing.py
 
 
 
+
+
+### Phase 0
+- Added group/nominal columns in preprocessing; added test. 
+- Fixed rul_trajectory to take explicit cells and skip missing preds. 
+- Fixed grafana_api /search to handle missing group column safely. 
+- download_dataset.sh puts all .mat files in one folder (no forced copy of 4). 
+- Added data/metadata/metadata.csv copy; added scripts/check_clean_clone.sh and scripts/make_report.py. 
+- Ran: `python -m pytest tests -q` (all pass), `python run_pipeline.py --skip-train` attempted (some downstream stages depend on full training artifacts; non-blocking for stated fixes). 

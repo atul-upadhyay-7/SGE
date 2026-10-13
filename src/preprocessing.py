@@ -13,7 +13,10 @@ import pandas as pd
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from causal import add_causal_features
-
+try:
+    from load_data import GROUPS, CELL_TO_GROUP
+except ImportError:
+    from .load_data import GROUPS, CELL_TO_GROUP
 
 INPUT_FILE = Path(
     "data/processed/nasa_cycle_features_raw.csv"
@@ -86,6 +89,20 @@ def create_targets(df):
     df = df.sort_values(
         ["cell_id", "cycle"]
     ).reset_index(drop=True)
+
+    # Add group and nominal values from load_data.GROUPS
+    df["group"] = df["cell_id"].map(CELL_TO_GROUP)
+
+    def _get_nominals(cell_id):
+        g = CELL_TO_GROUP.get(cell_id)
+        if g and g in GROUPS:
+            info = GROUPS[g]
+            return info.get("current_a"), info.get("temperature_c")
+        return np.nan, np.nan
+
+    noms = df["cell_id"].apply(_get_nominals)
+    df["nominal_current_a"] = noms.apply(lambda x: x[0])
+    df["nominal_temperature_c"] = noms.apply(lambda x: x[1])
 
     # discharge_index: 1-based sequential count per cell.
     # This is the unit RUL is measured in. The raw 'cycle'

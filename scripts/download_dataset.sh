@@ -5,13 +5,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 TARGET_DIR="$ROOT_DIR/BMS Dataset/Battery_DataSet/Battery_DataSet"
-RAW_DIR="$ROOT_DIR/data/raw"
 CHECKSUMS_FILE="$SCRIPT_DIR/checksums.sha256"
 URL="https://phm-datasets.s3.amazonaws.com/NASA/5.+Battery+Data+Set.zip"
 TMP_ZIP="$ROOT_DIR/data/5_Battery_Data_Set.zip"
 
 echo "=== NASA Battery Dataset Downloader & Verifier ==="
-mkdir -p "$TARGET_DIR" "$RAW_DIR"
+mkdir -p "$TARGET_DIR"
 
 if [ -f "$TARGET_DIR/B0005.mat" ] && [ -f "$TARGET_DIR/B0006.mat" ] && [ -f "$TARGET_DIR/B0007.mat" ] && [ -f "$TARGET_DIR/B0018.mat" ]; then
     echo "Files already present in $TARGET_DIR. Verifying checksums..."
@@ -24,13 +23,6 @@ else
     find "$ROOT_DIR/data/tmp_extracted" -name "*.mat" -exec cp {} "$TARGET_DIR/" \;
     rm -rf "$ROOT_DIR/data/tmp_extracted" "$TMP_ZIP"
 fi
-
-# Ensure data/raw has the 4 core G1 files for legacy compatibility
-for cell in B0005 B0006 B0007 B0018; do
-    if [ -f "$TARGET_DIR/$cell.mat" ] && [ ! -f "$RAW_DIR/$cell.mat" ]; then
-        cp "$TARGET_DIR/$cell.mat" "$RAW_DIR/$cell.mat"
-    fi
-done
 
 echo "Verifying SHA256 checksums..."
 cd "$TARGET_DIR"

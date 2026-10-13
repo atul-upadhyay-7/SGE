@@ -148,7 +148,7 @@ class TrajectoryRul:
         return cls(d["curves"], d["threshold"])
 
 
-def evaluate_loco(df, preds, threshold=THRESHOLD, start=10):
+def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
     """
     Leave-one-cell-out. df: ML dataset with actual soh. preds:
     {cell: predicted SOH array} from the LOCO SOH model. Returns a
@@ -156,7 +156,7 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10):
     (median reference lifetime minus current discharge).
     """
 
-    cells = sorted(df["cell_id"].unique())
+    cells = sorted(cells) if cells is not None else sorted(df["cell_id"].unique())
     out = []
 
     for t in cells:
@@ -175,6 +175,8 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10):
             continue
 
         eol = int(np.argmax(act <= threshold))
+        if t not in preds:
+            continue
         pred = np.asarray(preds[t], dtype=float)
         lifetimes = [r["eol"] for r in est.refs.values()]
 
@@ -219,23 +221,30 @@ def main():
 
     for c in sorted(df["cell_id"].unique()):
 
-        p = pd.read_csv(proc / f"soh_predictions_{c}.csv")
+        pfile = proc / f"soh_predictions_{c}.csv"
+        if not pfile.exists():
+            continue
+        p = pd.read_csv(pfile)
         preds[c] = (
             p.sort_values("cycle")["predicted_soh"].to_numpy()
         )
 
-    res = evaluate_loco(df, preds)
+    cells = sorted(df["cell_id"].unique())
+    res = evaluate_loco(df, preds, cells=cells)
     res.to_csv(proc / "rul_trajectory_results.csv", index=False)
 
-    print(res.to_string(index=False))
-    print(
-        "\nMean MAE  trajectory: "
-        f"{res['trajectory_mae'].mean():.1f}  |  fleet-lifetime "
-        f"baseline: {res['fleet_lifetime_baseline_mae'].mean():.1f}"
-        " discharges"
-    )
+    if not res.empty:
+        print(res.to_string(index=False))
+        print(
+            "\nMean MAE  trajectory: "
+            f"{res['trajectory_mae'].mean():.1f}  |  fleet-lifetime "
+            f"baseline: {res['fleet_lifetime_baseline_mae'].mean():.1f}"
+            " discharges"
+        )
+    else:
+        print("No results produced")
 
-    TrajectoryRul.from_dataset(df).save(
+    TrajectoryRul.from_dataset(df, cells=cells).save(
         root / "models" / "rul_reference_curves.json"
     )
     print("Saved models/rul_reference_curves.json")
