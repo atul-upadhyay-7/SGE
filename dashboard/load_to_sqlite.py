@@ -23,12 +23,31 @@ MERGED_VIEWS = {
 
 CELLS = ["B0005", "B0006", "B0007", "B0018"]
 
+# The audit's keep=True list is the single source of truth for which
+# cells may appear anywhere downstream. Every CSV with a cell_id
+# column is filtered to these cells before it reaches the database,
+# so an excluded cell can never be surfaced by the dashboard.
+AUDIT_CSV = os.path.join(DATA, "cell_audit.csv")
+
+
+def kept_cells():
+    if not os.path.exists(AUDIT_CSV):
+        return None
+    audit = pd.read_csv(AUDIT_CSV)
+    if "keep" not in audit.columns:
+        return None
+    return sorted(audit.loc[audit["keep"].astype(bool), "cell_id"].tolist())
+
 
 def main():
     if os.path.exists(DB_PATH):
         os.remove(DB_PATH)
 
     conn = sqlite3.connect(DB_PATH)
+
+    keep = kept_cells()
+    if keep is not None:
+        print(f"  audit keep list: {keep}")
 
     csv_files = sorted(f for f in os.listdir(DATA) if f.endswith(".csv"))
 
@@ -37,9 +56,19 @@ def main():
         path = os.path.join(DATA, csv_file)
 
         df = pd.read_csv(path)
+
+        dropped = 0
+        if keep is not None and "cell_id" in df.columns:
+            before = len(df)
+            df = df[df["cell_id"].isin(keep)].reset_index(drop=True)
+            dropped = before - len(df)
+
         df.to_sql(table_name, conn, if_exists="replace", index=False)
 
-        print(f"  {table_name:40s}  {len(df):>6} rows  {len(df.columns):>3} cols")
+        note = f"  (dropped {dropped} non-audited rows)" if dropped else ""
+        print(
+            f"  {table_name:40s}  {len(df):>6} rows  {len(df.columns):>3} cols{note}"
+        )
 
     loaded = {
         row[0]

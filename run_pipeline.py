@@ -46,16 +46,19 @@ ROOT = Path(__file__).resolve().parent
 STAGES = [
     ("load_data", [sys.executable, "src/load_data.py"]),
     ("preprocessing", [sys.executable, "src/preprocessing.py"]),
+    ("data_cleaning", [sys.executable, "src/data_cleaning.py"]),
     ("data_quality", [sys.executable, "src/data_quality.py"]),
     ("train_soh", [sys.executable, "src/train_soh.py"]),
     ("train_rul", [sys.executable, "src/train_rul.py"]),
     ("rul_trajectory", [sys.executable, "src/rul_trajectory.py"]),
+    ("run_experiments", [sys.executable, "src/run_experiments.py"]),
     ("pack_evaluate", [sys.executable, "src/pack/evaluate.py"]),
     ("anomaly", [sys.executable, "src/anomaly.py"]),
     (
         "benchmark_latency",
         [sys.executable, "src/benchmark_latency.py"],
     ),
+    ("make_report", [sys.executable, "scripts/make_report.py"]),
     (
         "load_to_sqlite",
         [sys.executable, "dashboard/load_to_sqlite.py"],

@@ -63,7 +63,7 @@ from features import (
 
 
 DATA_FILE = Path(
-    "data/processed/nasa_ml_dataset.csv"
+    "data/processed/nasa_ml_dataset_clean.csv"
 )
 
 MODEL_DIR = Path("models")

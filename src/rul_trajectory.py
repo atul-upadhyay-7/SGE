@@ -215,7 +215,7 @@ def main():
     root = Path(__file__).resolve().parent.parent
     proc = root / "data" / "processed"
 
-    df = pd.read_csv(proc / "nasa_ml_dataset.csv")
+    df = pd.read_csv(proc / "nasa_ml_dataset_clean.csv")
 
     preds = {}
 

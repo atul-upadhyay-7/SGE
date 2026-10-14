@@ -20,57 +20,94 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 
 ## Key Results
 
+Numbers in this section are produced by committed scripts and saved to CSVs under `data/processed/`. See `scripts/make_report.py` and the experiment outputs.
+
 ### SOH Prediction (State of Health)
 
-| Metric | Value |
-|--------|-------|
-| Model | XGBoost (nested hyperparameter search) |
-| Validation | Leave-one-cell-out cross-validation (LOCO) |
-| **Mean MAE (nested search)** | **2.59%** |
-| Mean MAE (fixed hyperparameters) | 2.61% |
-| **Coulomb formula baseline** | **0.29%** |
-| Constant global mean baseline | 9.22% | |
+<!-- make_report:results -->
+#### State of Health (SOH)
 
-Numbers in this document are produced by committed scripts and saved to CSVs under `data/processed/`. See `scripts/make_report.py` and the experiment outputs.
+| Method | Validation | Mean MAE (%) | Mean R² |
+|---|---|---|---|
+| Coulomb formula | leave-one-cell-out (G1) | 0.29 | 0.999 |
+| ElasticNet (default) | leave-one-cell-out (G1) | 1.89 | 0.942 |
+| Ridge (default) | leave-one-cell-out (G1) | 2.82 | 0.899 |
+| RandomForest (default) | leave-one-cell-out (G1) | 2.42 | 0.901 |
+| XGBoost (fixed params) | leave-one-cell-out (G1) | 2.61 | 0.897 |
+| XGBoost (nested tuning) | nested leave-one-cell-out (G1) | 2.59 | 0.899 |
+| Constant global mean | leave-one-cell-out (G1) | 9.22 | — |
 
-**Per-cell breakdown (nested, leave-one-cell-out MAE %):**
+#### Per-cell SOH error (XGBoost, nested)
 
-| Cell | Nested | Fixed |
-|------|--------|-------|
-| B0005 | 1.23 | 1.33 |
-| B0006 | 5.60 | 5.54 |
-| B0007 | 1.47 | 1.38 |
-| B0018 | 2.07 | 2.18 |
+| Held-out cell | MAE (%) | RMSE (%) | R² |
+|---|---|---|---|
+| B0005 | 1.23 | 1.59 | 0.976 |
+| B0006 | 5.60 | 6.22 | 0.747 |
+| B0007 | 1.47 | 1.73 | 0.959 |
+| B0018 | 2.07 | 2.45 | 0.913 |
 
-Top 3 predictive features: `voltage_mean`, `temperature_std`, `current_std`
+#### Full- versus partial-discharge SOH
 
+| Method | Held-out cell | MAE (%) |
+|---|---|---|
+| Full-discharge formula | B0005 | 0.17 |
+| Full-discharge formula | B0006 | 0.53 |
+| Full-discharge formula | B0007 | 0.28 |
+| Full-discharge formula | B0018 | 0.18 |
+| Full-discharge formula | mean (G1) | 0.29 |
+| Partial-window formula | B0005 | 8.91 |
+| Partial-window formula | B0006 | 18.82 |
+| Partial-window formula | B0007 | 6.29 |
+| Partial-window formula | B0018 | 9.32 |
+| Partial-window formula | mean (G1) | 10.83 |
+
+#### Feature-set ablation (XGBoost/ElasticNet, leave-one-cell-out on G1)
+
+| Feature set | Features | ElasticNet MAE (%) | XGBoost MAE (%) |
+|---|---|---|---|
+| A — all production features | 39 | 1.81 | 2.74 |
+| B — A without window features | 34 | 3.85 | 3.06 |
+| C — window + temperature + current | 13 | 1.68 | 2.19 |
+| D — window features only | 5 | 1.86 | 2.57 |
+
+#### Cross-condition transfer (leave-one-group-out)
+
+| Held-out group | Cells | Cycles | ElasticNet MAE (%) | XGBoost MAE (%) |
+|---|---|---|---|---|
+| G1 | 4 | 636 | 42.26 | 14.06 |
+| G3 | 4 | 160 | 20.69 | 13.41 |
+| G9 | 1 | 55 | 47.61 | 3.04 |
+<!-- make_report:results:end -->
 
 ### RUL Prediction (Remaining Useful Life)
 
-| Method | Validation | Unit | Mean MAE | Best Cell | Worst Cell |
-|--------|------------|------|----------|-----------|------------|
-| **Trajectory matching** | Leave-one-cell-out (LOCO) | Discharges | **16.0** | B0005 (8.6) | B0006 (22.7) |
-| Fleet-lifetime baseline | Leave-one-cell-out (LOCO) | Discharges | 27.3 | B0005 (13.2) | B0006 (39.0) |
-| Double-exp online fit | Online self-fade | Discharges | 28.2 | B0005 (14.7) | B0006 (45.0) |
-| Trajectory fed by ML SOH | End-to-end pipeline | Discharges | 18.2 | B0005 (10.1) | B0006 (26.4) |
+<!-- make_report:rul -->
+| Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE |
+|---|---|---|---|
+| B0005 | 106 | 7.7 | 24.8 |
+| B0006 | 60 | 46.0 | 46.0 |
+| B0007 | 124 | 20.8 | 37.5 |
+| B0018 | 77 | 7.2 | 29.0 |
+| **Mean** | — | 20.4 | 34.3 |
+<!-- make_report:rul:end -->
 
-> **Unit & Range:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers. Trajectory matching outputs a 10th–90th percentile prediction range (82.5% empirical containment across NASA cells).
->
-> **Progression-point error (discharges passed):**
-> - At 25% of life passed: 13.5 discharges MAE
-> - At 50% of life passed: 13.8 discharges MAE
-> - At 75% of life passed: 12.0 discharges MAE
->
-> 
+> **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.
 
 ### Battery Degradation Characteristics
 
-| Cell | EOL Discharge (80%) | Fade Rate (%/discharge) | Early Fade (%/discharge) |
-|------|--------------------|-------------------------|--------------------------|
-| B0005 | 101 | 0.0567 | 0.0184 |
-| B0006 | 61 | 0.0875 | 0.0887 |
-| B0007 | 124 | 0.0499 | 0.0216 |
-| B0018 | 75 | 0.1001 | 0.1297 |
+<!-- make_report:degradation -->
+| Cell | EOL discharge | Fade (%/discharge) | Early fade (%/discharge) |
+|---|---|---|---|
+| B0005 | 107 | 0.214 | 0.058 |
+| B0006 | 61 | 0.309 | 0.284 |
+| B0007 | 125 | 0.188 | 0.067 |
+| B0018 | 78 | 0.248 | 0.319 |
+| B0029 | — | 0.281 | 0.281 |
+| B0030 | — | 0.279 | 0.279 |
+| B0031 | — | 0.176 | 0.176 |
+| B0032 | — | 0.286 | 0.286 |
+| B0053 | — | 0.125 | 0.267 |
+<!-- make_report:degradation:end -->
 
 ---
 
@@ -82,28 +119,33 @@ SOH is defined explicitly and in exactly one place, per cell:
 SOH = capacity_ah / reference_capacity_ah x 100
 ```
 
-`reference_capacity_ah` is the **first measured discharge
-capacity of that cell** (`groupby("cell_id")["capacity_ah"]
-.transform("first")`, in `src/preprocessing.py`). The policy is
-deliberately per-cell and first-cycle, not a chemistry-level
-nominal capacity, because the NASA cells differ in their
-beginning-of-life capacity. Every value in the `soh` column is
-computed from that one rule.
+`reference_capacity_ah` is the **median measured discharge
+capacity of that cell's first five valid discharges**
+(`src/data_cleaning.py`). A discharge is *valid* when its measured
+capacity is greater than zero and at least half the cell's median
+capacity; invalid rows (sensor dropouts, near-zero integrations)
+are dropped before the reference is taken. The reference is
+deliberately per-cell, not a chemistry-level nominal capacity,
+because the NASA cells differ in their beginning-of-life capacity.
+Every value in the `soh` column is computed from that one rule.
 
 Consequences of this policy, stated plainly:
 
-- SOH starts at exactly 100% for every cell by construction.
+- SOH is approximately, not exactly, 100% at the reference
+  discharges, because the reference is a median rather than a
+  single cycle.
 - SOH is only comparable *within* a cell, since two cells with
-  different first-cycle capacities share a scale but not an
-  absolute reference.
+  different reference capacities share a scale but not an absolute
+  reference.
 - A cell that was already partly aged when first measured would
-  read 100% at that point. None of the four selected cells is
-  in that category.
+  read below 100% at that point.
 
-The target is **not clipped**. `data_quality_report.json` records
-its range (56.69% to 100.0%) and a test suite asserts the range
-stays logical. If an impossible value ever appeared (negative, or
-above 100), the audit reports it rather than hiding it.
+The target is **not clipped**. `data/processed/cell_audit.csv`
+records each cell's `soh_min` and `soh_max`; the audit reports
+impossible values rather than hiding them. Cells whose ageing is
+too limited to reach end-of-life are labelled `limited ageing, no
+RUL` in the audit and kept out of the RUL reference set, rather
+than being silently capped.
 
 ### Two SOH concepts, kept separate
 
@@ -172,7 +214,7 @@ a suggested fix.
                                                     │
                                            ┌────────▼────────┐
                                            │  ML dataset CSV  │
-                                           │  (34 columns)    │
+                                           │  (cleaned)       │
                                            └───┬─────────┬───┘
                                                │         │
                                     ┌──────────▼──┐  ┌───▼──────────┐
@@ -236,7 +278,9 @@ operator. Data-hungry dev tests live in `tests/` (`pytest`).
 │   ├── raw/                           # NASA Battery .mat files (B0005–B0018)
 │   └── processed/
 │       ├── nasa_cycle_features_raw.csv    # Extracted cycle-level features
-│       ├── nasa_ml_dataset.csv            # Final ML-ready dataset (636 × 34)
+│       ├── nasa_ml_dataset.csv            # Pre-cleaning ML dataset
+│       ├── nasa_ml_dataset_clean.csv      # Cleaned ML dataset (all stages read this)
+│       ├── cell_audit.csv                 # Per-cell keep/exclude decision
 │       ├── soh_results.csv                # SOH model per-cell scores
 │       ├── soh_baselines.csv              # Baseline model comparison
 │       ├── soh_nested_results.csv         # Nested CV XGBoost results
@@ -332,7 +376,21 @@ Clean data, compute SOH/RUL targets, and assemble the ML-ready dataset:
 python src/preprocessing.py
 ```
 
-**Output:** `data/processed/nasa_ml_dataset.csv` (636 rows × 34 columns)
+**Output:** `data/processed/nasa_ml_dataset.csv` (the pre-cleaning dataset)
+
+### Step 2b — Clean the dataset and audit the cells
+
+```bash
+python src/data_cleaning.py
+```
+
+**Outputs:**
+- `data/processed/nasa_ml_dataset_clean.csv` — the dataset every downstream stage reads
+- `data/processed/cell_audit.csv` — per-cell keep/exclude decision and SOH range
+
+Invalid discharges are dropped, SOH is recomputed against each
+cell's reference capacity, and cells that cannot reach end of life
+are labelled rather than silently capped. See the *Dataset* section.
 
 ### Step 3 — Audit the data
 
@@ -387,7 +445,7 @@ python src/anomaly.py
 
 **Outputs:**
 - `data/processed/anomaly_cycle_report.csv` — every cycle with all detector flags
-- `data/processed/anomaly_events.csv` — only the 32 flagged cycles (5.0%)
+- `data/processed/anomaly_events.csv` — only the flagged cycles, one row each
 - `data/processed/anomaly_summary.csv` — per-cell count/rate, including knee onset
 
 ### Step 7 — Benchmark inference latency
@@ -399,23 +457,15 @@ python src/benchmark_latency.py
 **Output:** `data/processed/soh_latency_benchmark.csv`
 
 Measured on this machine against the real artifact and the real
-`assemble_features` path:
-
-| Stage | ms |
-|-------|----|
-| `cold_model_load_ms` | 769 |
-| `warm_predict_1_ms` | 2.27 |
-| `warm_predict_soh_1_ms` (full API call) | 2.51 |
-| `warm_predict_100_ms` | 3.29 |
-| `warm_predict_1000_ms` | 15.8 |
-| `end_to_end_cycle_ms` | 14.0 |
-| `feature_extraction_ms` | 0.98 |
+`assemble_features` path; the per-stage numbers are written to
+`data/processed/soh_latency_benchmark.csv` (they are machine
+specific, so they are not pinned into this document).
 
 The cold load is paid once at service start and never per
-request; the warm per-cycle cost is ~2.5 ms against a
-~1-second cycle budget. `tests/test_latency.py` pins the shape
-of this table but deliberately avoids a tight timing assertion,
-because a machine under load makes those flaky.
+request; the warm per-cycle cost is well inside the ~1-second
+cycle budget. `tests/test_latency.py` pins the shape of the
+benchmark but deliberately avoids a tight timing assertion, because
+a machine under load makes those flaky.
 
 ### Step 8 — Prepare Dashboard Data
 
@@ -439,7 +489,8 @@ nohup venv/bin/python dashboard/grafana_api.py > logs/grafana_api.log 2>&1 &
 venv/bin/python -m pytest tests/ -q
 ```
 
-The suite currently passes 180/180, in ~9 s. It also pins the two
+The suite passes locally; the exact count and command output are
+recorded in `CHANGES.md`. It also pins the two
 failure-mode contracts (status flips to `failed` and the heartbeat
 keeps republishing with a moving `age_s`), the data-quality failure
 modes, the latency-budget shape, and the leakage guards (a
@@ -502,7 +553,7 @@ GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer \
 The JSON datasource returns the cycle number as each series'
 timestamp, so Grafana reads cycle 2 as epoch millisecond 2. The
 dashboard time range is therefore pinned to the first second
-after the epoch, which covers cycles 2–614.
+after the epoch.
 
 This matters: with Grafana's default "last 6 hours" range every
 panel reports **"Data outside time range"** with an empty plot
@@ -538,11 +589,19 @@ What is and is not verified, and the sources behind each threshold, are in
 services, bridge, API, Grafana) was run end to end in a sandbox without Docker;
 `docker-compose.yml` was **not** run; the ESP32 firmware in `firmware/` is
 **not tested on hardware**; all faults in demos are **synthetic**.
-Fault detection on synthetic faults (24 per kind): rules detect 100% of
-resistance spikes and thermal events and 75% of cell sags; Isolation Forest alone
-100% / 58% / 21%. Clean-pack false alarms for resistance spike and thermal: 0 in 564
-discharges (imbalance-type alerts are not meaningful in the offline table; see
-`docs/RESEARCH.md`).
+
+<!-- make_report:pack -->
+| Fault | Injected | Rule detection | Isolation Forest | Rule median delay |
+|---|---|---|---|---|
+| cell_sag | 24 | 75.0% | 12.5% | 1.0 |
+| resistance_spike | 24 | 100.0% | 91.7% | 1.0 |
+| thermal | 24 | 100.0% | 66.7% | 8.0 |
+
+Clean-pack false alarms at the resistance-spike and thermal thresholds: 0 and 0 over 564 discharges.
+<!-- make_report:pack:end -->
+
+Imbalance-type alerts are not meaningful in the offline table; see
+`docs/RESEARCH.md`.
 
 ## Dashboard
 
@@ -556,9 +615,9 @@ visualizations of:
 - **Capacity Fade**: Absolute Amp-hour capacity loss.
 - **Predicted vs Actuals**: Overlay of XGBoost predictions vs actual target values for both SOH and RUL.
 - **Model Summaries**: Tables detailing Nested CV results and feature importance.
-- **Anomaly: Residual (SOH – Predicted) with Robust Bounds** + **Flagged events**: points outside median ± 3.5 × MAD — a cycle that behaved unlike anything in the training set. This is the triage view: 32 flagged cycles (5.0%) out of 636.
-- **Anomaly: Fade Rate and Knee Threshold**: a rising trailing fade rate crossing median + 3 × MAD means acceleration, not noise. Only B0006 crosses it, at row 228.
-- **Anomaly Summary / Events**: per-cell counts (B0006: 17 flagged, 10.1%) and the event-level rows with directions.
+- **Anomaly: Residual (SOH – Predicted) with Robust Bounds** + **Flagged events**: points outside median ± 3.5 × MAD — a cycle that behaved unlike anything in the training set. This is the triage view; per-cell counts and rates are in `data/processed/anomaly_summary.csv`.
+- **Anomaly: Fade Rate and Knee Threshold**: a rising trailing fade rate crossing median + 3 × MAD means acceleration, not noise. The first knee cycle per cell is in `anomaly_summary.csv`.
+- **Anomaly Summary / Events**: per-cell counts and the event-level rows with directions, served from the `anomaly_summary` and `anomaly_events` tables.
 
 ---
 
@@ -566,31 +625,36 @@ visualizations of:
 
 **Source:** NASA Prognostics Center of Excellence — Battery Dataset
 
-Four 18650 lithium-ion cells (B0005, B0006, B0007, B0018) were run through repeated charge/discharge/impedance cycles at room temperature until end of life.
+The raw dataset spans **19 cells** across several operating
+conditions. `src/data_cleaning.py` audits every cell and keeps the
+ones whose measured capacity trace is usable; the audit and its
+decision for each cell are in `data/processed/cell_audit.csv`.
+Cells that do not reach end of life are labelled `limited ageing, no
+RUL` and are kept for SOH only. Cells whose capacity trace is
+corrupted (near-zero or exploding integrations) are excluded from
+every downstream table, model and database view.
 
-| Cell | Cycles | Initial SOH | Final SOH | EOL Cycle (80%) |
-|------|--------|-------------|-----------|-----------------|
-| B0005 | 168 | 100% | 69.35% | 356 |
-| B0006 | 168 | 100% | 56.69% | 202 |
-| B0007 | 168 | 100% | 74.06% | 445 |
-| B0018 | 132 | 100% | 72.29% | 185 |
+<!-- make_report:dataset -->
+| Cell | Group | Discharges | Initial SOH (%) | Final SOH (%) | EOL discharge |
+|---|---|---|---|---|---|
+| B0005 | G1 | 168 | 101.15 | 72.20 | 107 |
+| B0006 | G1 | 168 | 101.09 | 58.89 | 61 |
+| B0007 | G1 | 168 | 100.55 | 76.17 | 125 |
+| B0018 | G1 | 132 | 100.84 | 72.90 | 78 |
+| B0029 | G3 | 40 | 93.49 | 88.78 | — |
+| B0030 | G3 | 40 | 94.54 | 89.21 | — |
+| B0031 | G3 | 40 | 92.37 | 92.40 | — |
+| B0032 | G3 | 40 | 91.39 | 87.69 | — |
+| B0053 | G9 | 55 | 94.57 | 89.36 | — |
+| **Kept total** | 3 groups | 851 | — | — | — |
+<!-- make_report:dataset:end -->
 
-### Extracted Features
-
-The raw parser emits 22 columns per cycle.
-
-- **Voltage:** mean, min, max, std, range, start, end, drop
-- **Current:** mean, min, max, std
-- **Temperature:** mean, min, max, std
-- **Cycle:** discharge ordinal and ambient temperature
-- **Derived:** discharge duration, resistance proxy
-
-The **model input set is 39 columns**: the list above minus
-`ambient_temperature` (constant at 24 °C across the four group-1
-cells, dropped automatically by `drop_constant_features` on the
-training split only). The target-derived columns that used to be
-listed here (`capacity_change_ah`, `soh_change_pct`) are no longer
-inputs at all — see *Leakage Prevention* above.
+The model input set is the production feature list
+(`src/features.py`) minus `ambient_temperature`, which is constant
+within a group and dropped automatically by
+`drop_constant_features` on the training split only. The
+target-derived columns (`capacity_change_ah`, `soh_change_pct`) are
+not inputs at all — see *Leakage Prevention* above.
 
 `resistance_proxy_ohm` is named a **proxy** deliberately. It is
 voltage range over current range, not a measured internal
@@ -602,7 +666,7 @@ resistance, and the project does not treat it as one.
 
 ### Evaluation Protocol
 
-All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held out entirely, the model trains on the remaining three, and predictions are made on a cell the model has never seen. This is the hardest available protocol because degradation curves differ between cells of the same chemistry.
+All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held out entirely, the model trains on the remaining cells of the same group, and predictions are made on a cell the model has never seen. This is the hardest available protocol because degradation curves differ between cells of the same chemistry. Cross-condition generalisation is measured separately with leave-one-group-out over the surviving groups; both are reported in the Key Results tables.
 
 ### SOH Model
 
@@ -612,8 +676,8 @@ All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held 
 
 ### RUL Model
 
-- **Challenge:** With only 4 cells, the model has 3 training examples of full degradation trajectories. RUL is dominated by the held-out cell's own future behavior.
-- **Finding:** No cycle-level feature model beats a constant predictor. The degradation rate analysis provides actionable per-cell fade rates instead.
+- **Challenge:** With few cells, the model has very few examples of full degradation trajectories. RUL is dominated by the held-out cell's own future behavior.
+- **Finding:** The trajectory-matching method beats the fleet-lifetime baseline on the mean but not on every cell; a plain cycle-level regression does not beat a constant. The degradation rate analysis provides per-cell fade rates, and the trajectory method provides the remaining-life estimate. See the RUL table for the current numbers.
 
 ---
 
@@ -642,38 +706,39 @@ regime, where a handful of cycles carry disproportionate gain.
 These are limits of the data, not of the implementation, and no
 amount of tuning removes them.
 
-1. **Only four cells.** Every SOH number here comes from the four
-   NASA group-1 cells B0005, B0006, B0007 and B0018. In
-   leave-one-cell-out validation that is three training
+1. **Small cell count.** The SOH and RUL headline numbers come
+   from the four NASA group-1 cells B0005, B0006, B0007 and B0018.
+   In leave-one-cell-out validation that is three training
    trajectories per fold. The model therefore generalises across
-   *these* four ageing trajectories, not across lithium-ion cells
-   in general.
+   *these* trajectories, not across lithium-ion cells in general.
+   Cross-condition work uses the surviving groups and is reported
+   in the Key Results tables.
 
-2. **Cell-level generalisation is the open problem.** The report
-   is a mean over four folds; the spread matters more than the
-   mean. B0006 fails badly and for a diagnosable reason.
+2. **Cell-level generalisation is the open problem.** The headline
+   is a mean over folds; the spread matters more than the mean.
+   B0006 fails badly and for a diagnosable reason.
 
 3. **B0006 cannot be predicted well by this feature set.** It
-   degrades to 56.7% SOH, further than any cell the model ever
-   trains on in its fold, so a tree ensemble averages toward its
-   training floor and never predicts below ~69.9%. B0006's nested
-   MAE is 7.32% against 1.79–2.59% for the other three. This is a
-   data-coverage limit: no hyperparameter setting invents a
-   degradation the training cells never exhibited. It is reported,
-   not hidden, and B0006 is not deleted to improve the score.
+   degrades further than any cell the model trains on in its fold,
+   so a tree ensemble averages toward its training floor. The
+   per-cell error is in the Key Results table and the SOH range is
+   in `cell_audit.csv`. This is a data-coverage limit: no
+   hyperparameter setting invents a degradation the training cells
+   never exhibited. It is reported, not hidden, and B0006 is not
+   deleted to improve the score.
 
-4. **RUL does not beat a constant.** With three training
-   trajectories, no cycle-level model outperforms the
-   held-out cell's own mean (oracle MAE 77.78 vs best model
-   79.27 cycles). The usable RUL-family output is the per-cell
-   fade rate, not an absolute remaining-life number.
+4. **The RUL trajectory method does not win everywhere.** It beats
+   the fleet-lifetime baseline on the mean, but it loses on B0006
+   (see the RUL table). With three training trajectories, the
+   held-out cell's own future behaviour dominates. The usable
+   RUL-family output is the per-cell fade rate plus the trajectory
+   estimate, not a claim of uniform superiority.
 
 5. **Streaming versus offline cycle index.** Offline `cycle` is
    the raw array index; streaming `cycle` is the discharge
-   ordinal. The two differ (B0005: 2..614 offline versus 1..167
-   streamed). This is documented in `streaming/cycle_tracker.py`
-   and pinned by tests, but it is a real train/serve skew, not a
-   cosmetic one.
+   ordinal. The two differ. This is documented in
+   `streaming/cycle_tracker.py` and pinned by tests, but it is a
+   real train/serve skew, not a cosmetic one.
 
 6. **One cycle-latency contract.** SOH is emitted once per
    completed discharge, not per sample, because several features
