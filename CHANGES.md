@@ -137,6 +137,44 @@
   both dashboards are in `docs/battery_pdm_dashboard.png` and
   `docs/battery_pack_live.png`.
 
+## Step 9 — Machine-checked report numbers
+
+- `scripts/make_report.py` now renders every number in the marked
+  regions as a `{{id}}` placeholder from
+  `data/processed/report_numbers.json`, which it writes from the CSVs
+  as a flat `{"<placeholder_id>": value}` mapping (floats rounded to
+  10 decimals) plus the region templates under a reserved
+  `_templates` key. The rendered README.md and CHANGES.md are
+  byte-identical to before the change.
+- `scripts/check_numbers.py` no longer matches quoted numbers against
+  every numeric cell in every CSV. It now (a) re-renders each marked
+  region from the JSON and fails on any difference, and (b) fails if
+  a region contains a number that is not the rendering of a
+  placeholder, so a number cannot reach the documents by being typed
+  into them — not even by pasting it into both the document and the
+  JSON template, which only rule (b) catches. A value invented
+  directly in the JSON is caught one level up: `make_report.py`
+  rewrites the JSON from the CSVs, so it shows up as a diff against
+  the regenerated output in `scripts/verify.sh`. The checker also
+  fails on values in the JSON that no template uses, and on
+  templates whose markers are missing from the documents.
+- The shared placeholder machinery lives in
+  `scripts/report_render.py`, used by both the generator and the
+  checker.
+- `tests/test_readme_numbers.py` invokes the checker in-process on
+  temporary copies of the documents and the JSON (via a new `--root`
+  option) and asserts that it fails when one number in a region is
+  bumped by one unit, when a random fake number is inserted, and
+  when a number is pasted into both the document and the template
+  (which only the bare-number rule can catch). Invoking the checker
+  through `sys.executable` was dropped because some environments
+  report a `sys.executable` that is not the interpreter running the
+  tests, which made the old subprocess test pass vacuously there.
+- `scripts/verify.sh` now runs `pytest -q` as an explicit step after
+  the pipeline, and its "documents are in sync" check covers
+  `data/processed/report_numbers.json` in addition to README.md and
+  CHANGES.md.
+
 ---
 
 ## Final performance & baseline comparison

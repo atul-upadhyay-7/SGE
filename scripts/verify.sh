@@ -6,8 +6,8 @@
 # NOT copy the working tree, so only committed state is verified),
 # downloads and checksums the NASA dataset, runs the pipeline, runs
 # the test suite, checks that every number in README.md / CHANGES.md
-# is backed by a CSV, and checks that those documents are in sync with
-# the generator.
+# is a placeholder rendered from data/processed/report_numbers.json,
+# and checks that those documents are in sync with the generator.
 #
 # Any failing step exits non-zero.
 #
@@ -53,16 +53,20 @@ echo ">>> running the pipeline (skip training)"
 "$PYTHON" run_pipeline.py --skip-train
 
 echo
+echo ">>> running the test suite"
+"$PYTHON" -m pytest -q
+
+echo
 echo ">>> checking numbers in README.md / CHANGES.md"
 "$PYTHON" scripts/check_numbers.py
 
 echo
 echo ">>> checking generated documents are in sync"
-if git diff --quiet -- README.md CHANGES.md; then
-    echo "    README.md and CHANGES.md match the generator output"
+if git diff --quiet -- README.md CHANGES.md data/processed/report_numbers.json; then
+    echo "    README.md, CHANGES.md and report_numbers.json match the generator output"
 else
     echo "    ERROR: committed documents differ from generated output:"
-    git --no-pager diff --stat -- README.md CHANGES.md
+    git --no-pager diff --stat -- README.md CHANGES.md data/processed/report_numbers.json
     exit 1
 fi
 
