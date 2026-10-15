@@ -7,12 +7,21 @@
 #   dashboards: "Battery Pack Live (3S, MQTT)" and "Battery PDM (Grafana)"
 # Broker for the ESP32: <this machine>:1883
 #
-# STATUS: written but not run with Docker (Docker was not available where it
-# was built). The commands each service runs were run directly and verified.
+# `dns` is set explicitly below because the default Docker embedded
+# resolver forwards to the host's systemd-resolved stub (127.0.0.53),
+# which is unreachable from inside a container; Grafana then cannot
+# fetch its JSON-datasource plugin at first boot.
+#
+# STATUS: run with Docker on a host with the daemon up; the core stack
+# and the demo profile both start, and Grafana serves the provisioned
+# dashboards.
 
 x-app: &app
   build: .
   restart: unless-stopped
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
   volumes:
     - ./data:/app/data
     - ./models:/app/models
@@ -45,6 +54,9 @@ services:
 
   grafana:
     image: grafana/grafana-oss:11.2.0
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     ports: ["3050:3000"]
     environment:
       GF_INSTALL_PLUGINS: simpod-json-datasource

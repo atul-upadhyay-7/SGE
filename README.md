@@ -82,13 +82,13 @@ Numbers in this section are produced by committed scripts and saved to CSVs unde
 ### RUL Prediction (Remaining Useful Life)
 
 <!-- make_report:rul -->
-| Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE |
-|---|---|---|---|
-| B0005 | 106 | 7.1 | 24.8 |
-| B0006 | 60 | 51.1 | 46.0 |
-| B0007 | 124 | 17.5 | 37.5 |
-| B0018 | 77 | 6.5 | 29.0 |
-| **Mean** | — | 20.5 | 34.3 |
+| Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE | 10th-90th coverage | Mean band width |
+|---|---|---|---|---|---|
+| B0005 | 106 | 7.1 | 24.8 | 93.8% | 25.8 |
+| B0006 | 60 | 51.1 | 46.0 | 0.0% | 25.5 |
+| B0007 | 124 | 17.5 | 37.5 | 17.5% | 14.6 |
+| B0018 | 77 | 6.5 | 29.0 | 82.1% | 20.3 |
+| **Mean** | — | 20.5 | 34.3 | 48.3% | 21.6 |
 <!-- make_report:rul:end -->
 
 > **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.

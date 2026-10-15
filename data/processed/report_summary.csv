@@ -51,17 +51,27 @@ SOH,cross-condition,held-out G9,XGBoost MAE,3.042568906570264,%,data/processed/e
 RUL,trajectory,held-out B0005,MAE,7.114583333333333,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0005,MAE,24.77083333333333,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0005,EOL discharge,106.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,band coverage,held-out B0005,10th-90th coverage,93.75,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,held-out B0005,mean band width,25.791666666666668,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0006,MAE,51.06,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0006,MAE,46.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0006,EOL discharge,60.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,band coverage,held-out B0006,10th-90th coverage,0.0,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,held-out B0006,mean band width,25.52,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0007,MAE,17.473684210526315,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0007,MAE,37.51754385964912,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0007,EOL discharge,124.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,band coverage,held-out B0007,10th-90th coverage,17.54385964912281,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,held-out B0007,mean band width,14.603508771929825,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0018,MAE,6.477611940298507,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0018,MAE,29.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0018,EOL discharge,77.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,band coverage,held-out B0018,10th-90th coverage,82.08955223880596,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,held-out B0018,mean band width,20.32238805970149,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,mean (G1),mean MAE,20.531469871039537,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,mean (G1),mean MAE,34.32209429824562,discharges,data/processed/rul_trajectory_results.csv
+RUL,band coverage,mean (G1),mean coverage,48.3458529719822,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,mean (G1),mean band width,21.559390874574497,discharges,data/processed/rul_trajectory_results.csv
 degradation,slope,B0005,fade,0.2139387006732378,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,early fade,0.0579203843585206,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,EOL discharge,107.0,discharges,data/processed/cell_audit.csv

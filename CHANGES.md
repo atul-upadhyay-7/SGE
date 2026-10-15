@@ -74,6 +74,14 @@
   leave-one-cell-out protocol the reported MAE is measured under. The
   dashboard plots these percentiles instead of `predicted_rul * 0.8` and
   `predicted_rul * 1.2`, which were a fixed ±20% fake.
+- Measured that band's empirical coverage rather than assuming it. The
+  spread across reference-cell curves is not a calibrated predictive
+  interval: across the four held-out cells and their in-service
+  discharges the 10th/90th band contains the real remaining life only
+  48.3% of the time, not the ~80% a "10th-90th" label implies
+  (B0005 93.8%, B0006 0.0%, B0007 17.5%, B0018 82.1%), while being
+  ~21.6 discharges wide on average. It is a reference-spread band and
+  is labelled as such, not a guarantee.
 - `model_summary` is now computed from the result CSVs: held-out SOH MAE
   with its per-cell range, held-out R², the Coulomb baseline, the RUL MAE
   with its per-cell range and the fleet-lifetime baseline, the discharge
@@ -108,6 +116,26 @@
 
 - README results tables are regenerated from CSVs by
   `scripts/make_report.py`. Stale hand-typed numbers were removed.
+
+## Step 8 — Dashboard run under Docker
+
+- `docker compose --profile demo up --build` was run against the full
+  stack (Mosquitto, three SOH services, the pack bridge, the JSON API
+  and Grafana). All six containers reach a running state and Grafana
+  serves both provisioned dashboards at `http://localhost:3050`.
+- The compose file now sets an explicit container `dns`. Without it the
+  Docker embedded resolver forwards to the host's systemd-resolved stub
+  (`127.0.0.53`), which is unreachable from a container, so Grafana
+  exited on first boot with "connection refused" while fetching its
+  JSON-datasource plugin.
+- Verified end to end: Grafana's JSON datasource proxies to the API
+  (`/api/datasources/proxy/1/` returns `OK`), and the panels read real
+  database values through it — Model Summary SOH MAE 2.65%, R² 0.90,
+  Coulomb 0.73%, RUL MAE 20.5 discharges; `stat_discharges_left` 10.8
+  (10th-90th 7.0-14.1); `stat_latest_soh` 71.38; the per-cell SOH and
+  RUL panels render for every audited cell. Refreshed screenshots of
+  both dashboards are in `docs/battery_pdm_dashboard.png` and
+  `docs/battery_pack_live.png`.
 
 ---
 
@@ -1504,13 +1532,18 @@ verify.sh: ALL CHECKS PASSED
 
 ## NOT DONE / NOT VERIFIED
 
-1. Docker (`docker compose up`, dashboard screenshots, alert replay)
-   was not run in this environment. The Grafana JSON adapter is covered
-   by tests that run against the built database, but the rendered UI was
-   not screenshotted.
+1. The native systemd-user deployment (`battery-pdm-api` /
+   `battery-pdm-grafana`) and the Docker stack both bind ports 8099 and
+   3050, so only one can run at a time. Docker was used for the run
+   above; the systemd units are the lighter alternative.
 2. The RUL 10th–90th band is the spread of the per-reference-cell
-   estimates, not a calibrated interval; its empirical coverage
-   (fraction of true RUL values that fall inside the band) is not
-   measured, and no coverage figure is claimed.
+   estimates, not a calibrated interval. Its empirical coverage is now
+   measured (48.3% across the four held-out cells, against the ~80% its
+   label implies) and reported, but the band has not been recalibrated
+   to hit a target coverage.
 3. The online double-exponential fit was not re-validated; where it
    cannot be backed by a CSV it is marked legacy rather than reported.
+4. Grafana alert rules are provisioned
+   (`docker/grafana/provisioning/alerting/alert_rules.yml`) but were not
+   observed firing: the demo publisher injects synthetic faults into the
+   live topic, and no alert notification was captured end to end.

@@ -228,8 +228,11 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
 
 def build_rul(rul):
     lines = []
-    lines.append("| Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE |")
-    lines.append("|---|---|---|---|")
+    lines.append(
+        "| Held-out cell | EOL discharge | Trajectory MAE | "
+        "Fleet-lifetime baseline MAE | 10th-90th coverage | Mean band width |"
+    )
+    lines.append("|---|---|---|---|---|---|")
     for _, row in rul.sort_values("test_cell").iterrows():
         record("RUL", "trajectory", f"held-out {row['test_cell']}",
                "MAE", row["trajectory_mae"], "discharges", REQUIRED["rul_trajectory"])
@@ -239,19 +242,35 @@ def build_rul(rul):
         record("RUL", "EOL", f"held-out {row['test_cell']}",
                "EOL discharge", row["eol_discharge"], "discharges",
                REQUIRED["rul_trajectory"])
+        record("RUL", "band coverage", f"held-out {row['test_cell']}",
+               "10th-90th coverage", row["band_coverage_pct"], "percent",
+               REQUIRED["rul_trajectory"])
+        record("RUL", "band width", f"held-out {row['test_cell']}",
+               "mean band width", row["band_width_mean"], "discharges",
+               REQUIRED["rul_trajectory"])
         lines.append(
             f"| {row['test_cell']} | {int(row['eol_discharge'])} | "
-            f"{fmt(row['trajectory_mae'], 1)} | {fmt(row['fleet_lifetime_baseline_mae'], 1)} |"
+            f"{fmt(row['trajectory_mae'], 1)} | "
+            f"{fmt(row['fleet_lifetime_baseline_mae'], 1)} | "
+            f"{fmt(row['band_coverage_pct'], 1)}% | "
+            f"{fmt(row['band_width_mean'], 1)} |"
         )
 
     traj_mean = mean(rul["trajectory_mae"])
     base_mean = mean(rul["fleet_lifetime_baseline_mae"])
+    cov_mean = mean(rul["band_coverage_pct"])
+    width_mean = mean(rul["band_width_mean"])
     record("RUL", "trajectory", "mean (G1)", "mean MAE", traj_mean,
            "discharges", REQUIRED["rul_trajectory"])
     record("RUL", "fleet lifetime baseline", "mean (G1)", "mean MAE", base_mean,
            "discharges", REQUIRED["rul_trajectory"])
+    record("RUL", "band coverage", "mean (G1)", "mean coverage",
+           cov_mean, "percent", REQUIRED["rul_trajectory"])
+    record("RUL", "band width", "mean (G1)", "mean band width",
+           width_mean, "discharges", REQUIRED["rul_trajectory"])
     lines.append(
-        f"| **Mean** | — | {fmt(traj_mean, 1)} | {fmt(base_mean, 1)} |"
+        f"| **Mean** | — | {fmt(traj_mean, 1)} | {fmt(base_mean, 1)} | "
+        f"{fmt(cov_mean, 1)}% | {fmt(width_mean, 1)} |"
     )
     return "\n".join(lines)
 

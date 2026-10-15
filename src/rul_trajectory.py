@@ -219,11 +219,21 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
         lifetimes = [r["eol"] for r in est.refs.values()]
 
         err_t, err_f = [], []
+        inside, widths = 0, []
 
         for k in range(start, eol):
 
             truth = eol - k
-            e = est.remaining(pred[: k + 1])
+
+            dist = est.remaining_distribution(pred[: k + 1])
+
+            # Same point estimate TrajectoryRul.remaining() returns, so
+            # the reported MAE is untouched by the coverage bookkeeping.
+            e = (
+                None
+                if dist is None
+                else int(round(float(np.median(dist))))
+            )
             f = max(np.median(lifetimes) - k, 0)
 
             if e is None:
@@ -233,14 +243,33 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
             err_t.append(abs(e - truth))
             err_f.append(abs(f - truth))
 
+            # Empirical coverage of the 10th/90th band against the
+            # real remaining life: does the interval that ships on
+            # the dashboard actually contain the truth?
+            p10, p90 = np.percentile(dist, [10.0, 90.0])
+
+            widths.append(p90 - p10)
+
+            if p10 <= truth <= p90:
+
+                inside += 1
+
+        n = len(err_t)
+
         out.append(
             {
                 "test_cell": t,
                 "eol_discharge": eol,
-                "n_points": len(err_t),
+                "n_points": n,
                 "trajectory_mae": float(np.mean(err_t)),
                 "fleet_lifetime_baseline_mae": float(
                     np.mean(err_f)
+                ),
+                "band_coverage_pct": (
+                    100.0 * float(inside) / n if n else float("nan")
+                ),
+                "band_width_mean": (
+                    float(np.mean(widths)) if widths else float("nan")
                 ),
             }
         )
