@@ -55,15 +55,41 @@ STARTS = (30, 50)
 
 
 def load_df():
+    """Dataset plus leave-one-cell-out SOH predictions.
+
+    Only cells that have a predictions file are used. train_soh writes
+    predictions for the cells it evaluates, which can be fewer than the
+    cells in the dataset. A pack needs predicted SOH for all its cells,
+    so cells without predictions cannot be part of the evaluation.
+    """
 
     df = pd.read_csv(PROC / "nasa_ml_dataset.csv")
 
     pred = []
+    skipped = []
 
     for c in sorted(df["cell_id"].unique()):
 
-        p = pd.read_csv(PROC / f"soh_predictions_{c}.csv")
+        path = PROC / f"soh_predictions_{c}.csv"
+        if not path.exists():
+            skipped.append(c)
+            continue
+        p = pd.read_csv(path)
         pred.append(p[["cell_id", "cycle", "predicted_soh"]])
+
+    if len(pred) < 3:
+        raise SystemExit(
+            "pack evaluation needs soh_predictions_<cell>.csv for at "
+            f"least 3 cells in {PROC}, found {len(pred)}. "
+            "Run src/train_soh.py first."
+        )
+
+    if skipped:
+        print(
+            f"pack evaluation: no SOH predictions for {len(skipped)} "
+            f"cell(s), skipped: {', '.join(skipped)}"
+        )
+        df = df[~df["cell_id"].isin(skipped)]
 
     df = df.merge(
         pd.concat(pred), on=["cell_id", "cycle"], how="left"

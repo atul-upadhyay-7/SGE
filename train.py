@@ -194,7 +194,10 @@ def gates(mode):
 
     out = []
     lim = LIMITS[mode]
-    from load_data import CELLS
+    # The SOH search and the trajectory-RUL check are scoped to the
+    # G1 cells (see src/train_soh.py), not to every cell that the
+    # data loader reads. The raw-data preflight still checks all CELLS.
+    from load_data import CELLS_G1 as SCOPE_CELLS
 
     for rel in ARTIFACTS:
         out.append(
@@ -202,7 +205,7 @@ def gates(mode):
         )
 
     try:
-        nested = checked_results(pd.read_csv(PROC / "soh_nested_results.csv"), ["MAE"], CELLS)
+        nested = checked_results(pd.read_csv(PROC / "soh_nested_results.csv"), ["MAE"], SCOPE_CELLS)
         mae = float(nested["MAE"].mean())
         worst = float(nested["MAE"].max())
         out.append((
@@ -221,7 +224,7 @@ def gates(mode):
 
     try:
         traj = checked_results(pd.read_csv(PROC / "rul_trajectory_results.csv"),
-                               ["trajectory_mae", "fleet_lifetime_baseline_mae"], CELLS)
+                               ["trajectory_mae", "fleet_lifetime_baseline_mae"], SCOPE_CELLS)
         t = float(traj["trajectory_mae"].mean())
         b = float(traj["fleet_lifetime_baseline_mae"].mean())
         out.append((
@@ -264,6 +267,7 @@ def gates(mode):
             warnings.simplefilter("error")
             bundle = joblib.load(MODELS / "soh_xgb_all.joblib")
         df = pd.read_csv(PROC / "nasa_ml_dataset.csv")
+        df = df[df["cell_id"].isin(SCOPE_CELLS)]
         pred = bundle["model"].predict(df[bundle["features"]])
         err = float(np.mean(np.abs(pred - df[bundle["target"]])))
         out.append((
