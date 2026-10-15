@@ -40,6 +40,7 @@ from pack.monitor import (  # noqa: E402
 )
 from pack.simulate import FAULTS, inject, pack_frames, replay  # noqa: E402
 from rul_trajectory import TrajectoryRul  # noqa: E402
+from repro import rounded  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROC = ROOT / "data" / "processed"
@@ -120,7 +121,7 @@ def run(frames, iforest=None, rul=None):
     return list(replay(frames, m))
 
 
-def main():
+def main(save_model=True):
 
     keep = audited_cells()
     usable = [
@@ -254,8 +255,8 @@ def main():
     det = pd.DataFrame(out_rows)
     fa = pd.DataFrame(fa)
 
-    det.to_csv(PROC / "pack_fault_detection.csv", index=False)
-    fa.to_csv(PROC / "pack_false_alarms.csv", index=False)
+    rounded(det).to_csv(PROC / "pack_fault_detection.csv", index=False)
+    rounded(fa).to_csv(PROC / "pack_false_alarms.csv", index=False)
 
     print(fa.to_string(index=False))
 
@@ -267,13 +268,31 @@ def main():
     )
     print("\n", summary.round(2).to_string())
 
-    summary.to_csv(PROC / "pack_detection_summary.csv")
+    rounded(summary).to_csv(PROC / "pack_detection_summary.csv")
 
-    # final forest for the live demo: trained on all healthy packs
-    final = fit_iforest(np.vstack(list(healthy_rows.values())))
-    save_iforest(final, ROOT / "models" / "pack_iforest.joblib")
-    print("\nSaved models/pack_iforest.joblib")
+    if save_model:
+        # final forest for the live demo: trained on all healthy packs
+        final = fit_iforest(np.vstack(list(healthy_rows.values())))
+        save_iforest(final, ROOT / "models" / "pack_iforest.joblib")
+        print("\nSaved models/pack_iforest.joblib")
+    else:
+        print(
+            "\nSkipped models/pack_iforest.joblib "
+            "(--no-save-model: keep the committed artifact)"
+        )
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Evaluate the pack alert engine; optionally rewrite "
+                    "models/pack_iforest.joblib."
+    )
+    parser.add_argument(
+        "--no-save-model",
+        action="store_true",
+        help="do not rewrite models/pack_iforest.joblib (used by "
+             "run_pipeline --skip-train to keep the committed artifact)",
+    )
+    main(save_model=not parser.parse_args().no_save_model)

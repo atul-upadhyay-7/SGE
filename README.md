@@ -350,7 +350,18 @@ pip install -r requirements.txt
 
 ### 4. Download the data
 
-Download the [NASA Battery Dataset](https://www.nasa.gov/content/prognostics-center-of-excellence-data-set-repository) and place the `.mat` files (`B0005.mat`, `B0006.mat`, `B0007.mat`, `B0018.mat`) into `data/raw/`.
+```bash
+bash scripts/download_dataset.sh
+```
+
+The script downloads the
+[NASA battery archive](https://www.nasa.gov/content/prognostics-center-of-excellence-data-set-repository),
+extracts the `.mat` files and verifies them against
+`scripts/checksums.sha256`. They land
+in `BMS Dataset/Battery_DataSet/Battery_DataSet/`, which
+`src/load_data.py` reads; the loader also checks `data/raw/` first, so
+placing the `.mat` files (`B0005.mat`, `B0006.mat`, `B0007.mat`,
+`B0018.mat`) there works as well.
 
 ---
 

@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evaluation import build_model  # noqa: E402
 from features import FEATURES, drop_constant_features  # noqa: E402
+from repro import rounded  # noqa: E402
 
 PROC = Path("data/processed")
 EXP = PROC / "experiments"
@@ -327,19 +328,19 @@ def main():
     df = pd.read_csv(CLEAN)
 
     full = full_discharge_formula(df)
-    full.to_csv(EXP / "soh_full_discharge.csv", index=False)
+    rounded(full).to_csv(EXP / "soh_full_discharge.csv", index=False)
 
     formula, partial_models = partial_discharge(df)
     partial = pd.concat([formula, partial_models], ignore_index=True)
-    partial.to_csv(EXP / "soh_partial_discharge.csv", index=False)
+    rounded(partial).to_csv(EXP / "soh_partial_discharge.csv", index=False)
 
     summary, per_cell = ablation(df)
-    summary.to_csv(EXP / "ablation_features.csv", index=False)
-    per_cell.to_csv(EXP / "per_cell_results.csv", index=False)
+    rounded(summary).to_csv(EXP / "ablation_features.csv", index=False)
+    rounded(per_cell).to_csv(EXP / "per_cell_results.csv", index=False)
 
     prod = production_features(df)
     cross = logo(df, prod)
-    cross.to_csv(EXP / "logo_results.csv", index=False)
+    rounded(cross).to_csv(EXP / "logo_results.csv", index=False)
 
     print("wrote experiments:")
     print(full.to_string(index=False))

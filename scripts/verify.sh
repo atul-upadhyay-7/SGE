@@ -53,6 +53,16 @@ echo ">>> running the pipeline (skip training)"
 "$PYTHON" run_pipeline.py --skip-train
 
 echo
+echo ">>> checking the pipeline left the working tree clean"
+if [ -z "$(git status --porcelain)" ]; then
+    echo "    git status is clean after the pipeline"
+else
+    echo "    ERROR: the pipeline changed or created tracked files:"
+    git --no-pager status --porcelain
+    exit 1
+fi
+
+echo
 echo ">>> running the test suite"
 "$PYTHON" -m pytest -q
 

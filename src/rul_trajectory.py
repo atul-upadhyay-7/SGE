@@ -38,6 +38,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from repro import rounded  # noqa: E402
+
 THRESHOLD = 80.0
 SMOOTH_WINDOW = 10
 REF_SMOOTH = 5
@@ -363,10 +365,10 @@ def main():
         {c: p["predicted_soh"].to_numpy() for c, p in preds.items()},
         cells=cells,
     )
-    res.to_csv(proc / "rul_trajectory_results.csv", index=False)
+    rounded(res).to_csv(proc / "rul_trajectory_results.csv", index=False)
 
     bands = prediction_bands(df, preds, cells=cells)
-    bands.to_csv(proc / "rul_prediction_bands.csv", index=False)
+    rounded(bands).to_csv(proc / "rul_prediction_bands.csv", index=False)
 
     if not bands.empty:
         print(

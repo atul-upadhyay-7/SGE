@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
+from repro import rounded
+
 
 PROCESSED_DIR = Path("data/processed")
 
@@ -607,7 +609,7 @@ def parse_all_cells():
         "nasa_cycle_features_raw.csv"
     )
 
-    final_df.to_csv(
+    rounded(final_df).to_csv(
         output,
         index=False
     )

@@ -8,7 +8,10 @@ BMS Dataset/
 data/raw/
 *.db
 data/*.db
-logs/*.log
+
+# Machine-local logs (pipeline, Grafana, the JSON API) are state,
+# not source. Nothing under logs/ is tracked.
+logs/
 
 # Grafana state, when launched with the repo-local paths from
 # the README (GF_PATHS_DATA=.grafana-data). This holds Grafana's
@@ -17,5 +20,4 @@ logs/*.log
 .grafana-data/
 
 artifacts/
-logs/train_*/
 reports/train_report_*

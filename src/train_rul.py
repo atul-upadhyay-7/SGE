@@ -59,6 +59,7 @@ from evaluation import (
     split_by_cell
 )
 
+from repro import rounded
 from preprocessing import (
     EARLY_SLOPE_WINDOW,
     EOL_SOH_THRESHOLD
@@ -566,22 +567,22 @@ def main():
 
         cell = prediction["cell_id"].iloc[0]
 
-        prediction.to_csv(
+        rounded(prediction).to_csv(
             RESULT_DIR / f"rul_predictions_{cell}.csv",
             index=False
         )
 
-    results.to_csv(
+    rounded(results).to_csv(
         RESULT_DIR / "rul_results.csv",
         index=False
     )
 
-    baseline_frame.to_csv(
+    rounded(baseline_frame).to_csv(
         RESULT_DIR / "rul_null_baselines.csv",
         index=False
     )
 
-    degradation.to_csv(
+    rounded(degradation).to_csv(
         RESULT_DIR / "rul_degradation_rates.csv",
         index=False
     )

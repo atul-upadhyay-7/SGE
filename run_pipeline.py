@@ -14,10 +14,14 @@ Stages
    3. data_quality     audit, fails loudly on a bad table
    4. train_soh        SOH models and artifacts
    5. train_rul        RUL models and artifacts
-   6. anomaly          cycle screening
-   7. benchmark        inference latency
-   8. load_to_sqlite   dashboard database
-   9. pytest           the full suite
+   6. rul_trajectory   RUL trajectories and bands
+   7. run_experiments  formulas, ablation, leave-one-group-out
+   8. pack_evaluate    pack alert engine on synthetic faults
+   9. anomaly          cycle screening
+  10. benchmark_latency inference latency
+  11. load_to_sqlite   dashboard database
+  12. make_report      README/CHANGES numbers from the CSVs
+  13. pytest           the full suite
 
 Any stage that exits non-zero stops the run. Nothing is
 swallowed: the failing stage, its command and its own output
@@ -32,6 +36,14 @@ Note: train_soh runs a nested leave-one-cell-out
 hyperparameter search and takes tens of minutes on four
 cells. Use --skip-train when the artifacts are already
 current.
+
+Reproducibility: --skip-train must leave `git status` clean.
+Training-dependent outputs are therefore not rewritten on a
+skip-train run: benchmark_latency is skipped entirely (its
+timings measure the trained artifacts and jitter by nature),
+and pack_evaluate is run with --no-save-model so the committed
+models/pack_iforest.joblib stays untouched. Every CSV writer
+rounds floats to 10 decimals so reruns stay byte-identical.
 """
 
 import argparse
@@ -70,6 +82,12 @@ STAGES = [
 ]
 
 TRAIN_STAGES = {"train_soh", "train_rul"}
+
+# Stages whose committed output only changes when models are
+# (re)trained, so a --skip-train run must not rewrite them:
+# benchmark_latency re-measures the trained artifacts and its
+# wall-clock timings jitter between runs by nature.
+TRAIN_ONLY_OUTPUTS = {"benchmark_latency"}
 
 
 def run_stage(name, command):
@@ -149,7 +167,15 @@ def main():
         stages = [
             (name, command)
             for name, command in stages
-            if name not in TRAIN_STAGES
+            if name not in TRAIN_STAGES | TRAIN_ONLY_OUTPUTS
+        ]
+
+        # pack_evaluate still runs (its CSVs are training-independent)
+        # but must not rewrite the committed Isolation Forest artifact.
+        stages = [
+            (name, command + ["--no-save-model"])
+            if name == "pack_evaluate" else (name, command)
+            for name, command in stages
         ]
 
     if args.no_tests:

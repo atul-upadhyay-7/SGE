@@ -47,6 +47,7 @@ from sklearn.model_selection import (
     RandomizedSearchCV
 )
 
+from repro import rounded
 from evaluation import (
     MODEL_NAMES,
     build_model,
@@ -668,7 +669,7 @@ def main():
 
         cell = frame["cell_id"].iloc[0]
 
-        frame.to_csv(
+        rounded(frame).to_csv(
             RESULT_DIR / f"soh_predictions_{cell}.csv",
             index=False
         )
@@ -728,36 +729,36 @@ def main():
     # soh_results.csv keeps its original four columns so
     # existing consumers keep working. It holds the
     # hand-tuned default model, not the searched one.
-    baseline_frame[
+    rounded(baseline_frame[
         baseline_frame["model"] == "XGBoost"
     ][
         ["test_cell", "MAE", "RMSE", "R2"]
-    ].to_csv(
+    ]).to_csv(
         RESULT_DIR / "soh_results.csv",
         index=False
     )
 
-    baseline_frame.to_csv(
+    rounded(baseline_frame).to_csv(
         RESULT_DIR / "soh_baselines.csv",
         index=False
     )
 
-    null_frame.to_csv(
+    rounded(null_frame).to_csv(
         RESULT_DIR / "soh_null_baselines.csv",
         index=False
     )
 
-    nested_frame.to_csv(
+    rounded(nested_frame).to_csv(
         RESULT_DIR / "soh_nested_results.csv",
         index=False
     )
 
-    importance.to_csv(
+    rounded(importance).to_csv(
         RESULT_DIR / "soh_feature_importance.csv",
         index=False
     )
 
-    bias.to_csv(
+    rounded(bias).to_csv(
         RESULT_DIR / "soh_bias_report.csv",
         index=False
     )

@@ -63,6 +63,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from repro import rounded
 from evaluation import (
     loco_evaluate
 )
@@ -823,17 +824,17 @@ def main():
             .to_string(index=False)
         )
 
-    report.to_csv(
+    rounded(report).to_csv(
         RESULT_DIR / "anomaly_cycle_report.csv",
         index=False
     )
 
-    events.to_csv(
+    rounded(events).to_csv(
         RESULT_DIR / "anomaly_events.csv",
         index=False
     )
 
-    summary.to_csv(
+    rounded(summary).to_csv(
         RESULT_DIR / "anomaly_summary.csv",
         index=False
     )

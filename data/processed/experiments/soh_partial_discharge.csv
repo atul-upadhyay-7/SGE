@@ -1,31 +1,31 @@
 cell_id,method,formula,mae_pct,r2,n,target,model
-B0005,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,8.908617120869517,-0.1948068724686285,168,soh,
-B0006,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,18.8171254135128,-2.158874561422207,168,soh,
-B0007,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,6.290241224649251,0.11612526186402017,168,soh,
-B0018,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,9.316991711639156,-0.8670603999860949,132,soh,
-B0029,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,1.9443874829609147,0.44337111494227766,40,soh,
-B0030,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,1.1136894266509487,0.7624713994847568,40,soh,
-B0031,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,1.0586779427766078,0.3475238510322748,40,soh,
-B0032,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,4.399248796817311,-1.327781746603709,40,soh,
-B0053,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,10.148383865502266,-11.543072187464793,55,soh,
-MEAN,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,6.88859588726431,-1.602456015624678,851,soh,
-B0005,partial_window_model,,3.454448641105622,0.8442547542019458,168,,ElasticNet
-B0005,partial_window_model,,1.6517606683552972,0.963230007929834,168,,XGBoost
-B0006,partial_window_model,,8.43027268492823,0.4031398714258687,168,,ElasticNet
-B0006,partial_window_model,,8.93884372304574,0.1554424193444094,168,,XGBoost
-B0007,partial_window_model,,3.322449018602893,0.8002044173831886,168,,ElasticNet
-B0007,partial_window_model,,2.0427104893308146,0.934570798302808,168,,XGBoost
-B0018,partial_window_model,,1.5211069523981666,0.9358774749882081,132,,ElasticNet
-B0018,partial_window_model,,2.3719722633874296,0.882409124869542,132,,XGBoost
-B0029,partial_window_model,,6.878146485062402,-3.29032504536898,40,,ElasticNet
-B0029,partial_window_model,,1.93045157258145,0.5495214968879658,40,,XGBoost
-B0030,partial_window_model,,4.306042290380631,-1.1080663031618996,40,,ElasticNet
-B0030,partial_window_model,,3.521737480981785,-0.4302979596467933,40,,XGBoost
-B0031,partial_window_model,,8.241653644916278,-10.786146547551358,40,,ElasticNet
-B0031,partial_window_model,,2.124245862198017,-0.08431155977121496,40,,XGBoost
-B0032,partial_window_model,,5.831887793581946,-2.30587218684865,40,,ElasticNet
-B0032,partial_window_model,,3.0781759952629963,0.02489766238498836,40,,XGBoost
-B0053,partial_window_model,,7.472876708195511,-4.761565942921019,55,,ElasticNet
-B0053,partial_window_model,,6.685049780061031,-3.304122571905559,55,,XGBoost
-MEAN,partial_window_model,,5.495431579907964,-2.1409443897614104,851,,ElasticNet
-MEAN,partial_window_model,,3.593883092800507,-0.03429562017822442,851,,XGBoost
+B0005,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,8.9086171207,-0.1948068724,168,soh,
+B0006,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,18.8171254151,-2.1588745617,168,soh,
+B0007,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,6.2902412245,0.116125262,168,soh,
+B0018,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,9.3169917137,-0.8670604007,132,soh,
+B0029,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,1.9443874809,0.4433711157,40,soh,
+B0030,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,1.1136894253,0.7624714,40,soh,
+B0031,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,1.0586779423,0.3475238508,40,soh,
+B0032,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,4.3992487974,-1.3277817469,40,soh,
+B0053,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,10.1483838713,-11.5430721974,55,soh,
+MEAN,partial_window_formula,vw_capacity_ah / cell reference vw_capacity_ah,6.8885958879,-1.6024560168,851,soh,
+B0005,partial_window_model,,3.4544486434,0.844254754,168,,ElasticNet
+B0005,partial_window_model,,1.6517606688,0.9632300079,168,,XGBoost
+B0006,partial_window_model,,8.4302726852,0.4031398714,168,,ElasticNet
+B0006,partial_window_model,,8.9388437215,0.1554424196,168,,XGBoost
+B0007,partial_window_model,,3.3224490176,0.8002044174,168,,ElasticNet
+B0007,partial_window_model,,2.0427104891,0.9345707983,168,,XGBoost
+B0018,partial_window_model,,1.5211069522,0.9358774749,132,,ElasticNet
+B0018,partial_window_model,,2.3719722647,0.8824091248,132,,XGBoost
+B0029,partial_window_model,,6.8781464887,-3.2903250487,40,,ElasticNet
+B0029,partial_window_model,,1.9304515719,0.5495214972,40,,XGBoost
+B0030,partial_window_model,,4.3060422888,-1.1080663036,40,,ElasticNet
+B0030,partial_window_model,,3.521737481,-0.4302979596,40,,XGBoost
+B0031,partial_window_model,,8.2416536426,-10.7861465386,40,,ElasticNet
+B0031,partial_window_model,,2.1242458608,-0.0843115583,40,,XGBoost
+B0032,partial_window_model,,5.8318877942,-2.3058721878,40,,ElasticNet
+B0032,partial_window_model,,3.078175995,0.0248976624,40,,XGBoost
+B0053,partial_window_model,,7.4728767154,-4.7615659518,55,,ElasticNet
+B0053,partial_window_model,,6.6850497798,-3.304122572,55,,XGBoost
+MEAN,partial_window_model,,5.4954315809,-2.1409443903,851,,ElasticNet
+MEAN,partial_window_model,,3.5938830925,-0.03429562,851,,XGBoost

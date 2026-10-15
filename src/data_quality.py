@@ -25,6 +25,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from repro import rounded  # noqa: E402
+
 
 PROCESSED_DIR = Path("data/processed")
 
@@ -342,7 +344,7 @@ def write_reports(report, report_csv, report_json):
             round(stats["fade_pct_total"], 4)
         )
 
-    pd.DataFrame(rows).to_csv(report_csv, index=False)
+    rounded(pd.DataFrame(rows)).to_csv(report_csv, index=False)
 
 
 def audit(path=ML_DATASET, report_dir=None):

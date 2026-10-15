@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from causal import add_causal_features  # noqa: E402
 from load_data import RATED_CAPACITY_AH  # noqa: E402
+from repro import rounded  # noqa: E402
 from preprocessing import (  # noqa: E402
     EARLY_SLOPE_WINDOW,
     EOL_SOH_THRESHOLD,
@@ -340,8 +341,8 @@ def main():
 
     audit_df = audit_df.merge(summary, on="cell_id", how="left")
 
-    audit_df.to_csv(OUT_AUDIT, index=False)
-    cleaned.to_csv(OUT_CLEAN, index=False)
+    rounded(audit_df).to_csv(OUT_AUDIT, index=False)
+    rounded(cleaned).to_csv(OUT_CLEAN, index=False)
 
     kept = audit_df.loc[audit_df["keep"], "cell_id"].tolist()
     limited = audit_df.loc[

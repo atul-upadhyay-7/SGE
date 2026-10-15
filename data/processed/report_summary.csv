@@ -24,107 +24,107 @@ SOH,XGBoost (nested),held-out B0007,R2,0.9544172484799164,,data/processed/soh_ne
 SOH,XGBoost (nested),held-out B0018,MAE,1.9644461732382437,%,data/processed/soh_nested_results.csv
 SOH,XGBoost (nested),held-out B0018,RMSE,2.295797416617797,%,data/processed/soh_nested_results.csv
 SOH,XGBoost (nested),held-out B0018,R2,0.9250794608755925,,data/processed/soh_nested_results.csv
-SOH,full-discharge formula,held-out B0005,MAE,0.1707900812365614,%,data/processed/experiments/soh_full_discharge.csv
-SOH,full-discharge formula,held-out B0006,MAE,0.5256173028658699,%,data/processed/experiments/soh_full_discharge.csv
-SOH,full-discharge formula,held-out B0007,MAE,0.277450413921632,%,data/processed/experiments/soh_full_discharge.csv
-SOH,full-discharge formula,held-out B0018,MAE,0.183835679426581,%,data/processed/experiments/soh_full_discharge.csv
-SOH,full-discharge formula,mean (G1),mean MAE,0.28942336936266105,%,data/processed/experiments/soh_full_discharge.csv
-SOH,partial-window formula,held-out B0005,MAE,8.908617120869517,%,data/processed/experiments/soh_partial_discharge.csv
-SOH,partial-window formula,held-out B0006,MAE,18.8171254135128,%,data/processed/experiments/soh_partial_discharge.csv
-SOH,partial-window formula,held-out B0007,MAE,6.290241224649251,%,data/processed/experiments/soh_partial_discharge.csv
-SOH,partial-window formula,held-out B0018,MAE,9.316991711639156,%,data/processed/experiments/soh_partial_discharge.csv
-SOH,partial-window formula,mean (G1),mean MAE,10.833243867667681,%,data/processed/experiments/soh_partial_discharge.csv
-SOH,A_all,leave-one-cell-out (G1),ElasticNet MAE,1.806872777090917,%,data/processed/experiments/ablation_features.csv
-SOH,A_all,leave-one-cell-out (G1),XGBoost MAE,2.743101279420129,%,data/processed/experiments/ablation_features.csv
-SOH,B_no_vw,leave-one-cell-out (G1),ElasticNet MAE,3.8533252038202415,%,data/processed/experiments/ablation_features.csv
-SOH,B_no_vw,leave-one-cell-out (G1),XGBoost MAE,3.055252574067391,%,data/processed/experiments/ablation_features.csv
-SOH,C_vw_temp_current,leave-one-cell-out (G1),ElasticNet MAE,1.6751636635766554,%,data/processed/experiments/ablation_features.csv
-SOH,C_vw_temp_current,leave-one-cell-out (G1),XGBoost MAE,2.192358259674158,%,data/processed/experiments/ablation_features.csv
-SOH,D_vw_only,leave-one-cell-out (G1),ElasticNet MAE,1.863186037096208,%,data/processed/experiments/ablation_features.csv
-SOH,D_vw_only,leave-one-cell-out (G1),XGBoost MAE,2.5743612088735794,%,data/processed/experiments/ablation_features.csv
-SOH,cross-condition,held-out G1,ElasticNet MAE,42.256783970212,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G1,XGBoost MAE,14.05607215900723,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G3,ElasticNet MAE,20.692662224087098,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G3,XGBoost MAE,13.413607724521489,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G9,ElasticNet MAE,47.61148114923802,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G9,XGBoost MAE,3.042568906570264,%,data/processed/experiments/logo_results.csv
-RUL,trajectory,held-out B0005,MAE,7.114583333333333,discharges,data/processed/rul_trajectory_results.csv
-RUL,fleet lifetime baseline,held-out B0005,MAE,24.77083333333333,discharges,data/processed/rul_trajectory_results.csv
+SOH,full-discharge formula,held-out B0005,MAE,0.1707900824,%,data/processed/experiments/soh_full_discharge.csv
+SOH,full-discharge formula,held-out B0006,MAE,0.5256173014,%,data/processed/experiments/soh_full_discharge.csv
+SOH,full-discharge formula,held-out B0007,MAE,0.2774504139,%,data/processed/experiments/soh_full_discharge.csv
+SOH,full-discharge formula,held-out B0018,MAE,0.1838356793,%,data/processed/experiments/soh_full_discharge.csv
+SOH,full-discharge formula,mean (G1),mean MAE,0.28942336925,%,data/processed/experiments/soh_full_discharge.csv
+SOH,partial-window formula,held-out B0005,MAE,8.9086171207,%,data/processed/experiments/soh_partial_discharge.csv
+SOH,partial-window formula,held-out B0006,MAE,18.8171254151,%,data/processed/experiments/soh_partial_discharge.csv
+SOH,partial-window formula,held-out B0007,MAE,6.2902412245,%,data/processed/experiments/soh_partial_discharge.csv
+SOH,partial-window formula,held-out B0018,MAE,9.3169917137,%,data/processed/experiments/soh_partial_discharge.csv
+SOH,partial-window formula,mean (G1),mean MAE,10.8332438685,%,data/processed/experiments/soh_partial_discharge.csv
+SOH,A_all,leave-one-cell-out (G1),ElasticNet MAE,1.8068727727,%,data/processed/experiments/ablation_features.csv
+SOH,A_all,leave-one-cell-out (G1),XGBoost MAE,2.7431012796,%,data/processed/experiments/ablation_features.csv
+SOH,B_no_vw,leave-one-cell-out (G1),ElasticNet MAE,3.8533252028,%,data/processed/experiments/ablation_features.csv
+SOH,B_no_vw,leave-one-cell-out (G1),XGBoost MAE,3.0552525741,%,data/processed/experiments/ablation_features.csv
+SOH,C_vw_temp_current,leave-one-cell-out (G1),ElasticNet MAE,1.6751636639,%,data/processed/experiments/ablation_features.csv
+SOH,C_vw_temp_current,leave-one-cell-out (G1),XGBoost MAE,2.1923582598,%,data/processed/experiments/ablation_features.csv
+SOH,D_vw_only,leave-one-cell-out (G1),ElasticNet MAE,1.8631860371,%,data/processed/experiments/ablation_features.csv
+SOH,D_vw_only,leave-one-cell-out (G1),XGBoost MAE,2.574361209,%,data/processed/experiments/ablation_features.csv
+SOH,cross-condition,held-out G1,ElasticNet MAE,42.2567839625,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G1,XGBoost MAE,14.0560721582,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G3,ElasticNet MAE,20.6926627367,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G3,XGBoost MAE,13.413607724,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G9,ElasticNet MAE,47.611481161,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G9,XGBoost MAE,3.0425689059,%,data/processed/experiments/logo_results.csv
+RUL,trajectory,held-out B0005,MAE,7.1145833333,discharges,data/processed/rul_trajectory_results.csv
+RUL,fleet lifetime baseline,held-out B0005,MAE,24.7708333333,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0005,EOL discharge,106.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,band coverage,held-out B0005,10th-90th coverage,93.75,percent,data/processed/rul_trajectory_results.csv
-RUL,band width,held-out B0005,mean band width,25.791666666666668,discharges,data/processed/rul_trajectory_results.csv
+RUL,band width,held-out B0005,mean band width,25.7916666667,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0006,MAE,51.06,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0006,MAE,46.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0006,EOL discharge,60.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,band coverage,held-out B0006,10th-90th coverage,0.0,percent,data/processed/rul_trajectory_results.csv
 RUL,band width,held-out B0006,mean band width,25.52,discharges,data/processed/rul_trajectory_results.csv
-RUL,trajectory,held-out B0007,MAE,17.473684210526315,discharges,data/processed/rul_trajectory_results.csv
-RUL,fleet lifetime baseline,held-out B0007,MAE,37.51754385964912,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,held-out B0007,MAE,17.4736842105,discharges,data/processed/rul_trajectory_results.csv
+RUL,fleet lifetime baseline,held-out B0007,MAE,37.5175438596,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0007,EOL discharge,124.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,band coverage,held-out B0007,10th-90th coverage,17.54385964912281,percent,data/processed/rul_trajectory_results.csv
-RUL,band width,held-out B0007,mean band width,14.603508771929825,discharges,data/processed/rul_trajectory_results.csv
-RUL,trajectory,held-out B0018,MAE,6.477611940298507,discharges,data/processed/rul_trajectory_results.csv
+RUL,band coverage,held-out B0007,10th-90th coverage,17.5438596491,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,held-out B0007,mean band width,14.6035087719,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,held-out B0018,MAE,6.4776119403,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0018,MAE,29.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0018,EOL discharge,77.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,band coverage,held-out B0018,10th-90th coverage,82.08955223880596,percent,data/processed/rul_trajectory_results.csv
-RUL,band width,held-out B0018,mean band width,20.32238805970149,discharges,data/processed/rul_trajectory_results.csv
-RUL,trajectory,mean (G1),mean MAE,20.531469871039537,discharges,data/processed/rul_trajectory_results.csv
-RUL,fleet lifetime baseline,mean (G1),mean MAE,34.32209429824562,discharges,data/processed/rul_trajectory_results.csv
-RUL,band coverage,mean (G1),mean coverage,48.3458529719822,percent,data/processed/rul_trajectory_results.csv
-RUL,band width,mean (G1),mean band width,21.559390874574497,discharges,data/processed/rul_trajectory_results.csv
-degradation,slope,B0005,fade,0.2139387006732378,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0005,early fade,0.0579203843585206,%/discharge,data/processed/cell_audit.csv
+RUL,band coverage,held-out B0018,10th-90th coverage,82.0895522388,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,held-out B0018,mean band width,20.3223880597,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,mean (G1),mean MAE,20.531469871025,discharges,data/processed/rul_trajectory_results.csv
+RUL,fleet lifetime baseline,mean (G1),mean MAE,34.322094298225004,discharges,data/processed/rul_trajectory_results.csv
+RUL,band coverage,mean (G1),mean coverage,48.345852971975,percent,data/processed/rul_trajectory_results.csv
+RUL,band width,mean (G1),mean band width,21.559390874575,discharges,data/processed/rul_trajectory_results.csv
+degradation,slope,B0005,fade,0.2139387007,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0005,early fade,0.0579203844,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,EOL discharge,107.0,discharges,data/processed/cell_audit.csv
-degradation,slope,B0006,fade,0.3089817023978708,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0006,early fade,0.2841525273584407,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0006,fade,0.3089817024,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0006,early fade,0.2841525273,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0006,EOL discharge,61.0,discharges,data/processed/cell_audit.csv
-degradation,slope,B0007,fade,0.1877299411440624,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0007,early fade,0.0666800252037663,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0007,fade,0.1877299411,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0007,early fade,0.0666800252,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0007,EOL discharge,125.0,discharges,data/processed/cell_audit.csv
-degradation,slope,B0018,fade,0.2477519759255781,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0018,early fade,0.319097734905641,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0018,fade,0.2477519759,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0018,early fade,0.3190977349,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0018,EOL discharge,78.0,discharges,data/processed/cell_audit.csv
-degradation,slope,B0029,fade,0.2806182396948166,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0029,early fade,0.2806182396948166,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0030,fade,0.2790005506259629,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0030,early fade,0.2790005506259629,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0031,fade,0.1755943987762095,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0031,early fade,0.1755943987762095,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0032,fade,0.2860633774428048,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0032,early fade,0.2860633774428048,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0053,fade,0.1251119246871211,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0053,early fade,0.2672707605707608,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0029,fade,0.2806182397,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0029,early fade,0.2806182397,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0030,fade,0.2790005507,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0030,early fade,0.2790005507,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0031,fade,0.1755943988,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0031,early fade,0.1755943988,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0032,fade,0.2860633774,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0032,early fade,0.2860633774,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0053,fade,0.1251119247,%/discharge,data/processed/cell_audit.csv
+degradation,slope,B0053,early fade,0.2672707605,%/discharge,data/processed/cell_audit.csv
 dataset,summary,B0005,discharges,168.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0005,initial SOH,101.15172778353455,%,data/processed/cell_audit.csv
-dataset,summary,B0005,final SOH,72.19766858609252,%,data/processed/cell_audit.csv
+dataset,summary,B0005,initial SOH,101.1517277838,%,data/processed/cell_audit.csv
+dataset,summary,B0005,final SOH,72.1976685847,%,data/processed/cell_audit.csv
 dataset,summary,B0005,EOL discharge,107.0,discharges,data/processed/cell_audit.csv
 dataset,summary,B0006,discharges,168.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0006,initial SOH,101.0932762801604,%,data/processed/cell_audit.csv
-dataset,summary,B0006,final SOH,58.89135758950863,%,data/processed/cell_audit.csv
+dataset,summary,B0006,initial SOH,101.0932762822,%,data/processed/cell_audit.csv
+dataset,summary,B0006,final SOH,58.8913575912,%,data/processed/cell_audit.csv
 dataset,summary,B0006,EOL discharge,61.0,discharges,data/processed/cell_audit.csv
 dataset,summary,B0007,discharges,168.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0007,initial SOH,100.5524448294735,%,data/processed/cell_audit.csv
-dataset,summary,B0007,final SOH,76.16758143909068,%,data/processed/cell_audit.csv
+dataset,summary,B0007,initial SOH,100.55244483,%,data/processed/cell_audit.csv
+dataset,summary,B0007,final SOH,76.1675814411,%,data/processed/cell_audit.csv
 dataset,summary,B0007,EOL discharge,125.0,discharges,data/processed/cell_audit.csv
 dataset,summary,B0018,discharges,132.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0018,initial SOH,100.83728326424956,%,data/processed/cell_audit.csv
-dataset,summary,B0018,final SOH,72.89900508389351,%,data/processed/cell_audit.csv
+dataset,summary,B0018,initial SOH,100.8372832667,%,data/processed/cell_audit.csv
+dataset,summary,B0018,final SOH,72.8990050831,%,data/processed/cell_audit.csv
 dataset,summary,B0018,EOL discharge,78.0,discharges,data/processed/cell_audit.csv
 dataset,summary,B0029,discharges,40.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0029,initial SOH,93.48792126056053,%,data/processed/cell_audit.csv
-dataset,summary,B0029,final SOH,88.78311606891852,%,data/processed/cell_audit.csv
+dataset,summary,B0029,initial SOH,93.4879212609,%,data/processed/cell_audit.csv
+dataset,summary,B0029,final SOH,88.7831160689,%,data/processed/cell_audit.csv
 dataset,summary,B0030,discharges,40.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0030,initial SOH,94.53779663733516,%,data/processed/cell_audit.csv
-dataset,summary,B0030,final SOH,89.2122686102088,%,data/processed/cell_audit.csv
+dataset,summary,B0030,initial SOH,94.5377966349,%,data/processed/cell_audit.csv
+dataset,summary,B0030,final SOH,89.2122686073,%,data/processed/cell_audit.csv
 dataset,summary,B0031,discharges,40.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0031,initial SOH,92.36529694510432,%,data/processed/cell_audit.csv
-dataset,summary,B0031,final SOH,92.39985534936405,%,data/processed/cell_audit.csv
+dataset,summary,B0031,initial SOH,92.3652969452,%,data/processed/cell_audit.csv
+dataset,summary,B0031,final SOH,92.3998553477,%,data/processed/cell_audit.csv
 dataset,summary,B0032,discharges,40.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0032,initial SOH,91.3893826943222,%,data/processed/cell_audit.csv
-dataset,summary,B0032,final SOH,87.68720014104171,%,data/processed/cell_audit.csv
+dataset,summary,B0032,initial SOH,91.3893826975,%,data/processed/cell_audit.csv
+dataset,summary,B0032,final SOH,87.687200144,%,data/processed/cell_audit.csv
 dataset,summary,B0053,discharges,55.0,rows,data/processed/cell_audit.csv
-dataset,summary,B0053,initial SOH,94.56524529500228,%,data/processed/cell_audit.csv
-dataset,summary,B0053,final SOH,89.35840913127524,%,data/processed/cell_audit.csv
+dataset,summary,B0053,initial SOH,94.5652452928,%,data/processed/cell_audit.csv
+dataset,summary,B0053,final SOH,89.358409127,%,data/processed/cell_audit.csv
 dataset,summary,kept cells,discharges,851.0,rows,data/processed/cell_audit.csv
 pack,cell_sag,synthetic injection,rule detection,75.0,%,data/processed/pack_detection_summary.csv
 pack,cell_sag,synthetic injection,iforest detection,25.0,%,data/processed/pack_detection_summary.csv
@@ -133,7 +133,7 @@ pack,resistance_spike,synthetic injection,rule detection,100.0,%,data/processed/
 pack,resistance_spike,synthetic injection,iforest detection,100.0,%,data/processed/pack_detection_summary.csv
 pack,resistance_spike,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
 pack,thermal,synthetic injection,rule detection,100.0,%,data/processed/pack_detection_summary.csv
-pack,thermal,synthetic injection,iforest detection,70.83333333333334,%,data/processed/pack_detection_summary.csv
+pack,thermal,synthetic injection,iforest detection,70.83333333,%,data/processed/pack_detection_summary.csv
 pack,thermal,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
 pack,clean packs,no injected fault,discharges,564.0,discharges,data/processed/pack_false_alarms.csv
 pack,clean packs,no injected fault,false resistance spikes,0.0,alarms,data/processed/pack_false_alarms.csv

@@ -13,6 +13,7 @@ import pandas as pd
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from causal import add_causal_features
+from repro import rounded
 try:
     from load_data import GROUPS, CELL_TO_GROUP
 except ImportError:
@@ -341,7 +342,7 @@ def main():
         exist_ok=True
     )
 
-    df.to_csv(
+    rounded(df).to_csv(
         OUTPUT_FILE,
         index=False
     )
