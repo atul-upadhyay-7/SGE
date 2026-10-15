@@ -89,10 +89,13 @@ class TrajectoryRul:
             threshold,
         )
 
-    def remaining(self, recent_soh):
+    def remaining_distribution(self, recent_soh):
         """
-        Discharges until the threshold, from recent predicted SOH
-        values (most recent last). None without references.
+        Remaining discharges predicted by EVERY reference cell, from
+        recent predicted SOH values (most recent last). None without
+        references. The spread of these values across references is
+        the honest prediction interval: it says how much the answer
+        depends on which reference curve you happen to match.
         """
 
         if not self.refs or len(recent_soh) == 0:
@@ -103,7 +106,7 @@ class TrajectoryRul:
 
         if s <= self.threshold:
 
-            return 0
+            return np.zeros(1, dtype=float)
 
         rems = []
 
@@ -113,7 +116,42 @@ class TrajectoryRul:
             idx = int(np.argmax(below)) if below.any() else ref["eol"]
             rems.append(max(ref["eol"] - idx, 0))
 
-        return int(round(float(np.median(rems))))
+        return np.asarray(rems, dtype=float)
+
+    def remaining(self, recent_soh):
+        """
+        Discharges until the threshold, from recent predicted SOH
+        values (most recent last). None without references. This is
+        the median of remaining_distribution(), so the point estimate
+        and the interval cannot drift apart.
+        """
+
+        dist = self.remaining_distribution(recent_soh)
+
+        if dist is None:
+
+            return None
+
+        return int(round(float(np.median(dist))))
+
+    def remaining_interval(self, recent_soh):
+        """
+        (p10, p50, p90) of the per-reference remaining discharges.
+        Uses linear interpolation on the small reference sample, so a
+        four-reference estimate yields a p10/p90 that is wider than
+        the observed min/max rather than collapsing onto it. None
+        without references. p50 equals remaining().
+        """
+
+        dist = self.remaining_distribution(recent_soh)
+
+        if dist is None:
+
+            return None
+
+        p10, p50, p90 = np.percentile(dist, [10.0, 50.0, 90.0])
+
+        return float(p10), float(p50), float(p90)
 
     def save(self, path):
 
@@ -210,6 +248,68 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
     return pd.DataFrame(out)
 
 
+def prediction_bands(df, preds, cells=None, threshold=THRESHOLD, start=10):
+    """
+    Per-cycle RUL point estimate with a real prediction interval.
+
+    For each held-out cell the reference set is the OTHER cells, so
+    the band that ends up on the dashboard is produced by exactly
+    the leave-one-cell-out protocol the reported MAE is measured
+    under. Columns: cell_id, cycle, predicted_rul, rul_p10, rul_p90.
+    """
+
+    cells = sorted(cells) if cells is not None else sorted(df["cell_id"].unique())
+    out = []
+
+    for t in cells:
+
+        if t not in preds:
+
+            continue
+
+        frame = preds[t]
+
+        # Only in-service discharges are a prediction: after the cell
+        # reaches the retirement threshold the remaining life is 0 by
+        # definition, and averaging those zeros would make the latest
+        # fleet estimate meaningless.
+        if "is_pre_eol" in frame.columns:
+
+            frame = frame[frame["is_pre_eol"].astype(bool)]
+
+        refs = [c for c in cells if c != t]
+        est = TrajectoryRul.from_dataset(df, refs, threshold)
+
+        cycles = frame["cycle"].to_numpy()
+        pred = frame["predicted_soh"].to_numpy(dtype=float)
+
+        for k in range(len(pred)):
+
+            if k + 1 < start:
+
+                continue
+
+            interval = est.remaining_interval(pred[: k + 1])
+
+            if interval is None:
+
+                continue
+
+            p10, p50, p90 = interval
+
+            out.append(
+                {
+                    "cell_id": t,
+                    "cycle": int(cycles[k]),
+                    "predicted_rul": p50,
+                    "rul_p10": p10,
+                    "rul_p90": p90,
+                }
+            )
+
+    return pd.DataFrame(out)
+
+
 def main():
 
     root = Path(__file__).resolve().parent.parent
@@ -224,14 +324,28 @@ def main():
         pfile = proc / f"soh_predictions_{c}.csv"
         if not pfile.exists():
             continue
-        p = pd.read_csv(pfile)
         preds[c] = (
-            p.sort_values("cycle")["predicted_soh"].to_numpy()
+            pd.read_csv(pfile).sort_values("cycle")
         )
 
     cells = sorted(df["cell_id"].unique())
-    res = evaluate_loco(df, preds, cells=cells)
+    res = evaluate_loco(
+        df,
+        {c: p["predicted_soh"].to_numpy() for c, p in preds.items()},
+        cells=cells,
+    )
     res.to_csv(proc / "rul_trajectory_results.csv", index=False)
+
+    bands = prediction_bands(df, preds, cells=cells)
+    bands.to_csv(proc / "rul_prediction_bands.csv", index=False)
+
+    if not bands.empty:
+        print(
+            f"\nWrote rul_prediction_bands.csv: {len(bands)} rows, "
+            f"interval width mean "
+            f"{(bands['rul_p90'] - bands['rul_p10']).mean():.1f} "
+            "discharges"
+        )
 
     if not res.empty:
         print(res.to_string(index=False))

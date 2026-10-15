@@ -61,11 +61,48 @@
 
 ## Step 5 — Dashboard
 
-- NOT DONE in this session (see the list at the end).
+- Removed every hardcoded fallback from `dashboard/grafana_api.py`
+  (82.5% SOH, 16.0 discharges, 3.04%/9.22% SOH error, 0.85 R², 0.29%
+  Coulomb, 27.3 lifetime). Each stat tile reads the database; when a
+  source table is missing the tile returns an explicit error row rather
+  than a plausible-looking constant that cannot be told apart from a
+  real value.
+- Added real RUL prediction intervals. `src/rul_trajectory.py` now
+  writes `data/processed/rul_prediction_bands.csv`: for each held-out
+  cell and discharge, the 10th/50th/90th percentiles of the
+  per-reference-cell remaining-life estimates, under the same
+  leave-one-cell-out protocol the reported MAE is measured under. The
+  dashboard plots these percentiles instead of `predicted_rul * 0.8` and
+  `predicted_rul * 1.2`, which were a fixed ±20% fake.
+- `model_summary` is now computed from the result CSVs: held-out SOH MAE
+  with its per-cell range, held-out R², the Coulomb baseline, the RUL MAE
+  with its per-cell range and the fleet-lifetime baseline, the discharge
+  count and the cell list.
+- `stat_discharges_left` is the mean of each cell's latest in-service
+  prediction, and its range is the mean of each cell's stored 10th/90th
+  percentiles. It no longer averages the trajectory MAE and relabels it
+  "discharges left".
+- The `cell` dashboard variable is chained to `group` (`cells:$group`)
+  and `/search` treats `cells:All` as no filter. Per-cell table panels
+  now honour the cell/group selection instead of always showing every
+  cell.
+- Removed the stale result numbers (2.89%, 0.51%, 0.29%, 9.22%) from the
+  dashboard's description panel; it points at the database-backed
+  `Model Summary` table instead.
+- `tests/test_grafana_api.py` now pins the band ordering
+  (`p10 ≤ predicted ≤ p90`), the group→cell chaining, and the fact that
+  the table panels obey the cell variable.
 
 ## Step 6 — Demo model
 
-- NOT DONE in this session (see the list at the end).
+- Retrained the SOH and RUL models on the audited clean dataset. The
+  committed models predated the cleaning pass, so the reported numbers
+  were from the pre-cleaning data. `soh_xgb_demo` trains on the G1 cells
+  minus the replayed cells (i.e. B0006) so the live replay is genuinely
+  out of sample.
+- README and CHANGES were regenerated from the retrained CSVs; the
+  values moved (Coulomb baseline 0.29 → 0.73, nested XGBoost 2.59 →
+  2.65, trajectory RUL mean MAE 20.4 → 20.5).
 
 ## Step 7 — Housekeeping
 
@@ -79,9 +116,9 @@
 <!-- make_report:final -->
 | Task | Method | Protocol | Score | Baseline | Unit |
 |---|---|---|---|---|---|
-| SOH | Coulomb formula | leave-one-cell-out (G1) | 0.29 | constant mean 9.22 | MAE % |
-| SOH | XGBoost (nested) | nested leave-one-cell-out (G1) | 2.59 | constant mean 9.22 | MAE % |
-| RUL | Trajectory model | leave-one-cell-out (G1) | 20.4 | fleet lifetime 34.3 | discharges |
+| SOH | Coulomb formula | leave-one-cell-out (G1) | 0.73 | constant mean 9.28 | MAE % |
+| SOH | XGBoost (nested) | nested leave-one-cell-out (G1) | 2.65 | constant mean 9.28 | MAE % |
+| RUL | Trajectory model | leave-one-cell-out (G1) | 20.5 | fleet lifetime 34.3 | discharges |
 <!-- make_report:final:end -->
 
 ---
@@ -1464,12 +1501,13 @@ verify.sh: ALL CHECKS PASSED
 
 ## NOT DONE / NOT VERIFIED
 
-1. Dashboard behaviour (Step 5) was not implemented or verified.
-2. The one-cell demo model retrain (Step 6) was not performed.
-3. RUL prediction-interval coverage and progression-point error were
-   not recomputed; any Figure/claim about them is removed rather than
-   guessed.
-4. Docker (`docker compose up`, dashboard screenshots, alert replay)
-   was not run in this environment.
-5. The online double-exponential fit was not re-validated; where it
+1. Docker (`docker compose up`, dashboard screenshots, alert replay)
+   was not run in this environment. The Grafana JSON adapter is covered
+   by tests that run against the built database, but the rendered UI was
+   not screenshotted.
+2. The RUL 10th–90th band is the spread of the per-reference-cell
+   estimates, not a calibrated interval; its empirical coverage
+   (fraction of true RUL values that fall inside the band) is not
+   measured, and no coverage figure is claimed.
+3. The online double-exponential fit was not re-validated; where it
    cannot be backed by a CSV it is marked legacy rather than reported.

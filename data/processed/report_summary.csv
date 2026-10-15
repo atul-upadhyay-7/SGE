@@ -1,29 +1,29 @@
 task,method,protocol,metric,value,unit,source_file
-SOH,Coulomb formula,leave-one-cell-out (G1),mean MAE,0.2934497623301569,%,data/processed/soh_baselines.csv
-SOH,Coulomb formula,leave-one-cell-out (G1),mean R2,0.9986483754636699,,data/processed/soh_baselines.csv
-SOH,ElasticNet,leave-one-cell-out (G1),mean MAE,1.891938220027918,%,data/processed/soh_baselines.csv
-SOH,ElasticNet,leave-one-cell-out (G1),mean R2,0.9421450915285393,,data/processed/soh_baselines.csv
-SOH,Ridge,leave-one-cell-out (G1),mean MAE,2.8167323257607064,%,data/processed/soh_baselines.csv
-SOH,Ridge,leave-one-cell-out (G1),mean R2,0.899343355630923,,data/processed/soh_baselines.csv
-SOH,RandomForest,leave-one-cell-out (G1),mean MAE,2.4209240241561423,%,data/processed/soh_baselines.csv
-SOH,RandomForest,leave-one-cell-out (G1),mean R2,0.90126223882073,,data/processed/soh_baselines.csv
-SOH,XGBoost (fixed params),leave-one-cell-out (G1),mean MAE,2.608364431910174,%,data/processed/soh_results.csv
-SOH,XGBoost (fixed params),leave-one-cell-out (G1),mean R2,0.8974540289700761,,data/processed/soh_results.csv
-SOH,XGBoost (nested tuning),nested leave-one-cell-out (G1),mean MAE,2.5915159551553018,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested tuning),nested leave-one-cell-out (G1),mean R2,0.8985217641067564,,data/processed/soh_nested_results.csv
-SOH,Constant global mean,leave-one-cell-out (G1),mean MAE,9.22255166484927,%,data/processed/soh_null_baselines.csv
-SOH,XGBoost (nested),held-out B0005,MAE,1.2334266277265733,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0005,RMSE,1.5867361812156453,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0005,R2,0.975923456668924,,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0006,MAE,5.595299673290508,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0006,RMSE,6.21568526807033,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0006,R2,0.7465386467638304,,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0007,MAE,1.47085687995951,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0007,RMSE,1.7281492765830144,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0007,R2,0.9585257451553006,,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0018,MAE,2.0664806396446167,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0018,RMSE,2.452019090419435,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0018,R2,0.9130992078389708,,data/processed/soh_nested_results.csv
+SOH,Coulomb formula,leave-one-cell-out (G1),mean MAE,0.7251200204998951,%,data/processed/soh_baselines.csv
+SOH,Coulomb formula,leave-one-cell-out (G1),mean R2,0.9925329383587246,,data/processed/soh_baselines.csv
+SOH,ElasticNet,leave-one-cell-out (G1),mean MAE,1.8068727770909172,%,data/processed/soh_baselines.csv
+SOH,ElasticNet,leave-one-cell-out (G1),mean R2,0.9478381420118622,,data/processed/soh_baselines.csv
+SOH,Ridge,leave-one-cell-out (G1),mean MAE,2.700035352838536,%,data/processed/soh_baselines.csv
+SOH,Ridge,leave-one-cell-out (G1),mean R2,0.9079954531791705,,data/processed/soh_baselines.csv
+SOH,RandomForest,leave-one-cell-out (G1),mean MAE,2.5215324488231197,%,data/processed/soh_baselines.csv
+SOH,RandomForest,leave-one-cell-out (G1),mean R2,0.8990741418717506,,data/processed/soh_baselines.csv
+SOH,XGBoost (fixed params),leave-one-cell-out (G1),mean MAE,2.743101279420129,%,data/processed/soh_results.csv
+SOH,XGBoost (fixed params),leave-one-cell-out (G1),mean R2,0.8938454270455589,,data/processed/soh_results.csv
+SOH,XGBoost (nested tuning),nested leave-one-cell-out (G1),mean MAE,2.6509701297356587,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested tuning),nested leave-one-cell-out (G1),mean R2,0.9003691994026293,,data/processed/soh_nested_results.csv
+SOH,Constant global mean,leave-one-cell-out (G1),mean MAE,9.284328896398257,%,data/processed/soh_null_baselines.csv
+SOH,XGBoost (nested),held-out B0005,MAE,1.4718914702875885,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0005,RMSE,1.762678646774544,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0005,R2,0.97096081911057,,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0006,MAE,5.623519962792351,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0006,RMSE,6.2278519732869935,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0006,R2,0.7510192691444382,,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0007,MAE,1.544022912624451,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0007,RMSE,1.8217335681345268,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0007,R2,0.9544172484799164,,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0018,MAE,1.9644461732382437,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0018,RMSE,2.295797416617797,%,data/processed/soh_nested_results.csv
+SOH,XGBoost (nested),held-out B0018,R2,0.9250794608755925,,data/processed/soh_nested_results.csv
 SOH,full-discharge formula,held-out B0005,MAE,0.1707900812365614,%,data/processed/experiments/soh_full_discharge.csv
 SOH,full-discharge formula,held-out B0006,MAE,0.5256173028658699,%,data/processed/experiments/soh_full_discharge.csv
 SOH,full-discharge formula,held-out B0007,MAE,0.277450413921632,%,data/processed/experiments/soh_full_discharge.csv
@@ -48,19 +48,19 @@ SOH,cross-condition,held-out G3,ElasticNet MAE,20.692662224087098,%,data/process
 SOH,cross-condition,held-out G3,XGBoost MAE,13.413607724521489,%,data/processed/experiments/logo_results.csv
 SOH,cross-condition,held-out G9,ElasticNet MAE,47.61148114923802,%,data/processed/experiments/logo_results.csv
 SOH,cross-condition,held-out G9,XGBoost MAE,3.042568906570264,%,data/processed/experiments/logo_results.csv
-RUL,trajectory,held-out B0005,MAE,7.6875,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,held-out B0005,MAE,7.114583333333333,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0005,MAE,24.77083333333333,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0005,EOL discharge,106.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,trajectory,held-out B0006,MAE,45.98,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,held-out B0006,MAE,51.06,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0006,MAE,46.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0006,EOL discharge,60.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,trajectory,held-out B0007,MAE,20.79824561403509,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,held-out B0007,MAE,17.473684210526315,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0007,MAE,37.51754385964912,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0007,EOL discharge,124.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,trajectory,held-out B0018,MAE,7.17910447761194,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,held-out B0018,MAE,6.477611940298507,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0018,MAE,29.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0018,EOL discharge,77.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,trajectory,mean (G1),mean MAE,20.411212522911757,discharges,data/processed/rul_trajectory_results.csv
+RUL,trajectory,mean (G1),mean MAE,20.531469871039537,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,mean (G1),mean MAE,34.32209429824562,discharges,data/processed/rul_trajectory_results.csv
 degradation,slope,B0005,fade,0.2139387006732378,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,early fade,0.0579203843585206,%/discharge,data/processed/cell_audit.csv
@@ -117,13 +117,13 @@ dataset,summary,B0053,initial SOH,94.56524529500228,%,data/processed/cell_audit.
 dataset,summary,B0053,final SOH,89.35840913127524,%,data/processed/cell_audit.csv
 dataset,summary,kept cells,discharges,851.0,rows,data/processed/cell_audit.csv
 pack,cell_sag,synthetic injection,rule detection,75.0,%,data/processed/pack_detection_summary.csv
-pack,cell_sag,synthetic injection,iforest detection,12.5,%,data/processed/pack_detection_summary.csv
+pack,cell_sag,synthetic injection,iforest detection,25.0,%,data/processed/pack_detection_summary.csv
 pack,cell_sag,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
 pack,resistance_spike,synthetic injection,rule detection,100.0,%,data/processed/pack_detection_summary.csv
-pack,resistance_spike,synthetic injection,iforest detection,91.66666666666666,%,data/processed/pack_detection_summary.csv
+pack,resistance_spike,synthetic injection,iforest detection,100.0,%,data/processed/pack_detection_summary.csv
 pack,resistance_spike,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
 pack,thermal,synthetic injection,rule detection,100.0,%,data/processed/pack_detection_summary.csv
-pack,thermal,synthetic injection,iforest detection,66.66666666666666,%,data/processed/pack_detection_summary.csv
+pack,thermal,synthetic injection,iforest detection,70.83333333333334,%,data/processed/pack_detection_summary.csv
 pack,thermal,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
 pack,clean packs,no injected fault,discharges,564.0,discharges,data/processed/pack_false_alarms.csv
 pack,clean packs,no injected fault,false resistance spikes,0.0,alarms,data/processed/pack_false_alarms.csv

@@ -29,22 +29,22 @@ Numbers in this section are produced by committed scripts and saved to CSVs unde
 
 | Method | Validation | Mean MAE (%) | Mean R² |
 |---|---|---|---|
-| Coulomb formula | leave-one-cell-out (G1) | 0.29 | 0.999 |
-| ElasticNet (default) | leave-one-cell-out (G1) | 1.89 | 0.942 |
-| Ridge (default) | leave-one-cell-out (G1) | 2.82 | 0.899 |
-| RandomForest (default) | leave-one-cell-out (G1) | 2.42 | 0.901 |
-| XGBoost (fixed params) | leave-one-cell-out (G1) | 2.61 | 0.897 |
-| XGBoost (nested tuning) | nested leave-one-cell-out (G1) | 2.59 | 0.899 |
-| Constant global mean | leave-one-cell-out (G1) | 9.22 | — |
+| Coulomb formula | leave-one-cell-out (G1) | 0.73 | 0.993 |
+| ElasticNet (default) | leave-one-cell-out (G1) | 1.81 | 0.948 |
+| Ridge (default) | leave-one-cell-out (G1) | 2.70 | 0.908 |
+| RandomForest (default) | leave-one-cell-out (G1) | 2.52 | 0.899 |
+| XGBoost (fixed params) | leave-one-cell-out (G1) | 2.74 | 0.894 |
+| XGBoost (nested tuning) | nested leave-one-cell-out (G1) | 2.65 | 0.900 |
+| Constant global mean | leave-one-cell-out (G1) | 9.28 | — |
 
 #### Per-cell SOH error (XGBoost, nested)
 
 | Held-out cell | MAE (%) | RMSE (%) | R² |
 |---|---|---|---|
-| B0005 | 1.23 | 1.59 | 0.976 |
-| B0006 | 5.60 | 6.22 | 0.747 |
-| B0007 | 1.47 | 1.73 | 0.959 |
-| B0018 | 2.07 | 2.45 | 0.913 |
+| B0005 | 1.47 | 1.76 | 0.971 |
+| B0006 | 5.62 | 6.23 | 0.751 |
+| B0007 | 1.54 | 1.82 | 0.954 |
+| B0018 | 1.96 | 2.30 | 0.925 |
 
 #### Full- versus partial-discharge SOH
 
@@ -84,11 +84,11 @@ Numbers in this section are produced by committed scripts and saved to CSVs unde
 <!-- make_report:rul -->
 | Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE |
 |---|---|---|---|
-| B0005 | 106 | 7.7 | 24.8 |
-| B0006 | 60 | 46.0 | 46.0 |
-| B0007 | 124 | 20.8 | 37.5 |
-| B0018 | 77 | 7.2 | 29.0 |
-| **Mean** | — | 20.4 | 34.3 |
+| B0005 | 106 | 7.1 | 24.8 |
+| B0006 | 60 | 51.1 | 46.0 |
+| B0007 | 124 | 17.5 | 37.5 |
+| B0018 | 77 | 6.5 | 29.0 |
+| **Mean** | — | 20.5 | 34.3 |
 <!-- make_report:rul:end -->
 
 > **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.
@@ -593,9 +593,9 @@ services, bridge, API, Grafana) was run end to end in a sandbox without Docker;
 <!-- make_report:pack -->
 | Fault | Injected | Rule detection | Isolation Forest | Rule median delay |
 |---|---|---|---|---|
-| cell_sag | 24 | 75.0% | 12.5% | 1.0 |
-| resistance_spike | 24 | 100.0% | 91.7% | 1.0 |
-| thermal | 24 | 100.0% | 66.7% | 8.0 |
+| cell_sag | 24 | 75.0% | 25.0% | 1.0 |
+| resistance_spike | 24 | 100.0% | 100.0% | 1.0 |
+| thermal | 24 | 100.0% | 70.8% | 8.0 |
 
 Clean-pack false alarms at the resistance-spike and thermal thresholds: 0 and 0 over 564 discharges.
 <!-- make_report:pack:end -->

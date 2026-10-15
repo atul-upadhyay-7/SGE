@@ -30,7 +30,7 @@
         "label": "Cell",
         "type": "query",
         "datasource": "Battery PDM",
-        "query": "cells",
+        "query": "cells:$group",
         "includeAll": true,
         "allValue": "All",
         "current": {
@@ -55,7 +55,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### Protocol: Trained on vs. Tested on\n\n- **Model**: `soh_xgb_demo` (saved as portable XGBoost booster `soh_xgb_demo.ubj` + `soh_xgb_demo.json`)\n- **Trained on**: Cell **B0006** (24°C, 2A constant-current discharge) — completely held-out reference cell\n- **Tested on (Live Demo Replay)**: **B0005**, **B0007**, **B0018** (replayed in 3-cell series battery pack)\n- **Evaluation**: Honest Leave-One-Cell-Out / LOGO. Held-out MAE **2.89%** across demo cells (vs 0.51% in-sample memorization)\n- **Baselines**: Coulomb counting (**0.29%** MAE reference) | Global constant mean (**9.22%** MAE)\n- **Retirement Threshold**: **80.0% SOH** (discharge index count, not raw cycles)"
+        "content": "### Protocol: Trained on vs. Tested on\n\n- **Model**: `soh_xgb_demo` (saved as portable XGBoost booster `soh_xgb_demo.ubj` + `soh_xgb_demo.json`)\n- **Trained on**: Cell **B0006** - held out from the demo replay\n- **Tested on (live replay)**: **B0005**, **B0007**, **B0018** (replayed as a 3-cell series pack)\n- **Evaluation**: leave-one-cell-out. Held-out error, the Coulomb baseline and the constant-mean baseline are read from the database into the **Model Summary** panel below.\n- **Retirement threshold**: 80% SOH (discharge-index count, not raw cycles)"
       }
     },
     {

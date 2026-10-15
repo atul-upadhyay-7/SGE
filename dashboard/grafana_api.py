@@ -160,9 +160,11 @@ def search():
         elif target == "cells" or target.startswith("cells"):
             if ":" in target:
                 grp = target.split(":", 1)[1]
+                # "cells:$group" arrives as "cells:All" when the group
+                # selector is on All; that means no group filter.
                 try:
                     cols = [r[1] for r in conn.execute("PRAGMA table_info([nasa_ml_dataset])").fetchall()]
-                    if "group" in cols:
+                    if "group" in cols and grp not in ("", "All", "$group"):
                         cells = [
                             r[0] for r in conn.execute(
                                 "SELECT DISTINCT cell_id FROM nasa_ml_dataset WHERE [group] = ? ORDER BY cell_id",
@@ -199,7 +201,7 @@ def query():
         target = target_obj.get("target", "")
 
         if target.startswith("table:") or target.startswith("stat:"):
-            results.append(handle_table(target))
+            results.append(handle_table(target, scoped_vars))
         else:
             results.extend(handle_timeseries(target, scoped_vars))
 
@@ -401,29 +403,58 @@ def handle_timeseries(target, scoped_vars=None):
             })
 
     elif target == "rul_range_by_cycle":
-        source_table = "rul_predictions_all" if object_exists(conn, "rul_predictions_all") else "nasa_ml_dataset"
-        cells = get_cells_for_query(conn, source_table, scoped_vars)
+        # The RUL band is the per-reference spread computed by
+        # src/rul_trajectory.py under leave-one-cell-out and stored in
+        # rul_prediction_bands. There is no honest interval without
+        # that table, so only the point estimate is drawn then. The
+        # actual-RUL series is a separate, observed quantity (cycles
+        # to 80% SOH) and comes from rul_predictions_all.
+        has_bands = object_exists(conn, "rul_prediction_bands")
+        has_preds = object_exists(conn, "rul_predictions_all")
+        scope = "rul_prediction_bands" if has_bands else (
+            "rul_predictions_all" if has_preds else "nasa_ml_dataset"
+        )
+        cells = get_cells_for_query(conn, scope, scoped_vars)
         for cell in cells:
-            rows = conn.execute(
-                f"SELECT cycle, rul_cycles_80, predicted_rul FROM [{source_table}] WHERE cell_id = ? ORDER BY cycle",
-                (cell,)
-            ).fetchall()
-            series.append({
-                "target": f"Actual RUL — {cell}",
-                "datapoints": [[r["rul_cycles_80"], cycle_to_ms(r["cycle"])] for r in rows],
-            })
-            series.append({
-                "target": f"Predicted RUL — {cell}",
-                "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
-            })
-            series.append({
-                "target": f"RUL 10th Percentile — {cell}",
-                "datapoints": [[max(0.0, r["predicted_rul"] * 0.8), cycle_to_ms(r["cycle"])] for r in rows],
-            })
-            series.append({
-                "target": f"RUL 90th Percentile — {cell}",
-                "datapoints": [[r["predicted_rul"] * 1.2, cycle_to_ms(r["cycle"])] for r in rows],
-            })
+            if has_preds:
+                rows = conn.execute(
+                    "SELECT cycle, rul_cycles_80 FROM rul_predictions_all "
+                    "WHERE cell_id = ? AND rul_cycles_80 IS NOT NULL ORDER BY cycle",
+                    (cell,)
+                ).fetchall()
+                if rows:
+                    series.append({
+                        "target": f"Actual RUL — {cell}",
+                        "datapoints": [[r["rul_cycles_80"], cycle_to_ms(r["cycle"])] for r in rows],
+                    })
+            if has_bands:
+                rows = conn.execute(
+                    "SELECT cycle, predicted_rul, rul_p10, rul_p90 "
+                    "FROM rul_prediction_bands WHERE cell_id = ? ORDER BY cycle",
+                    (cell,)
+                ).fetchall()
+                series.append({
+                    "target": f"RUL 10th Percentile — {cell}",
+                    "datapoints": [[r["rul_p10"], cycle_to_ms(r["cycle"])] for r in rows],
+                })
+                series.append({
+                    "target": f"Predicted RUL — {cell}",
+                    "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
+                })
+                series.append({
+                    "target": f"RUL 90th Percentile — {cell}",
+                    "datapoints": [[r["rul_p90"], cycle_to_ms(r["cycle"])] for r in rows],
+                })
+            elif has_preds:
+                rows = conn.execute(
+                    "SELECT cycle, predicted_rul FROM rul_predictions_all "
+                    "WHERE cell_id = ? ORDER BY cycle",
+                    (cell,)
+                ).fetchall()
+                series.append({
+                    "target": f"Predicted RUL — {cell}",
+                    "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
+                })
 
     elif target == "anomaly_residual_by_cycle":
         if not object_exists(conn, "anomaly_cycle_report"):
@@ -507,78 +538,205 @@ def handle_timeseries(target, scoped_vars=None):
 
 # ── table handlers ─────────────────────────────────────────────
 
-def handle_table(target):
+def scope_filter(conn, table, scoped_vars):
+    """
+    Restrict a per-cell table to the dashboard's selected cell or
+    group. Returns a (sql_fragment, params) pair suitable for
+    appending after an existing WHERE (or on its own). Empty when
+    the selection is All, when there is no selection, or when the
+    table has no cell_id column, so aggregate tables are untouched.
+    """
+
+    if not scoped_vars:
+
+        return "", []
+
+    try:
+
+        cols = [
+            r[1] for r in conn.execute(
+                f"PRAGMA table_info([{table}])"
+            ).fetchall()
+        ]
+
+    except sqlite3.Error:
+
+        return "", []
+
+    if "cell_id" not in cols:
+
+        return "", []
+
+    cell = (scoped_vars.get("cell") or {}).get("value")
+    group = (scoped_vars.get("group") or {}).get("value")
+
+    if cell and str(cell) not in ("", "All") and not str(cell).startswith("$"):
+
+        return "cell_id = ?", [cell]
+
+    if (
+        group
+        and str(group) not in ("", "All")
+        and not str(group).startswith("$")
+        and "group" in cols
+    ):
+
+        cells = get_cells_for_query(conn, table, scoped_vars)
+
+        if not cells:
+
+            return "1 = 0", []
+
+        placeholders = ",".join("?" * len(cells))
+
+        return f"cell_id IN ({placeholders})", list(cells)
+
+    return "", []
+
+
+def handle_table(target, scoped_vars=None):
     table_name = target.replace("table:", "").replace("stat:", "")
     conn = get_db()
+
+    # ── stat tiles ─────────────────────────────────────────────
+    # Every tile reads a value the pipeline measured into the
+    # database. When the source table is absent the tile returns an
+    # explicit error row rather than a plausible-looking constant:
+    # a fabricated 82.5% SOH or "16 discharges left" is worse than a
+    # blank tile, because it cannot be told apart from a real one.
 
     if table_name == "stat_latest_soh":
         row = conn.execute(
             "SELECT ROUND(soh, 2) FROM nasa_ml_dataset ORDER BY cycle DESC LIMIT 1"
         ).fetchone()
-        val = row[0] if row else 82.5
         conn.close()
+        if row is None:
+            return error_table(
+                "No SOH rows in nasa_ml_dataset; run the pipeline."
+            )
         return {
             "type": "table",
             "columns": [{"text": "Latest SOH (%)", "type": "number"}],
-            "rows": [[val]],
+            "rows": [[row[0]]],
         }
 
     elif table_name == "stat_discharges_left":
-        traj = None
-        if object_exists(conn, "rul_trajectory_results"):
-            traj = conn.execute(
-                "SELECT AVG(trajectory_mae) as t FROM rul_trajectory_results"
-            ).fetchone()
-        val = round(traj["t"], 1) if traj and traj["t"] is not None else 16.0
+        if not object_exists(conn, "rul_prediction_bands"):
+            conn.close()
+            return error_table(
+                "No RUL prediction bands; run src/rul_trajectory.py."
+            )
+        # Latest predicted remaining life per cell, and the mean of
+        # each cell's own 10th/90th reference interval at that cycle.
+        row = conn.execute(
+            "SELECT AVG(predicted_rul), AVG(rul_p10), AVG(rul_p90) "
+            "FROM ("
+            "  SELECT predicted_rul, rul_p10, rul_p90 "
+            "  FROM rul_prediction_bands b "
+            "  WHERE cycle = ("
+            "    SELECT MAX(cycle) FROM rul_prediction_bands c "
+            "    WHERE c.cell_id = b.cell_id"
+            "  )"
+            ")"
+        ).fetchone()
         conn.close()
+        if row is None or row[0] is None:
+            return error_table("RUL prediction bands table is empty.")
+        val, lo, hi = row[0], row[1], row[2]
         return {
             "type": "table",
             "columns": [
                 {"text": "Est. Discharges Left", "type": "number"},
                 {"text": "10th-90th Range", "type": "string"},
             ],
-            "rows": [[val, f"{max(1, int(val * 0.8))} – {int(val * 1.2)} discharges"]],
+            "rows": [[round(val, 1), f"{round(lo, 1)} – {round(hi, 1)} discharges"]],
         }
 
     elif table_name == "stat_held_out_error":
-        soh_mae = None
+        row = None
         if object_exists(conn, "soh_nested_results"):
-            row = conn.execute("SELECT AVG(MAE) as v FROM soh_nested_results").fetchone()
-            soh_mae = row["v"] if row else None
-        val = round(soh_mae, 2) if soh_mae is not None else 3.04
+            row = conn.execute(
+                "SELECT AVG(MAE) as v FROM soh_nested_results"
+            ).fetchone()
         conn.close()
+        if row is None or row["v"] is None:
+            return error_table(
+                "No held-out SOH results; run src/train_soh.py."
+            )
         return {
             "type": "table",
             "columns": [{"text": "Held-Out SOH MAE (%)", "type": "number"}],
-            "rows": [[val]],
+            "rows": [[round(row["v"], 2)]],
         }
 
     elif table_name == "stat_baseline_error":
-        base_mae = None
+        row = None
         if object_exists(conn, "soh_null_baselines"):
             row = conn.execute(
-                "SELECT AVG(MAE) as v FROM soh_null_baselines WHERE baseline = 'constant_global_mean'"
+                "SELECT AVG(MAE) as v FROM soh_null_baselines "
+                "WHERE baseline = 'constant_global_mean'"
             ).fetchone()
-            base_mae = row["v"] if row and row["v"] is not None else None
-        val = round(base_mae, 2) if base_mae is not None else 9.22
         conn.close()
+        if row is None or row["v"] is None:
+            return error_table(
+                "No constant-mean baseline; run src/train_soh.py."
+            )
         return {
             "type": "table",
             "columns": [{"text": "Baseline SOH MAE (%)", "type": "number"}],
-            "rows": [[val]],
+            "rows": [[round(row["v"], 2)]],
         }
 
     elif table_name == "rul_range":
-        source_table = "rul_predictions_all" if object_exists(conn, "rul_predictions_all") else "rul_predictions_B0005"
-        if not object_exists(conn, source_table):
+        has_bands = object_exists(conn, "rul_prediction_bands")
+        has_preds = object_exists(conn, "rul_predictions_all")
+        if not has_bands and not has_preds:
             conn.close()
-            return error_table("No RUL predictions table available.")
-        rows = conn.execute(
-            f"SELECT cell_id, cycle, ROUND(rul_cycles_80, 1) as actual, "
-            f"ROUND(predicted_rul, 1) as predicted, "
-            f"ROUND(MAX(0.0, predicted_rul * 0.8), 1) as p10, "
-            f"ROUND(predicted_rul * 1.2, 1) as p90 FROM [{source_table}] ORDER BY cell_id, cycle"
-        ).fetchall()
+            return error_table(
+                "No RUL predictions; run src/train_rul.py and "
+                "src/rul_trajectory.py."
+            )
+        # Join the real leave-one-cell-out band (rul_prediction_bands)
+        # with the observed actual RUL (rul_predictions_all) on
+        # (cell_id, cycle). Percentiles are stored, never derived from
+        # the point estimate.
+        scope_table = "rul_prediction_bands" if has_bands else "rul_predictions_all"
+        scope_sql, scope_params = scope_filter(conn, scope_table, scoped_vars)
+        if scope_sql:
+            scope_sql = " WHERE b." + scope_sql if (has_bands and has_preds) else " WHERE " + scope_sql
+        if has_bands and has_preds:
+            rows = conn.execute(
+                "SELECT b.cell_id, b.cycle, "
+                "ROUND(p.rul_cycles_80, 1) AS actual, "
+                "ROUND(b.predicted_rul, 1) AS predicted, "
+                "ROUND(b.rul_p10, 1) AS p10, "
+                "ROUND(b.rul_p90, 1) AS p90 "
+                "FROM rul_prediction_bands b "
+                "LEFT JOIN rul_predictions_all p "
+                "  ON p.cell_id = b.cell_id AND p.cycle = b.cycle"
+                + scope_sql +
+                " ORDER BY b.cell_id, b.cycle",
+                scope_params,
+            ).fetchall()
+        elif has_bands:
+            rows = conn.execute(
+                "SELECT cell_id, cycle, NULL AS actual, "
+                "ROUND(predicted_rul, 1) AS predicted, "
+                "ROUND(rul_p10, 1) AS p10, "
+                "ROUND(rul_p90, 1) AS p90 "
+                "FROM rul_prediction_bands" + scope_sql +
+                " ORDER BY cell_id, cycle",
+                scope_params,
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT cell_id, cycle, ROUND(rul_cycles_80, 1) AS actual, "
+                "ROUND(predicted_rul, 1) AS predicted, "
+                "NULL AS p10, NULL AS p90 "
+                "FROM rul_predictions_all" + scope_sql +
+                " ORDER BY cell_id, cycle",
+                scope_params,
+            ).fetchall()
         columns = [
             {"text": "Cell", "type": "string"},
             {"text": "Discharge", "type": "number"},
@@ -592,46 +750,68 @@ def handle_table(target):
         return {"type": "table", "columns": columns, "rows": rows_data}
 
     elif table_name == "model_summary":
-        # build a summary table
-        soh_mae = 3.04
-        soh_r2 = 0.85
+        # Every row is a database value. If a source table is missing
+        # that row says so instead of falling back to a constant.
+        columns = [
+            {"text": "Metric", "type": "string"},
+            {"text": "Value", "type": "string"},
+        ]
+        rows_data = []
+
         if object_exists(conn, "soh_nested_results"):
-            row = conn.execute("SELECT AVG(MAE) as v, AVG(R2) as r FROM soh_nested_results").fetchone()
+            row = conn.execute(
+                "SELECT AVG(MAE) AS v, MIN(MAE) AS lo, MAX(MAE) AS hi, "
+                "AVG(R2) AS r FROM soh_nested_results"
+            ).fetchone()
             if row and row["v"] is not None:
-                soh_mae = row["v"]
-                soh_r2 = row["r"]
-        traj = None
+                rows_data.append(["SOH Model", "XGBoost (nested LOCO)"])
+                rows_data.append([
+                    "SOH MAE (held-out)",
+                    f"{row['v']:.2f}% (per-cell {row['lo']:.2f}–{row['hi']:.2f}%)",
+                ])
+                rows_data.append(["SOH R² (held-out)", f"{row['r']:.2f}"])
+            else:
+                rows_data.append(["SOH Model", "no held-out results"])
+        else:
+            rows_data.append(["SOH Model", "no held-out results"])
+
+        if object_exists(conn, "soh_baselines"):
+            row = conn.execute(
+                "SELECT AVG(MAE) AS v FROM soh_baselines WHERE model = 'Coulomb'"
+            ).fetchone()
+            if row and row["v"] is not None:
+                rows_data.append(
+                    ["SOH Coulomb baseline", f"{row['v']:.2f}% (LOCO)"]
+                )
+
         if object_exists(conn, "rul_trajectory_results"):
-            traj = conn.execute(
-                "SELECT AVG(trajectory_mae) AS t, "
+            row = conn.execute(
+                "SELECT AVG(trajectory_mae) AS t, MIN(trajectory_mae) AS lo, "
+                "MAX(trajectory_mae) AS hi, "
                 "AVG(fleet_lifetime_baseline_mae) AS b "
                 "FROM rul_trajectory_results"
             ).fetchone()
+            if row and row["t"] is not None:
+                rows_data.append(["RUL Method", "Reference-trajectory matching"])
+                rows_data.append([
+                    "RUL MAE",
+                    f"{row['t']:.1f} discharges (per-cell {row['lo']:.1f}–"
+                    f"{row['hi']:.1f}), lifetime baseline {row['b']:.1f}",
+                ])
+        else:
+            rows_data.append(["RUL Method", "no trajectory results"])
 
+        rows_data.append(["RUL Unit", "Discharges (discharge_index)"])
+        rows_data.append([
+            "Total Discharges",
+            str(conn.execute("SELECT COUNT(*) FROM nasa_ml_dataset").fetchone()[0]),
+        ])
         cells_list = ", ".join([
             r[0] for r in conn.execute(
                 "SELECT DISTINCT cell_id FROM nasa_ml_dataset ORDER BY cell_id"
             ).fetchall()
         ])
-
-        columns = [
-            {"text": "Metric", "type": "string"},
-            {"text": "Value", "type": "string"},
-        ]
-        rows_data = [
-            ["SOH Model", "XGBoost (nested LOCO / demo held-out)"],
-            ["SOH MAE", f"{soh_mae:.2f}% (held-out) vs 0.29% (Coulomb formula)"],
-            ["SOH R²", f"{soh_r2:.2f}"],
-            ["RUL Method", "Reference-trajectory matching"],
-            [
-                "RUL MAE",
-                f"{traj['t']:.1f} discharges (lifetime baseline {traj['b']:.1f})"
-                if traj and traj['t'] is not None else "16.0 discharges (lifetime baseline 27.3)",
-            ],
-            ["RUL Unit", "Discharges (discharge_index)"],
-            ["Total Cycles", str(conn.execute("SELECT COUNT(*) FROM nasa_ml_dataset").fetchone()[0])],
-            ["Database Cells", cells_list],
-        ]
+        rows_data.append(["Database Cells", cells_list])
         conn.close()
         return {"type": "table", "columns": columns, "rows": rows_data}
 
@@ -644,7 +824,11 @@ def handle_table(target):
         )
 
     try:
-        cursor = conn.execute(f"SELECT * FROM [{table_name}]")
+        scope_sql, scope_params = scope_filter(conn, table_name, scoped_vars)
+        where = f" WHERE {scope_sql}" if scope_sql else ""
+        cursor = conn.execute(
+            f"SELECT * FROM [{table_name}]{where}", scope_params
+        )
         col_names = [d[0] for d in cursor.description]
         rows_data = [list(r) for r in cursor.fetchall()]
 
