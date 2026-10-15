@@ -586,8 +586,9 @@ Use `--delay` of 0.7 s or more: faster replay dropped messages in testing.
 
 What is and is not verified, and the sources behind each threshold, are in
 [`docs/RESEARCH.md`](docs/RESEARCH.md). In short: the pipeline (MQTT, SOH
-services, bridge, API, Grafana) was run end to end in a sandbox without Docker;
-`docker-compose.yml` was **not** run; the ESP32 firmware in `firmware/` is
+services, bridge, API, Grafana) was run end to end both directly and via
+`docker compose --profile demo up --build` (all six containers up, Grafana
+serving both provisioned dashboards); the ESP32 firmware in `firmware/` is
 **not tested on hardware**; all faults in demos are **synthetic**.
 
 <!-- make_report:pack -->
@@ -618,6 +619,15 @@ visualizations of:
 - **Anomaly: Residual (SOH – Predicted) with Robust Bounds** + **Flagged events**: points outside median ± 3.5 × MAD — a cycle that behaved unlike anything in the training set. This is the triage view; per-cell counts and rates are in `data/processed/anomaly_summary.csv`.
 - **Anomaly: Fade Rate and Knee Threshold**: a rising trailing fade rate crossing median + 3 × MAD means acceleration, not noise. The first knee cycle per cell is in `anomaly_summary.csv`.
 - **Anomaly Summary / Events**: per-cell counts and the event-level rows with directions, served from the `anomaly_summary` and `anomaly_events` tables.
+
+The Battery PDM dashboard, captured from the running stack (`docker compose
+--profile demo up --build`, then `http://localhost:3050`):
+
+![Battery PDM dashboard](docs/battery_pdm_dashboard.png)
+
+The live 3S pack monitor with the demo replay and injected faults:
+
+![Battery pack live](docs/battery_pack_live.png)
 
 ---
 
