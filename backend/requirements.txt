@@ -1,0 +1,29 @@
+# Backend runtime + test dependencies for the BMS telemetry / SoH service.
+#
+# This is separate from the repo-root requirements.txt, which drives the
+# offline ML pipeline and the legacy streaming demo. The backend reuses
+# those packages (joblib, xgboost, scikit-learn) at inference time, so this
+# file is expected to be installed alongside the root one, not instead of it.
+
+# REST API + ASGI server
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+
+# Async MQTT client (FR-02)
+aiomqtt==2.5.1
+
+# Persistence: Postgres via SQLAlchemy 2.x async + Alembic migrations
+SQLAlchemy[asyncio]==2.0.51
+asyncpg==0.32.0
+alembic==1.20.0
+
+# Settings + validation
+pydantic==2.11.7
+pydantic-settings==2.10.1
+
+# HTTP client for tests (ASGITransport)
+httpx==0.28.1
+
+# Testing
+pytest==9.1.1
+pytest-asyncio==1.4.0
