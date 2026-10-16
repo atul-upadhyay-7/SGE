@@ -261,6 +261,24 @@
   data-driven bound; `tests/test_check_alerts.py` pins the firing
   logic above and below the bound.
 
+## Step 13 — Repository size, documented rather than rewritten
+
+- `.git` is about 226 MB. The NASA `.mat` dataset was committed
+  early and is now ignored (`*.mat`, `BMS Dataset/`, `data/raw/`),
+  but the blobs stay in history: the history is not rewritten.
+- Largest objects still in history (unique blobs summed by path
+  prefix, `git rev-list --objects --all`):
+  - `BMS Dataset/…/*.mat` — 34 blobs, ~198.5 MB. Largest:
+    `B0007.mat` 16.0 MB, `B0006.mat` 16.0 MB, `B0005.mat` 15.9 MB.
+  - `models/*` — 72 versions, ~69.1 MB of trained artifacts.
+  - `*.db` — 4 versions, ~4.0 MB.
+- Added `.gitattributes`: `binary` for `.png`, `.mat`, `.db`,
+  `.joblib`, `.ubj` — every one already contains CRLF bytes, so a
+  `text`/`eol` rule would renormalise it and dirty the tree — and
+  `linguist-generated=true` for `data/processed/**` and `models/**`.
+- A fresh clone downloads the full history; shrinking it would need
+  `git filter-repo`, which this project deliberately does not run.
+
 ---
 
 ## Final performance & baseline comparison

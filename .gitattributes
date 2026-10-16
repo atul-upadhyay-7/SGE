@@ -1,0 +1,18 @@
+# Binary artifacts. Git must never try to diff, merge or normalise
+# these, and the reproducibility check (`git status` clean after the
+# pipeline) depends on their bytes being left exactly as written.
+# Every pattern below is a file that already contains CRLF bytes, so
+# a `text`/eol rule here would silently renormalise it and dirty the
+# tree — keep them `binary`.
+*.png     binary
+*.mat     binary
+*.db      binary
+*.joblib  binary
+*.ubj     binary
+
+# Generated, not hand-written: collapse them in code review and keep
+# them out of the language statistics. See the size note in
+# CHANGES.md ("Repository size") — the dataset and model blobs in
+# history are why `.git` is ~226 MB.
+data/processed/**  linguist-generated=true
+models/**          linguist-generated=true
