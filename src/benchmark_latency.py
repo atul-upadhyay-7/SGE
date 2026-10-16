@@ -186,7 +186,7 @@ def measure():
     return results
 
 
-def write(results):
+def write(results, output=OUTPUT):
 
     frame = pd.DataFrame(
         [
@@ -195,7 +195,7 @@ def write(results):
         ]
     ).round(4)
 
-    frame.to_csv(OUTPUT, index=False)
+    frame.to_csv(output, index=False)
 
     return frame
 

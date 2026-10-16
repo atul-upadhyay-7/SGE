@@ -76,7 +76,8 @@ def test_benchmark_writes_a_report(tmp_path):
     import benchmark_latency
 
     frame = benchmark_latency.write(
-        benchmark_latency.measure()
+        benchmark_latency.measure(),
+        tmp_path / "soh_latency_benchmark.csv",
     )
 
     assert {"stage", "milliseconds"} == set(frame.columns)
@@ -84,3 +85,9 @@ def test_benchmark_writes_a_report(tmp_path):
     assert len(frame) == 7
 
     assert frame["milliseconds"].gt(0).all()
+
+    # The test must not touch the committed benchmark; verify.sh
+    # fails if a pipeline run leaves the working tree dirty.
+    assert (
+        tmp_path / "soh_latency_benchmark.csv"
+    ).exists()
