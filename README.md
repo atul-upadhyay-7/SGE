@@ -510,6 +510,43 @@ in `BMS Dataset/Battery_DataSet/Battery_DataSet/`, which
 placing the `.mat` files (`B0005.mat`, `B0006.mat`, `B0007.mat`,
 `B0018.mat`) there works as well.
 
+### 5. Repository size
+
+A fresh clone is large. The NASA `.mat` dataset (~199 MB) and early
+commits of the model and database artifacts stay in `.git` history
+even though `.gitignore` keeps them out of the working tree, so `.git`
+is around 226 MB and `git clone` downloads all of it. Nothing in the
+day-to-day workflow needs that history.
+
+Shrinking it is a **separate, user-approved step**. This project does
+not run it, `scripts/verify.sh` does not depend on it, and it rewrites
+history — so it must be done on a throwaway clone, and the force-push
+coordinated with anyone else who has the repository:
+
+```bash
+git clone https://github.com/atul-upadhyay-7/SGE.git shrink && cd shrink
+python -m pip install git-filter-repo
+
+# Remove the dataset blobs from every commit. They live under
+# "BMS Dataset/" and data/raw/ and are re-downloaded by
+# scripts/download_dataset.sh, so no working file is lost.
+git filter-repo --invert-paths --path 'BMS Dataset' --path data/raw
+
+# filter-repo drops the remote; re-add it and force-push the shortened
+# history, then re-clone everywhere it is checked out.
+git remote add origin https://github.com/atul-upadhyay-7/SGE.git
+git push --force origin main
+
+git count-objects -vH   # size-pack shows the smaller result
+```
+
+To also drop the historical model and database blobs (the current
+`models/*.ubj`, `models/*.joblib` and `data/live_pack.db` are still
+wanted), add `--path-glob 'models/*.joblib' --path-glob '*.mat'` and
+restore the current files with `git checkout` from the pre-shrink
+clone before committing. **Do not run `git filter-repo` as part of any
+automated step in this repository.**
+
 ---
 
 ## Usage / Workflow
@@ -745,7 +782,10 @@ Use `--delay` of 0.7 s or more: faster replay dropped messages in testing.
 ![architecture](docs/architecture.png)
 
 What is and is not verified, and the sources behind each threshold, are in
-[`docs/RESEARCH.md`](docs/RESEARCH.md). In short: the pipeline (MQTT, SOH
+[`docs/RESEARCH.md`](docs/RESEARCH.md). The backend and ML interfaces — window
+feature names, units, model file and the estimator payload — are in
+[`docs/CONTRACT.md`](docs/CONTRACT.md), generated from `src/features.py` so the
+two sides cannot drift. In short: the pipeline (MQTT, SOH
 services, bridge, API, Grafana) was run end to end both directly and via
 `docker compose --profile demo up --build` (all eight containers up, Grafana
 serving both provisioned dashboards); the ESP32 firmware in `firmware/` is
