@@ -11,6 +11,8 @@ Outputs (data/processed/experiments/)
     ablation_features.csv      feature-set ablation, G1 leave-one-cell-out
     per_cell_results.csv       per-cell MAE behind the ablation
     logo_results.csv           leave-one-group-out on surviving groups
+    cross_condition.csv        raw vs cell-relative features against the
+                               Coulomb formula, leave-one-group-out
 
 Design notes
 ------------
@@ -317,6 +319,165 @@ def logo(df, prod):
     return pd.DataFrame(rows)
 
 
+# Columns divided by the cell's own early baseline (the median of
+# its first five valid discharges) to make them comparable across
+# operating conditions. `default` is the fallback denominator when a
+# cell's baseline is zero or missing, so a normalized column is
+# never a division by zero.
+NORM_BASE = {
+    "vw_capacity_ah": ("vw_capacity_ratio", "vw_capacity_ah"),
+    "vw_time_s": ("vw_time_ratio", "vw_time_s"),
+    "vw_dqdv_peak_height": ("vw_dqdv_height_ratio", "vw_dqdv_peak_height"),
+    "vw_voltage_mean": ("vw_voltage_ratio", "vw_voltage_mean"),
+    "voltage_mean": ("voltage_mean_ratio", "voltage_mean"),
+    "voltage_drop": ("voltage_drop_ratio", "voltage_drop"),
+    "resistance_proxy_ohm": ("resistance_ratio", "resistance_proxy_ohm"),
+    "discharge_duration_s": ("duration_ratio", "discharge_duration_s"),
+}
+
+# The cell-relative model input set. Every column here is a ratio
+# to the cell's own early baseline, or a within-cycle scale-free
+# quantity, so the same value means the same thing at 4 C as at
+# 43 C. It deliberately excludes every absolute level feature
+# (raw temperatures, currents, voltages) that does not transfer.
+NORM_FEATURES = [
+    "vw_capacity_ratio",
+    "vw_capacity_per_amp",
+    "vw_time_ratio",
+    "vw_dqdv_height_ratio",
+    "vw_voltage_ratio",
+    "voltage_mean_ratio",
+    "voltage_drop_ratio",
+    "resistance_ratio",
+    "duration_ratio",
+    "temperature_rise",
+    "current_ratio",
+]
+
+
+def cell_relative_features(df):
+    """
+    Add per-cell baseline-relative columns.
+
+    The baseline is the median of the first REF_WINDOW valid values
+    of each cell, taken in discharge order. It only uses a cell's
+    own opening discharges, so it is available at inference time
+    and does not see the target or any future cycle.
+
+    Returns a copy of `df` with the NORM_FEATURES columns added.
+    """
+
+    df = df.copy().sort_values(["cell_id", "discharge_index"])
+
+    for column, (new_name, _) in NORM_BASE.items():
+
+        ref = (
+            df.groupby("cell_id")[column]
+            .transform(lambda s: s.dropna().head(REF_WINDOW).median())
+        )
+        # A cell whose baseline is zero (or missing) would divide
+        # by zero; fall back to the cell's own median, then to 1.0
+        # so the column stays finite.
+        ref = ref.replace(0.0, np.nan)
+        ref = ref.fillna(
+            df.groupby("cell_id")[column].transform("median")
+        )
+        df[new_name] = df[column] / ref
+
+    df["temperature_rise"] = (
+        df["temperature_mean"] - df["ambient_temperature"]
+    )
+    df["current_ratio"] = df["current_mean"] / df["nominal_current_a"]
+    # Explicit current-normalized window capacity: amp-hours the
+    # 4.0-3.4 V window holds per amp of discharge current. It
+    # removes the discharge-rate difference between groups (2 A in
+    # G1/G9 versus 4 A in G3) without touching the target.
+    df["vw_capacity_per_amp"] = (
+        df["vw_capacity_ah"] / df["current_mean"].abs()
+    )
+
+    return df
+
+
+def coulomb_formula(df):
+    """Per-row Coulomb-counting SOH estimate and its per-cell MAE."""
+
+    q = df["discharge_duration_s"].abs() * df["current_mean"].abs()
+    refs = formula_reference(df.assign(_q=q), "_q")
+    df = df.copy()
+    df["_coulomb"] = q / df["cell_id"].map(refs) * 100.0
+    return df
+
+
+def cross_condition(df, prod):
+    """
+    Raw versus cell-relative features across operating conditions,
+    against the Coulomb-counting formula on the same cells.
+
+    For each surviving group, train on every other group and test
+    on the held-out one. The held-out cell ids are written out so a
+    single-cell group (G9 = B0053) is reported on its own line
+    rather than hidden inside a mean.
+    """
+
+    df = cell_relative_features(df)
+    df = coulomb_formula(df)
+
+    groups = sorted(df[GROUP_COL].dropna().unique())
+
+    rows = []
+
+    for test_group in groups:
+
+        train = df[df[GROUP_COL] != test_group]
+        test = df[df[GROUP_COL] == test_group]
+        cells = test["cell_id"].dropna().unique().tolist()
+        cell_label = ",".join(sorted(cells))
+
+        # The physics baseline on exactly the held-out cells.
+        coulomb_mae = _mae(test[TARGET], test["_coulomb"])
+        coulomb_r2 = _r2(test[TARGET], test["_coulomb"])
+
+        rows.append({
+            "test_group": test_group,
+            "test_cells": cell_label,
+            "n_cells": int(len(cells)),
+            "n_cycles": int(len(test)),
+            "method": "Coulomb formula",
+            "feature_set": "physics",
+            "model": ".",
+            "n_features": 0,
+            "mae_pct": coulomb_mae,
+            "r2": coulomb_r2,
+        })
+
+        for feature_set, features in (
+            ("raw", prod),
+            ("cell_relative", NORM_FEATURES),
+        ):
+
+            for model_name in ("ElasticNet", "XGBoost"):
+
+                model = build_model(model_name)
+                model.fit(train[features], train[TARGET])
+                pred = model.predict(test[features])
+
+                rows.append({
+                    "test_group": test_group,
+                    "test_cells": cell_label,
+                    "n_cells": int(len(cells)),
+                    "n_cycles": int(len(test)),
+                    "method": "model",
+                    "feature_set": feature_set,
+                    "model": model_name,
+                    "n_features": len(features),
+                    "mae_pct": _mae(test[TARGET], pred),
+                    "r2": _r2(test[TARGET], pred),
+                })
+
+    return pd.DataFrame(rows)
+
+
 def main():
 
     if not CLEAN.exists():
@@ -342,12 +503,17 @@ def main():
     cross = logo(df, prod)
     rounded(cross).to_csv(EXP / "logo_results.csv", index=False)
 
+    transfer = cross_condition(df, prod)
+    rounded(transfer).to_csv(EXP / "cross_condition.csv", index=False)
+
     print("wrote experiments:")
     print(full.to_string(index=False))
     print()
     print(summary.to_string(index=False))
     print()
     print(cross.to_string(index=False))
+    print()
+    print(transfer.to_string(index=False))
 
 
 if __name__ == "__main__":

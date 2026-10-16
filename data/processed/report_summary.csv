@@ -1,4 +1,27 @@
 task,method,protocol,metric,value,unit,source_file
+SOH,cross-condition,leave-one-group-out,in-condition ElasticNet MAE,1.8068727770909172,%,data/processed/soh_baselines.csv
+SOH,cross-condition,leave-one-group-out,worst raw ElasticNet MAE,47.611481161,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G1,raw ElasticNet MAE,42.2567839625,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G1,raw XGBoost MAE,14.0560721582,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G3,raw ElasticNet MAE,20.6926627367,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G3,raw XGBoost MAE,13.413607724,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G9,raw ElasticNet MAE,47.611481161,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G9,raw XGBoost MAE,3.0425689059,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,G1 nominal condition,ambient temperature,24.0,°C,data/processed/nasa_ml_dataset_clean.csv
+SOH,cross-condition,G1 nominal condition,discharge current,2.0,A,data/processed/nasa_ml_dataset_clean.csv
+SOH,cross-condition,G3 nominal condition,ambient temperature,43.0,°C,data/processed/nasa_ml_dataset_clean.csv
+SOH,cross-condition,G3 nominal condition,discharge current,4.0,A,data/processed/nasa_ml_dataset_clean.csv
+SOH,cross-condition,G9 nominal condition,ambient temperature,4.0,°C,data/processed/nasa_ml_dataset_clean.csv
+SOH,cross-condition,G9 nominal condition,discharge current,2.0,A,data/processed/nasa_ml_dataset_clean.csv
+SOH,cross-condition,held-out G1,Coulomb MAE,0.2954000309,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G1,cell-relative ElasticNet MAE,1.3706726206,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G1,cell-relative XGBoost MAE,8.5601925314,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G3,Coulomb MAE,0.2272916896,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G3,cell-relative ElasticNet MAE,1.3418174761,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G3,cell-relative XGBoost MAE,1.0629053829,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G9,Coulomb MAE,3.3926675203,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G9,cell-relative ElasticNet MAE,1.6725618879,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G9,cell-relative XGBoost MAE,2.159903178,%,data/processed/experiments/cross_condition.csv
 SOH,Coulomb formula,leave-one-cell-out (G1),mean MAE,0.7251200204998951,%,data/processed/soh_baselines.csv
 SOH,Coulomb formula,leave-one-cell-out (G1),mean R2,0.9925329383587246,,data/processed/soh_baselines.csv
 SOH,ElasticNet,leave-one-cell-out (G1),mean MAE,1.8068727770909172,%,data/processed/soh_baselines.csv
@@ -42,12 +65,6 @@ SOH,C_vw_temp_current,leave-one-cell-out (G1),ElasticNet MAE,1.6751636639,%,data
 SOH,C_vw_temp_current,leave-one-cell-out (G1),XGBoost MAE,2.1923582598,%,data/processed/experiments/ablation_features.csv
 SOH,D_vw_only,leave-one-cell-out (G1),ElasticNet MAE,1.8631860371,%,data/processed/experiments/ablation_features.csv
 SOH,D_vw_only,leave-one-cell-out (G1),XGBoost MAE,2.574361209,%,data/processed/experiments/ablation_features.csv
-SOH,cross-condition,held-out G1,ElasticNet MAE,42.2567839625,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G1,XGBoost MAE,14.0560721582,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G3,ElasticNet MAE,20.6926627367,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G3,XGBoost MAE,13.413607724,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G9,ElasticNet MAE,47.611481161,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G9,XGBoost MAE,3.0425689059,%,data/processed/experiments/logo_results.csv
 RUL,trajectory,held-out B0005,MAE,7.1145833333,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0005,MAE,24.7708333333,discharges,data/processed/rul_trajectory_results.csv
 RUL,EOL,held-out B0005,EOL discharge,106.0,discharges,data/processed/rul_trajectory_results.csv

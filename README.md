@@ -25,6 +25,28 @@ Every number in the regions below is a `{{id}}` placeholder rendered by `scripts
 ### SOH Prediction (State of Health)
 
 <!-- make_report:results -->
+#### Cross-condition transfer (leave-one-group-out)
+
+**The model does not transfer across conditions when it is trained on raw cycle features.**
+In leave-one-cell-out within G1 the same ElasticNet model reaches 1.81% MAE; held out across conditions it climbs to as much as 47.61%. The table below is that failure, measured, not a model claim.
+
+| Held-out group | Cells | Cycles | ElasticNet MAE (%) | XGBoost MAE (%) |
+|---|---|---|---|---|
+| G1 | 4 | 636 | 42.26 | 14.06 |
+| G3 | 4 | 160 | 20.69 | 13.41 |
+| B0053 (G9) | 1 | 55 | 47.61 | 3.04 |
+
+**Cell-relative features recover most of the gap, but the physics formula still wins on the multi-cell groups.** Because the groups differ in ambient temperature (G1 24 °C, G3 43 °C, G9 4 °C) and current (G1 2 A, G3 4 A, G9 2 A), the raw levels do not line up. Replacing them with each cell's own early-discharge baselines — window capacity divided by the cell's first-five-discharge median and by its current, plus temperature rise and baseline ratios — makes the ElasticNet transfer to a condition it has never seen. The Coulomb-counting formula is scored on exactly the held-out cells for comparison.
+
+| Held-out group | Cells | Cycles | Coulomb formula MAE (%) | raw ElasticNet MAE (%) | cell-relative ElasticNet MAE (%) | cell-relative XGBoost MAE (%) |
+|---|---|---|---|---|---|---|
+| G1 | 4 | 636 | 0.30 | 42.26 | 1.37 | 8.56 |
+| G3 | 4 | 160 | 0.23 | 20.69 | 1.34 | 1.06 |
+| B0053 (G9) | 1 | 55 | 3.39 | 47.61 | 1.67 | 2.16 |
+
+B0053 is the only G9 cell the audit keeps, so its row is that cell alone, never averaged into a group. Reading it: the cell-relative ElasticNet error on B0053 is 1.67% against the Coulomb formula's 3.39%, so there the model beats the formula. On the two multi-cell groups it does not: G1 1.37% versus 0.30%, G3 1.34% versus 0.23%. Across groups as a whole the model still cannot beat the Coulomb-counting formula; it wins on the one cross-condition cell and loses on the two conditions that train it.
+
+
 #### State of Health (SOH)
 
 | Method | Validation | Mean MAE (%) | Mean R² |
@@ -69,14 +91,6 @@ Every number in the regions below is a `{{id}}` placeholder rendered by `scripts
 | B — A without window features | 34 | 3.85 | 3.06 |
 | C — window + temperature + current | 13 | 1.68 | 2.19 |
 | D — window features only | 5 | 1.86 | 2.57 |
-
-#### Cross-condition transfer (leave-one-group-out)
-
-| Held-out group | Cells | Cycles | ElasticNet MAE (%) | XGBoost MAE (%) |
-|---|---|---|---|---|
-| G1 | 4 | 636 | 42.26 | 14.06 |
-| G3 | 4 | 160 | 20.69 | 13.41 |
-| G9 | 1 | 55 | 47.61 | 3.04 |
 <!-- make_report:results:end -->
 
 ### RUL Prediction (Remaining Useful Life)
@@ -687,7 +701,7 @@ resistance, and the project does not treat it as one.
 
 ### Evaluation Protocol
 
-All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held out entirely, the model trains on the remaining cells of the same group, and predictions are made on a cell the model has never seen. This is the hardest available protocol because degradation curves differ between cells of the same chemistry. Cross-condition generalisation is measured separately with leave-one-group-out over the surviving groups; both are reported in the Key Results tables.
+All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held out entirely, the model trains on the remaining cells of the same group, and predictions are made on a cell the model has never seen. This is the hardest available protocol because degradation curves differ between cells of the same chemistry. Cross-condition generalisation is measured separately with leave-one-group-out over the surviving groups. That measurement is the first table under *Key Results* and it is deliberately the first thing on the page: on raw cycle features the model does **not** transfer across conditions, and the correction that partially fixes it (per-cell baseline-relative features) still loses to the Coulomb-counting formula on the two multi-cell groups and wins only on B0053.
 
 ### SOH Model
 
@@ -732,14 +746,23 @@ amount of tuning removes them.
    In leave-one-cell-out validation that is three training
    trajectories per fold. The model therefore generalises across
    *these* trajectories, not across lithium-ion cells in general.
-   Cross-condition work uses the surviving groups and is reported
-   in the Key Results tables.
 
-2. **Cell-level generalisation is the open problem.** The headline
+2. **The model does not transfer across conditions.** Trained on
+   raw cycle features and tested on a held-out operating condition,
+   mean absolute SOH error is 14–48% (first table under *Key
+   Results*). The groups differ in ambient temperature and current
+   (G1 24 °C/2 A, G3 43 °C/4 A, G9 4 °C/2 A) so the raw levels do
+   not line up. Per-cell baseline-relative features recover most of
+   the gap (1.3–1.7% for ElasticNet), but the Coulomb-counting
+   formula still beats every model on the two multi-cell groups; the
+   model wins only on B0053, which is reported on its own and never
+   averaged into a group.
+
+3. **Cell-level generalisation is the open problem.** The headline
    is a mean over folds; the spread matters more than the mean.
    B0006 fails badly and for a diagnosable reason.
 
-3. **B0006 cannot be predicted well by this feature set.** It
+4. **B0006 cannot be predicted well by this feature set.** It
    degrades further than any cell the model trains on in its fold,
    so a tree ensemble averages toward its training floor. The
    per-cell error is in the Key Results table and the SOH range is
@@ -748,20 +771,20 @@ amount of tuning removes them.
    never exhibited. It is reported, not hidden, and B0006 is not
    deleted to improve the score.
 
-4. **The RUL trajectory method does not win everywhere.** It beats
+5. **The RUL trajectory method does not win everywhere.** It beats
    the fleet-lifetime baseline on the mean, but it loses on B0006
    (see the RUL table). With three training trajectories, the
    held-out cell's own future behaviour dominates. The usable
    RUL-family output is the per-cell fade rate plus the trajectory
    estimate, not a claim of uniform superiority.
 
-5. **Streaming versus offline cycle index.** Offline `cycle` is
+6. **Streaming versus offline cycle index.** Offline `cycle` is
    the raw array index; streaming `cycle` is the discharge
    ordinal. The two differ. This is documented in
    `streaming/cycle_tracker.py` and pinned by tests, but it is a
    real train/serve skew, not a cosmetic one.
 
-6. **One cycle-latency contract.** SOH is emitted once per
+7. **One cycle-latency contract.** SOH is emitted once per
    completed discharge, not per sample, because several features
    are only defined at cycle end.
 

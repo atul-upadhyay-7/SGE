@@ -55,6 +55,7 @@ REQUIRED = {
     "partial_discharge": EXP / "soh_partial_discharge.csv",
     "ablation": EXP / "ablation_features.csv",
     "logo": EXP / "logo_results.csv",
+    "cross_condition": EXP / "cross_condition.csv",
     "pack_detection": PROC / "pack_detection_summary.csv",
     "pack_false_alarms": PROC / "pack_false_alarms.csv",
 }
@@ -150,9 +151,178 @@ def model_mean(frame, model, column="MAE"):
     return float(frame.loc[frame["model"] == model, column].mean())
 
 
-def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
-                  full, partial, ablation, logo):
+def _cc_row(cross, group, feature_set, model, column):
+    row = cross[
+        (cross["test_group"] == group)
+        & (cross["feature_set"] == feature_set)
+        & (cross["model"] == model)
+    ]
+    return row, float(row[column].iloc[0])
+
+
+def _cc_coulomb(cross, group, column):
+    row = cross[
+        (cross["test_group"] == group)
+        & (cross["feature_set"] == "physics")
+    ]
+    return float(row[column].iloc[0])
+
+
+def _cc_cond(clean, group, column):
+    """The nominal operating condition of a group, from the dataset."""
+    return float(clean.loc[clean["group"] == group, column].iloc[0])
+
+
+def build_cross_condition(logo, cross, clean, soh_base):
+    """
+    The cross-condition section that opens Key Results.
+
+    Table 1 is the raw-feature leave-one-group-out failure; table 2
+    is the same protocol with per-cell baseline-relative features,
+    next to the Coulomb-counting formula measured on exactly the
+    held-out cells. B0053 is the only surviving G9 cell, so its line
+    is that cell alone, not a group average.
+    """
+
     lines = []
+
+    lines.append("#### Cross-condition transfer (leave-one-group-out)\n")
+    lines.append(
+        "**The model does not transfer across conditions when it is "
+        "trained on raw cycle features.**"
+    )
+
+    order = ["G1", "G3", "G9"]
+    label = {"G1": "G1", "G3": "G3", "G9": "B0053 (G9)"}
+
+    in_cell_en = mean(soh_base.loc[soh_base["model"] == "ElasticNet", "MAE"])
+    raw_en_max = float(
+        logo.loc[logo["model"] == "ElasticNet", "mae_pct"].max()
+    )
+    record("SOH", "cross-condition", "leave-one-group-out", "in-condition ElasticNet MAE",
+           in_cell_en, "%", REQUIRED["soh_baselines"])
+    record("SOH", "cross-condition", "leave-one-group-out", "worst raw ElasticNet MAE",
+           raw_en_max, "%", REQUIRED["logo"])
+    lines.append(
+        f"In leave-one-cell-out within G1 the same ElasticNet model "
+        f"reaches {ph('cc_in_cell_en_mae', in_cell_en, '.2f')}% MAE; "
+        f"held out across conditions it climbs to as much as "
+        f"{ph('cc_worst_raw_en_mae', raw_en_max, '.2f')}%. The table below "
+        f"is that failure, measured, not a model claim.\n"
+    )
+
+    lines.append("| Held-out group | Cells | Cycles | ElasticNet MAE (%) | XGBoost MAE (%) |")
+    lines.append("|---|---|---|---|---|")
+    for group in order:
+        rows = logo[logo["test_group"] == group]
+        en = float(rows.loc[rows["model"] == "ElasticNet", "mae_pct"].iloc[0])
+        xg = float(rows.loc[rows["model"] == "XGBoost", "mae_pct"].iloc[0])
+        cells = int(rows["n_cells"].iloc[0])
+        cycles = int(rows["n_cycles"].iloc[0])
+        g = group.lower()
+        record("SOH", "cross-condition", f"held-out {group}",
+               "raw ElasticNet MAE", en, "%", REQUIRED["logo"])
+        record("SOH", "cross-condition", f"held-out {group}",
+               "raw XGBoost MAE", xg, "%", REQUIRED["logo"])
+        lines.append(
+            f"| {label[group]} | {ph('logo_' + g + '_cells', cells, 'd')} | "
+            f"{ph('logo_' + g + '_cycles', cycles, 'd')} | "
+            f"{ph('logo_' + g + '_en_mae', en, '.2f')} | "
+            f"{ph('logo_' + g + '_xgb_mae', xg, '.2f')} |"
+        )
+
+    lines.append("")
+    for group in order:
+        record("SOH", "cross-condition", f"{group} nominal condition",
+               "ambient temperature",
+               _cc_cond(clean, group, "nominal_temperature_c"), "°C",
+               REQUIRED["clean"])
+        record("SOH", "cross-condition", f"{group} nominal condition",
+               "discharge current",
+               _cc_cond(clean, group, "nominal_current_a"), "A",
+               REQUIRED["clean"])
+    lines.append(
+        "**Cell-relative features recover most of the gap, but the "
+        "physics formula still wins on the multi-cell groups.** "
+        "Because the groups differ in ambient temperature "
+        f"(G1 {ph('cc_g1_temp', int(_cc_cond(clean, 'G1', 'nominal_temperature_c')), 'd')} °C, "
+        f"G3 {ph('cc_g3_temp', int(_cc_cond(clean, 'G3', 'nominal_temperature_c')), 'd')} °C, "
+        f"G9 {ph('cc_g9_temp', int(_cc_cond(clean, 'G9', 'nominal_temperature_c')), 'd')} °C) "
+        f"and current (G1 {ph('cc_g1_amp', int(_cc_cond(clean, 'G1', 'nominal_current_a')), 'd')} A, "
+        f"G3 {ph('cc_g3_amp', int(_cc_cond(clean, 'G3', 'nominal_current_a')), 'd')} A, "
+        f"G9 {ph('cc_g9_amp', int(_cc_cond(clean, 'G9', 'nominal_current_a')), 'd')} A), "
+        "the raw levels do not line up. Replacing them with each cell's own "
+        "early-discharge baselines — window capacity divided by the "
+        "cell's first-five-discharge median and by its current, plus "
+        "temperature rise and baseline ratios — makes the ElasticNet "
+        "transfer to a condition it has never seen. The "
+        "Coulomb-counting formula is scored on exactly the held-out "
+        "cells for comparison.\n"
+    )
+
+    lines.append(
+        "| Held-out group | Cells | Cycles | Coulomb formula MAE (%) | "
+        "raw ElasticNet MAE (%) | cell-relative ElasticNet MAE (%) | "
+        "cell-relative XGBoost MAE (%) |"
+    )
+    lines.append("|---|---|---|---|---|---|---|")
+    for group in order:
+        cells = int(cross[cross["test_group"] == group]["n_cells"].iloc[0])
+        cycles = int(cross[cross["test_group"] == group]["n_cycles"].iloc[0])
+        coulomb = _cc_coulomb(cross, group, "mae_pct")
+        _, raw_en = _cc_row(cross, group, "raw", "ElasticNet", "mae_pct")
+        _, rel_en = _cc_row(cross, group, "cell_relative", "ElasticNet", "mae_pct")
+        _, rel_xgb = _cc_row(cross, group, "cell_relative", "XGBoost", "mae_pct")
+        g = group.lower()
+        record("SOH", "cross-condition", f"held-out {group}",
+               "Coulomb MAE", coulomb, "%", REQUIRED["cross_condition"])
+        record("SOH", "cross-condition", f"held-out {group}",
+               "cell-relative ElasticNet MAE", rel_en, "%",
+               REQUIRED["cross_condition"])
+        record("SOH", "cross-condition", f"held-out {group}",
+               "cell-relative XGBoost MAE", rel_xgb, "%",
+               REQUIRED["cross_condition"])
+        lines.append(
+            f"| {label[group]} | {ph('cc_' + g + '_cells', cells, 'd')} | "
+            f"{ph('cc_' + g + '_cycles', cycles, 'd')} | "
+            f"{ph('cc_' + g + '_coulomb_mae', coulomb, '.2f')} | "
+            f"{ph('cc_' + g + '_raw_en_mae', raw_en, '.2f')} | "
+            f"{ph('cc_' + g + '_rel_en_mae', rel_en, '.2f')} | "
+            f"{ph('cc_' + g + '_rel_xgb_mae', rel_xgb, '.2f')} |"
+        )
+
+    lines.append("")
+    lines.append(
+        f"B0053 is the only G9 cell the audit keeps, so its row is that "
+        f"cell alone, never averaged into a group. Reading it: the "
+        f"cell-relative ElasticNet error on B0053 is "
+        f"{ph('cc_g9_rel_en_mae', _cc_row(cross, 'G9', 'cell_relative', 'ElasticNet', 'mae_pct')[1], '.2f')}% "
+        f"against the Coulomb formula's "
+        f"{ph('cc_g9_coulomb_mae', _cc_coulomb(cross, 'G9', 'mae_pct'), '.2f')}%, "
+        f"so there the model beats the formula. On the two multi-cell "
+        f"groups it does not: G1 "
+        f"{ph('cc_g1_rel_en_mae', _cc_row(cross, 'G1', 'cell_relative', 'ElasticNet', 'mae_pct')[1], '.2f')}% "
+        f"versus {ph('cc_g1_coulomb_mae', _cc_coulomb(cross, 'G1', 'mae_pct'), '.2f')}%, "
+        f"G3 {ph('cc_g3_rel_en_mae', _cc_row(cross, 'G3', 'cell_relative', 'ElasticNet', 'mae_pct')[1], '.2f')}% "
+        f"versus {ph('cc_g3_coulomb_mae', _cc_coulomb(cross, 'G3', 'mae_pct'), '.2f')}%. "
+        f"Across groups as a whole the model still cannot beat the "
+        f"Coulomb-counting formula; it wins on the one cross-condition "
+        f"cell and loses on the two conditions that train it.\n"
+    )
+
+    return "\n".join(lines)
+
+
+def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
+                  full, partial, ablation, logo, cross):
+    lines = []
+
+    # Cross-condition transfer opens Key Results: the model that
+    # looks good within G1 does not survive a change of operating
+    # condition, and that is the headline caveat on every number
+    # below it.
+    lines.append(build_cross_condition(logo, cross, clean, soh_base))
+    lines.append("")
 
     lines.append("#### State of Health (SOH)\n")
     lines.append("| Method | Validation | Mean MAE (%) | Mean R² |")
@@ -298,30 +468,6 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
             f"{ph('ablation_' + set_id + '_en_mae', en, '.2f')} | "
             f"{ph('ablation_' + set_id + '_xgb_mae', xg, '.2f')} |"
         )
-
-    lines.append("\n#### Cross-condition transfer (leave-one-group-out)\n")
-    if "note" in logo.columns:
-        lines.append("cross-condition not testable (fewer than two groups survive the audit).")
-    else:
-        lines.append("| Held-out group | Cells | Cycles | ElasticNet MAE (%) | XGBoost MAE (%) |")
-        lines.append("|---|---|---|---|---|")
-        for group in sorted(logo["test_group"].unique()):
-            g = str(group).lower()
-            rows = logo[logo["test_group"] == group]
-            en = float(rows.loc[rows["model"] == "ElasticNet", "mae_pct"].iloc[0])
-            xg = float(rows.loc[rows["model"] == "XGBoost", "mae_pct"].iloc[0])
-            cells = int(rows["n_cells"].iloc[0])
-            cycles = int(rows["n_cycles"].iloc[0])
-            record("SOH", "cross-condition", f"held-out {group}",
-                   "ElasticNet MAE", en, "%", REQUIRED["logo"])
-            record("SOH", "cross-condition", f"held-out {group}",
-                   "XGBoost MAE", xg, "%", REQUIRED["logo"])
-            lines.append(
-                f"| {group} | {ph('logo_' + g + '_cells', cells, 'd')} | "
-                f"{ph('logo_' + g + '_cycles', cycles, 'd')} | "
-                f"{ph('logo_' + g + '_en_mae', en, '.2f')} | "
-                f"{ph('logo_' + g + '_xgb_mae', xg, '.2f')} |"
-            )
 
     return "\n".join(lines)
 
@@ -528,6 +674,7 @@ def main():
         frames["soh_results"], frames["soh_nested"], frames["soh_baselines"],
         frames["soh_null"], frames["full_discharge"],
         frames["partial_discharge"], frames["ablation"], frames["logo"],
+        frames["cross_condition"],
     ))
     rul = region("rul", build_rul(frames["rul_trajectory"]))
     degradation = region("degradation", build_degradation(audit))

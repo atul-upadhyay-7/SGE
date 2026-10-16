@@ -175,6 +175,39 @@
   `data/processed/report_numbers.json` in addition to README.md and
   CHANGES.md.
 
+## Step 10 — Cross-condition transfer, faced
+
+- The leave-one-group-out table is now the **first** table under
+  *Key Results*, opened by a plain sentence: on raw cycle features
+  the model does not transfer across conditions. The evidence is
+  the same protocol as before — train on the other groups, test on
+  the held-out one — with ElasticNet mean MAE 42.26% (G1), 20.69%
+  (G3) and 47.61% (B0053/G9), against 1.81% for the same ElasticNet
+  in leave-one-cell-out within G1. All numbers come from
+  `data/processed/experiments/logo_results.csv`.
+- Attempted fix, measured and reported either way. Added
+  `src/run_experiments.py:cross_condition`, which rebuilds the
+  input features as per-cell baseline-relative quantities: window
+  capacity relative to the cell's own first-five-discharge median
+  (`vw_capacity_ratio`), window capacity per amp of discharge
+  current (`vw_capacity_per_amp`), and the same ratio treatment for
+  window time, dQ/dV peak height and voltage, plus resistance and
+  duration ratios, temperature rise and a current ratio. The
+  baseline only uses a cell's own opening discharges, so it is
+  available at inference time and sees neither the target nor a
+  future cycle. Results are written to
+  `data/processed/experiments/cross_condition.csv`.
+- Result: cell-relative features recover most of the raw-feature
+  gap. ElasticNet MAE falls to 1.37% (G1), 1.34% (G3) and 1.67%
+  (B0053/G9). The Coulomb-counting formula, scored on exactly the
+  held-out cells, is 0.30% (G1), 0.23% (G3) and 3.39% (B0053/G9).
+  So on the two multi-cell groups the physics formula still beats
+  every model, and across groups as a whole the model still cannot
+  beat it; the model wins only on the single cross-condition cell
+  B0053 (1.67% versus 3.39%). The report says exactly that.
+- B0053 is the only G9 cell the audit keeps. It is labelled
+  `B0053 (G9)` in both tables and never averaged into a group mean.
+
 ---
 
 ## Final performance & baseline comparison
