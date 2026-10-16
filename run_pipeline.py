@@ -19,9 +19,10 @@ Stages
    8. pack_evaluate    pack alert engine on synthetic faults
    9. anomaly          cycle screening
   10. benchmark_latency inference latency
-  11. load_to_sqlite   dashboard database
-  12. make_report      README/CHANGES numbers from the CSVs
-  13. pytest           the full suite
+  11. make_report      README/CHANGES numbers from the CSVs
+  12. make_alerts      Grafana alert rules from the training range
+  13. load_to_sqlite   dashboard database
+  14. pytest           the full suite
 
 Any stage that exits non-zero stops the run. Nothing is
 swallowed: the failing stage, its command and its own output
@@ -71,6 +72,7 @@ STAGES = [
         [sys.executable, "src/benchmark_latency.py"],
     ),
     ("make_report", [sys.executable, "scripts/make_report.py"]),
+    ("make_alerts", [sys.executable, "scripts/make_alert_rules.py"]),
     (
         "load_to_sqlite",
         [sys.executable, "dashboard/load_to_sqlite.py"],

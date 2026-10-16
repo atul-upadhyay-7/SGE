@@ -631,6 +631,27 @@ Clean-pack false alarms at the resistance-spike and thermal thresholds: 0 and 0 
 Imbalance-type alerts are not meaningful in the offline table; see
 `docs/RESEARCH.md`.
 
+### Alert rules
+
+Two Grafana rules are provisioned (`dashboard/provisioning/alerting/`
+for the native run, `docker/grafana/provisioning/alerting/` for the
+compose stack): SOH below the 80% retirement threshold, and peak
+temperature above the **maximum the SOH model trained on**. That
+temperature bound is generated from `nasa_ml_dataset_clean.csv` by
+`scripts/make_alert_rules.py` — it is the data, not a hand-typed 55.
+Each rule is a three-node pipeline, `query → reduce(last) →
+threshold`, with the threshold as the condition, so Grafana reduces
+a multi-point series to the single value it compares.
+
+One honest caveat: the datasource is `simpod-json-datasource`, whose
+plugin declares `"alerting": false`. It is a frontend-only plugin, so
+Grafana's own alerting engine cannot query it (`plugin.unavailable`),
+and the rule never evaluates inside Grafana. `scripts/check_alerts.py`
+therefore reproduces exactly that logic — query the live target,
+reduce to the last value, compare to the bound — against the same
+JSON API, and reports FIRING/normal. On the current live data the
+SOH rule fires. Run it with `python scripts/check_alerts.py`.
+
 ## Dashboard
 
 Grafana is the only dashboard and monitoring surface. Streamlit is

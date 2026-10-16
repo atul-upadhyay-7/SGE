@@ -232,6 +232,35 @@
   limitation of matching one cell against slower-ageing references,
   and it is reported rather than hidden.
 
+## Step 12 — Grafana alerts: real structure, data-driven bound, tested
+
+- Rewrote both provisioned rule files (`dashboard/provisioning/` and
+  `docker/grafana/provisioning/`) as three-node pipelines —
+  `A query → B reduce(last) → C threshold`, with `condition: C` so
+  the threshold is the last node. The old rules put the threshold
+  straight on a time-series query and had no reduce step.
+- Shortened the rule time window from 24 h to 1 h; the rules run
+  every minute and only ever read the latest value.
+- Replaced the hand-typed 55 C bound. `scripts/make_alert_rules.py`
+  reads `nasa_ml_dataset_clean.csv` and writes the maximum peak
+  temperature the SOH model trained on (63.0242 C) into the rule, and
+  writes both provisioning copies, so the "outside trained range"
+  alert can never disagree with the data. The generator is a pipeline
+  stage (`make_alerts`).
+- Found why the alerts never fired. The datasource is
+  `simpod-json-datasource`, whose `plugin.json` sets
+  `"alerting": false` and `"backend": false`; Grafana's alerting
+  engine therefore reports `[plugin.unavailable]` for every rule
+  query, on any Grafana version. The rules are correctly structured
+  but Grafana cannot evaluate a frontend-only datasource.
+- Added `scripts/check_alerts.py`, which reproduces the rule logic
+  (query → reduce(last) → threshold) against the same JSON API and
+  the same bounds the YAML carries, and reports FIRING/normal. Run
+  on the live stack it reports the SOH rule FIRING (last in-service
+  SOH < 80). `tests/test_alert_rules.py` pins the structure and the
+  data-driven bound; `tests/test_check_alerts.py` pins the firing
+  logic above and below the bound.
+
 ---
 
 ## Final performance & baseline comparison
@@ -1651,6 +1680,14 @@ verify.sh: ALL CHECKS PASSED
 3. The online double-exponential fit was not re-validated; where it
    cannot be backed by a CSV it is marked legacy rather than reported.
 4. Grafana alert rules are provisioned
-   (`docker/grafana/provisioning/alerting/alert_rules.yml`) but were not
-   observed firing: the demo publisher injects synthetic faults into the
-   live topic, and no alert notification was captured end to end.
+   (`dashboard/provisioning/alerting/alert_rules.yml` and the docker
+   copy) with the correct query → reduce → threshold structure and a
+   data-driven temperature bound, but Grafana still cannot run them:
+   the `simpod-json-datasource` plugin sets `"alerting": false`, so
+   the alerting engine reports `plugin.unavailable` for every query.
+   The rule logic itself is exercised by `scripts/check_alerts.py`
+   against the live JSON API (the SOH rule fires: last in-service SOH
+   < 80), but no notification was delivered by Grafana's own engine.
+   Making that work needs a backend datasource that supports alerting
+   (e.g. a SQLite datasource over `data/live_pack.db`), which is not
+   installed here.
