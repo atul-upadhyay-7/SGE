@@ -47,7 +47,12 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evaluation import build_model  # noqa: E402
-from features import FEATURES, drop_constant_features  # noqa: E402
+from features import (  # noqa: E402
+    FEATURES,
+    WINDOW_FEATURES as VW_FEATURES,
+    WINDOW_MODEL_FEATURES as WINDOW_NORM_FEATURES,
+    drop_constant_features,
+)
 from repro import rounded  # noqa: E402
 
 PROC = Path("data/processed")
@@ -60,14 +65,6 @@ TARGET = "soh"
 GROUP_COL = "group"
 
 REF_WINDOW = 5  # reference = median of the first N valid discharges
-
-VW_FEATURES = [
-    "vw_time_s",
-    "vw_capacity_ah",
-    "vw_voltage_mean",
-    "vw_dqdv_peak_v",
-    "vw_dqdv_peak_height",
-]
 
 TEMP_CURRENT_FEATURES = [
     "temperature_mean",
@@ -361,19 +358,13 @@ NORM_FEATURES = [
     "current_ratio",
 ]
 
-# The partial-discharge model input set: only quantities measured
-# inside the 4.0-3.4 V window, each either a ratio to the cell's own
+# The partial-discharge model input set (shared as
+# features.WINDOW_MODEL_FEATURES): only quantities measured inside
+# the 4.0-3.4 V window, each either a ratio to the cell's own
 # early-window baseline or already scale-free (capacity per amp).
 # No full-discharge quantity (duration, resistance, end voltage)
 # enters, because a BMS that sees only the window never measures
 # them. This is the set the partial-discharge task is scored on.
-WINDOW_NORM_FEATURES = [
-    "vw_capacity_ratio",
-    "vw_capacity_per_amp",
-    "vw_time_ratio",
-    "vw_voltage_ratio",
-    "vw_dqdv_height_ratio",
-]
 
 
 def cell_relative_features(df, ref_window=REF_WINDOW):

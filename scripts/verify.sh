@@ -67,6 +67,16 @@ echo ">>> running the test suite"
 "$PYTHON" -m pytest -q
 
 echo
+echo ">>> running the backend partial-window estimator tests"
+# --noconftest: the backend's app-level conftest imports the full
+# FastAPI app (and its MQTT dependency), which this pure-ML test does
+# not need and this interpreter does not install.
+(
+    cd backend
+    "$PYTHON" -m pytest -q --noconftest tests/test_window_estimator.py
+)
+
+echo
 echo ">>> checking numbers in README.md / CHANGES.md"
 "$PYTHON" scripts/check_numbers.py
 

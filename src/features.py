@@ -113,6 +113,170 @@ LEAKY_FEATURES = [
 ]
 
 
+# ---------------------------------------------------------------------
+# Partial-window ("BMS-visible") feature contract
+# ---------------------------------------------------------------------
+#
+# A discharge's first stage crosses 4.0 -> 3.4 V on every cell,
+# regardless of where the run is later cut off. A BMS therefore sees
+# that window even when it never sees the full discharge. These lists
+# are the single canonical definition of what the partial-window SOH
+# model consumes: the offline experiment code and the backend
+# estimator (backend/app/ml/estimator.py) both import them from here,
+# so neither keeps a private copy that could drift.
+
+# Raw measurements available inside the 4.0-3.4 V window.
+WINDOW_FEATURES = [
+    "vw_time_s",
+    "vw_capacity_ah",
+    "vw_voltage_mean",
+    "vw_dqdv_peak_v",
+    "vw_dqdv_peak_height",
+]
+
+# Unit for every raw window input, plus the one non-window input the
+# cell-relative normalisation needs. Carried so a caller can present
+# and validate measurements without guessing.
+WINDOW_UNITS = {
+    "vw_time_s": "seconds",
+    "vw_capacity_ah": "ampere_hours",
+    "vw_voltage_mean": "volts",
+    "vw_dqdv_peak_v": "volts",
+    "vw_dqdv_peak_height": "ampere_hours_per_volt",
+    "current_mean": "amperes",
+}
+
+# The model input set: each raw window quantity made relative to the
+# cell's own opening-discharge baseline, or already scale-free
+# (capacity per amp). No full-discharge quantity (duration,
+# resistance, end voltage) enters, because a BMS that sees only the
+# window never measures it.
+WINDOW_MODEL_FEATURES = [
+    "vw_capacity_ratio",
+    "vw_capacity_per_amp",
+    "vw_time_ratio",
+    "vw_voltage_ratio",
+    "vw_dqdv_height_ratio",
+]
+
+# Raw inputs the normalisation needs that are not themselves window
+# quantities: current_mean scales window capacity to amp-hours per
+# amp, removing the 2 A (G1/G9) versus 4 A (G3) rate difference.
+WINDOW_NORMALIZATION_INPUTS = ["current_mean"]
+
+# Baseline = median of the cell's first `WINDOW_REFERENCE_WINDOW`
+# valid discharges of each quantity.
+WINDOW_REFERENCE_WINDOW = 5
+
+# Refuse to score a cell with fewer opening discharges than this; the
+# baseline would be too thin to trust and the estimate would be a
+# guess.
+WINDOW_MIN_REFERENCE_DISCHARGES = 3
+
+
+def window_model_row(
+    window_row,
+    early_discharges,
+    reference_window=WINDOW_REFERENCE_WINDOW,
+):
+    """
+    Build the partial-window model input for one discharge.
+
+    `window_row` is one discharge's raw window measurement and must
+    carry every name in WINDOW_FEATURES plus WINDOW_NORMALIZATION_INPUTS.
+    `early_discharges` is the cell's opening discharges, in order; the
+    baseline is the median of the first `reference_window` of them.
+
+    Returns the WINDOW_MODEL_FEATURES mapping the partial-window SOH
+    model consumes. This is the same arithmetic
+    run_experiments.cell_relative_features applies, factored out so
+    the offline trainer and the online estimator cannot disagree about
+    what a window feature is.
+    """
+
+    import numpy as np
+
+    def as_mapping(source):
+
+        if hasattr(source, "to_dict"):
+
+            return source.to_dict()
+
+        return dict(source)
+
+    row = as_mapping(window_row)
+
+    missing = [
+        name for name in WINDOW_FEATURES + WINDOW_NORMALIZATION_INPUTS
+        if name not in row
+    ]
+
+    if missing:
+
+        raise KeyError(
+            "window_row is missing required inputs: "
+            f"{missing}"
+        )
+
+    early = [
+        as_mapping(discharge) for discharge in early_discharges
+    ]
+
+    if len(early) < WINDOW_MIN_REFERENCE_DISCHARGES:
+
+        raise ValueError(
+            "insufficient reference: need at least "
+            f"{WINDOW_MIN_REFERENCE_DISCHARGES} early discharges, "
+            f"got {len(early)}"
+        )
+
+    def baseline(column):
+
+        values = [
+            discharge[column] for discharge in early
+            if discharge.get(column) is not None
+        ]
+        values = np.asarray(values, dtype=float)
+        values = values[~np.isnan(values)]
+
+        head = values[:reference_window]
+        reference = float(np.median(head)) if head.size else np.nan
+
+        # A zero or missing baseline would divide by zero. Fall back
+        # to the median of every opening discharge, then to 1.0, so
+        # the ratio stays finite. This mirrors the offline
+        # fallback in cell_relative_features.
+        if reference == 0.0 or np.isnan(reference):
+
+            reference = (
+                float(np.median(values)) if values.size else np.nan
+            )
+
+        if reference == 0.0 or np.isnan(reference):
+
+            reference = 1.0
+
+        return reference
+
+    capacity = float(row["vw_capacity_ah"])
+    current = float(row["current_mean"])
+
+    return {
+        "vw_capacity_ratio": capacity / baseline("vw_capacity_ah"),
+        "vw_capacity_per_amp": capacity / abs(current),
+        "vw_time_ratio": (
+            float(row["vw_time_s"]) / baseline("vw_time_s")
+        ),
+        "vw_voltage_ratio": (
+            float(row["vw_voltage_mean"]) / baseline("vw_voltage_mean")
+        ),
+        "vw_dqdv_height_ratio": (
+            float(row["vw_dqdv_peak_height"])
+            / baseline("vw_dqdv_peak_height")
+        ),
+    }
+
+
 def make_xy(df, target, leaky_columns=LEAKY_FEATURES):
 
     available_features = [
