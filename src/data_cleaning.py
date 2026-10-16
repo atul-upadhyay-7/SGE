@@ -50,6 +50,7 @@ PROC = Path("data/processed")
 IN = PROC / "nasa_ml_dataset.csv"
 OUT_CLEAN = PROC / "nasa_ml_dataset_clean.csv"
 OUT_AUDIT = PROC / "cell_audit.csv"
+OUT_REFERENCE_SENSITIVITY = PROC / "data_reference_sensitivity.csv"
 
 # A discharge below this fraction of the cell's median capacity is
 # treated as a measurement failure, not a real low-capacity cycle.
@@ -70,6 +71,89 @@ SOH_CEILING_PCT = 105.0
 # keeps sub-0.1pp measurement noise from excluding an otherwise
 # healthy cell; the genuine G4/G7/G9 drifts are tens of points.
 SOH_RISE_TOLERANCE_PCT = 0.1
+
+
+# The reference an SOH percentage is measured against. The production
+# rule is the median of the cell's first five valid discharges. The
+# other rules exist only for the sensitivity study below; changing
+# REFERENCE_RULE would move every reported SOH number.
+REFERENCE_RULE = "first5_median"
+SENSITIVITY_RULES = (
+    "first5_median",
+    "median_3_8",
+    "first5_max",
+    "median_1_10",
+)
+
+# The discharge-index window (1-indexed, inclusive) each rule reads.
+RULE_WINDOWS = {
+    "first5_median": (1, 5),
+    "median_3_8": (3, 8),
+    "first5_max": (1, 5),
+    "median_1_10": (1, 10),
+}
+
+
+def reference_capacity(cap, rule=REFERENCE_RULE):
+    """
+    Beginning-of-life capacity for one cell's cleaned discharges.
+
+    `first5_median` is the production reference. The alternatives are
+    the gentler re-references the data-quality study checks: the
+    median of discharges 3-8, the maximum of the first five (a
+    beginning-of-life peak), and the median of the first ten.
+    """
+
+    cap = pd.Series(cap).astype(float).reset_index(drop=True)
+
+    if len(cap) == 0:
+
+        return np.nan
+
+    if rule == "first5_median":
+
+        return float(cap.head(5).median())
+
+    if rule == "median_3_8":
+
+        window = cap.iloc[2:8]
+
+        return float(window.median()) if len(window) else np.nan
+
+    if rule == "first5_max":
+
+        return float(cap.head(5).max())
+
+    if rule == "median_1_10":
+
+        return float(cap.head(10).median())
+
+    raise ValueError(f"unknown reference rule: {rule}")
+
+
+def exclusion_reason(soh):
+    """
+    The exclusion reason for one cell's SOH series, or "" when it is
+    kept. Shared by the production cleaning pass and the sensitivity
+    study so both apply exactly the same rules.
+    """
+
+    reasons = []
+
+    soh = pd.Series(soh).astype(float).reset_index(drop=True)
+
+    if len(soh) and soh.max() > SOH_CEILING_PCT:
+
+        reasons.append(f"soh>{int(SOH_CEILING_PCT)}")
+
+    if (
+        len(soh) >= 2
+        and soh.iloc[-1] > soh.iloc[0] + SOH_RISE_TOLERANCE_PCT
+    ):
+
+        reasons.append("capacity_rises_overall")
+
+    return ";".join(reasons)
 
 
 def _valid_mask(capacity):
@@ -209,6 +293,75 @@ def kept_cells(path=OUT_AUDIT):
     return audit.loc[audit["keep"].astype(bool), "cell_id"].tolist()
 
 
+def reference_sensitivity(df, rules=SENSITIVITY_RULES):
+    """
+    Recompute the keep/exclude decision for every cell under each
+    reference rule, holding the SOH ceiling and the capacity-rise
+    test fixed. This is the data-quality study behind the report's
+    "re-referencing the excluded cells" table: it answers whether a
+    gentler beginning-of-life reference brings an excluded cell back.
+    """
+
+    rows = []
+
+    for cell_id, g in df.groupby("cell_id", sort=True):
+
+        g = g.sort_values("cycle").reset_index(drop=True)
+
+        g_clean = g[_valid_mask(g["capacity_ah"])]
+
+        group = (
+            g_clean["group"].iloc[0]
+            if "group" in g_clean.columns and len(g_clean)
+            else (g["group"].iloc[0] if "group" in g.columns else None)
+        )
+
+        for rule in rules:
+
+            reference = reference_capacity(g_clean["capacity_ah"], rule)
+
+            if not np.isfinite(reference) or reference <= 0:
+
+                continue
+
+            soh = (
+                g_clean["capacity_ah"].astype(float) / reference * 100.0
+            )
+
+            excluded_reason = exclusion_reason(soh)
+
+            if excluded_reason:
+
+                reason = excluded_reason
+
+            elif not bool((soh < EOL_SOH_THRESHOLD).any()):
+
+                reason = "limited ageing, no RUL"
+
+            else:
+
+                reason = "ok"
+
+            ref_lo, ref_hi = RULE_WINDOWS[rule]
+
+            rows.append({
+                "cell_id": cell_id,
+                "group": group,
+                "reference_rule": rule,
+                "ref_lo": ref_lo,
+                "ref_hi": ref_hi,
+                "n_discharges": int(len(g_clean)),
+                "reference_capacity_ah": float(reference),
+                "soh_max": float(soh.max()),
+                "soh_ceiling_pct": float(SOH_CEILING_PCT),
+                "rises_overall": "capacity_rises_overall" in excluded_reason,
+                "keep": not bool(excluded_reason),
+                "reason": reason,
+            })
+
+    return pd.DataFrame(rows)
+
+
 def main():
 
     if not IN.exists():
@@ -254,7 +407,9 @@ def main():
             })
             continue
 
-        reference = g_clean.head(5)["capacity_ah"].median()
+        reference = reference_capacity(
+            g_clean["capacity_ah"], REFERENCE_RULE
+        )
 
         if not np.isfinite(reference) or reference <= 0:
 
@@ -267,31 +422,14 @@ def main():
 
         reaches_80 = bool((soh < EOL_SOH_THRESHOLD).any())
 
-        reasons = []
-        excluded = False
+        reason = exclusion_reason(soh)
+        excluded = bool(reason)
 
-        if soh.max() > SOH_CEILING_PCT:
-
-            excluded = True
-            reasons.append(f"soh>{int(SOH_CEILING_PCT)}")
-
-        if (
-            len(g_clean) >= 2
-            and soh.iloc[-1] > soh.iloc[0] + SOH_RISE_TOLERANCE_PCT
-        ):
-
-            excluded = True
-            reasons.append("capacity_rises_overall")
-
-        if excluded:
-
-            reason = ";".join(reasons)
-
-        elif not reaches_80:
+        if not excluded and not reaches_80:
 
             reason = "limited ageing, no RUL"
 
-        else:
+        elif not excluded:
 
             reason = "ok"
 
@@ -341,8 +479,11 @@ def main():
 
     audit_df = audit_df.merge(summary, on="cell_id", how="left")
 
+    sensitivity = reference_sensitivity(df)
+
     rounded(audit_df).to_csv(OUT_AUDIT, index=False)
     rounded(cleaned).to_csv(OUT_CLEAN, index=False)
+    rounded(sensitivity).to_csv(OUT_REFERENCE_SENSITIVITY, index=False)
 
     kept = audit_df.loc[audit_df["keep"], "cell_id"].tolist()
     limited = audit_df.loc[
@@ -355,8 +496,30 @@ def main():
         "excluded cells: "
         f"{audit_df.loc[~audit_df['keep'], 'cell_id'].tolist()}"
     )
+    returned = []
+
+    for cell_id, rows in sensitivity.groupby("cell_id"):
+
+        strict = rows[rows["reference_rule"] == REFERENCE_RULE]
+
+        if not strict.empty and not bool(strict["keep"].iloc[0]):
+
+            gentler = rows[
+                (rows["reference_rule"] != REFERENCE_RULE) & rows["keep"]
+            ]
+
+            if not gentler.empty:
+
+                returned.append(cell_id)
+
+    print(
+        "cells a gentler reference would return: "
+        f"{returned if returned else 'none'}"
+    )
+
     print(f"\nwrote {OUT_AUDIT} ({len(audit_df)} cells)")
     print(f"wrote {OUT_CLEAN} ({cleaned.shape[0]} rows x {cleaned.shape[1]} cols)")
+    print(f"wrote {OUT_REFERENCE_SENSITIVITY} ({len(sensitivity)} rows)")
 
 
 if __name__ == "__main__":

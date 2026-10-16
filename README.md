@@ -202,6 +202,27 @@ A 10th-to-90th band should cover four discharges in five, and this one misses by
 | B0031 | — | 0.176 | 0.176 |
 | B0032 | — | 0.286 | 0.286 |
 | B0053 | — | 0.125 | 0.267 |
+
+#### Re-referencing the excluded cells
+
+Every SOH above is measured against the median of the cell's first five valid discharges. A gentler re-reference was checked on the excluded cells: the median of discharges 3-8, and the beginning-of-life peak (the maximum of the first five). The SOH ceiling and the capacity-rise test are held fixed, so a cell is returned only when the reference, not the rule, was what excluded it.
+
+| Excluded cell | Group | first five median soh_max | median 3-8 soh_max | BOL-peak soh_max | Returned? |
+|---|---|---|---|---|---|
+| B0033 | G4 | 146.3 | 128.2 | 142.6 | no |
+| B0034 | G4 | 112.3 | 118.1 | 109.5 | no |
+| B0036 | G4 | 135.7 | 136.1 | 135.4 | no |
+| B0045 | G7 | 122.2 | 129.9 | 100.0 | yes (BOL peak) |
+| B0046 | G7 | 115.0 | 118.0 | 100.0 | yes (BOL peak) |
+| B0047 | G7 | 111.0 | 114.8 | 100.0 | yes (BOL peak) |
+| B0048 | G7 | 110.6 | 113.8 | 100.0 | yes (BOL peak) |
+| B0054 | G9 | 106.4 | 109.0 | 100.0 | no |
+| B0055 | G9 | 105.0 | 109.3 | 100.0 | no |
+| B0056 | G9 | 103.6 | 105.7 | 100.0 | no |
+
+The gentler rule the check started from returns nothing: none of B0054, B0055 or B0056 comes back. Their capacity genuinely rises from the recorded first discharge, so the drift is in the data, not only in the reference; B0054 also stays above the ceiling. The four G7 cells return under the beginning-of-life peak alone, because their reading above the 105% ceiling was a high first cycle sitting above the early median rather than a real rise. No G4 cell returns under any rule: its capacity rises across the record by far more than a reference choice can explain.
+
+The peak reference is reported and not adopted: applying it uniformly would rescale every kept cell's SOH, and a per-cell fallback would make the reference depend on the outcome it is tested against. The production reference is unchanged, so no kept cell's SOH and no reported number moves.
 <!-- make_report:degradation:end -->
 
 ---
@@ -376,6 +397,7 @@ operator. Data-hungry dev tests live in `tests/` (`pytest`).
 │       ├── nasa_ml_dataset.csv            # Pre-cleaning ML dataset
 │       ├── nasa_ml_dataset_clean.csv      # Cleaned ML dataset (all stages read this)
 │       ├── cell_audit.csv                 # Per-cell keep/exclude decision
+│       ├── data_reference_sensitivity.csv # Keep/exclude under each reference rule
 │       ├── soh_results.csv                # SOH model per-cell scores
 │       ├── soh_baselines.csv              # Baseline model comparison
 │       ├── soh_nested_results.csv         # Nested CV XGBoost results
@@ -787,9 +809,12 @@ conditions. `src/data_cleaning.py` audits every cell and keeps the
 ones whose measured capacity trace is usable; the audit and its
 decision for each cell are in `data/processed/cell_audit.csv`.
 Cells that do not reach end of life are labelled `limited ageing, no
-RUL` and are kept for SOH only. Cells whose capacity trace is
-corrupted (near-zero or exploding integrations) are excluded from
-every downstream table, model and database view.
+RUL` and are kept for SOH only. Cells whose recomputed SOH rises above
+the ceiling or whose capacity rises across the record are excluded
+from every downstream table, model and database view. The excluded
+cells are listed in the degradation section, together with the
+re-reference check showing that the exclusion is not an artifact of
+the reference window.
 
 <!-- make_report:dataset -->
 | Cell | Group | Discharges | Initial SOH (%) | Final SOH (%) | EOL discharge |
@@ -914,6 +939,18 @@ amount of tuning removes them.
    ordinal. The two differ. This is documented in
    `streaming/cycle_tracker.py` and pinned by tests, but it is a
    real train/serve skew, not a cosmetic one.
+
+7. **The cell filter is conservative, not optimal.** Ten of the
+   nineteen cells are excluded. The re-reference check in the
+   degradation section shows that the gentler rule it started from
+   rescues none of them, that the four G7 cells look usable except
+   for a high first cycle, and that no G4 cell can be rescued at any
+   reference because its capacity genuinely rises. Returning G7 would
+   need a beginning-of-life-peak reference applied uniformly (which
+   rescales every kept cell's SOH) or a per-cell fallback (which
+   makes the reference depend on the outcome it is tested against).
+   Neither was adopted, so the project keeps nine cells and reports
+   the finding rather than quietly widening the dataset.
 
 7. **One cycle-latency contract.** SOH is emitted once per
    completed discharge, not per sample, because several features

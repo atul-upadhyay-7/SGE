@@ -437,6 +437,39 @@
 
 ---
 
+## Step 17 — The cell filter is checked against a gentler re-reference
+
+- Added a data-quality study to `src/data_cleaning.py`:
+  `reference_capacity` names the reference rules, `exclusion_reason`
+  applies the unchanged ceiling and capacity-rise tests, and
+  `reference_sensitivity` recomputes every cell's decision under each
+  rule. The production pass and the study share both helpers, so the
+  rules cannot drift. New CSV `data_reference_sensitivity.csv`; the
+  production decision is pinned against it by
+  `tests/test_data_reference.py`.
+- Result, from the CSV. The gentler rule the check started from — the
+  median of discharges 3-8 — returns **none** of B0054-B0056 or G7;
+  for G7 and B0054 it makes `soh_max` worse, because their `soh>105`
+  is a high first cycle above the early median, not a depressed
+  reference. The beginning-of-life peak (max of the first five)
+  returns exactly the four G7 cells; B0054-B0056 stay out because
+  their measured capacity rises from the recorded first discharge,
+  and B0054 also stays above the ceiling. No G4 cell returns under
+  any rule: its capacity rises across the record by 10-40%.
+- Decision: reported and not adopted. Applying the peak reference
+  uniformly would rescale every kept cell's SOH, and a per-cell
+  fallback would make the reference depend on the outcome it is
+  tested against. `REFERENCE_RULE` stays `first5_median`, the kept
+  set stays at nine cells, and no reported SOH number moves. The
+  report gains a "re-referencing the excluded cells" table and Known
+  Limitations item 7 records the conservative filter.
+- `scripts/make_report.py` gained the required CSV and the table; the
+  README Dataset prose no longer says the excluded cells are
+  "corrupted integrations" (they are excluded for a ceiling or a
+  rise, which is a different thing).
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

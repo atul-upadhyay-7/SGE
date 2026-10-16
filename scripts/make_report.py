@@ -46,6 +46,7 @@ NUMBERS = PROC / "report_numbers.json"
 REQUIRED = {
     "clean": PROC / "nasa_ml_dataset_clean.csv",
     "audit": PROC / "cell_audit.csv",
+    "reference_sensitivity": PROC / "data_reference_sensitivity.csv",
     "soh_results": PROC / "soh_results.csv",
     "soh_nested": PROC / "soh_nested_results.csv",
     "soh_baselines": PROC / "soh_baselines.csv",
@@ -842,7 +843,7 @@ def build_rul(rul, comparison, band):
     return "\n".join(lines)
 
 
-def build_degradation(audit):
+def build_degradation(audit, sensitivity):
     kept = audit[audit["keep"]].copy()
     lines = []
     lines.append("| Cell | EOL discharge | Fade (%/discharge) | Early fade (%/discharge) |")
@@ -867,6 +868,86 @@ def build_degradation(audit):
             f"| {fmt(abs(fade)) if pd.isna(fade) else ph('deg_' + cell + '_fade', abs(float(fade)), '.3f')} "
             f"| {fmt(abs(early)) if pd.isna(early) else ph('deg_' + cell + '_early', abs(float(early)), '.3f')} |"
         )
+
+    excluded = audit[~audit["keep"]].copy()
+    lines.append("")
+    lines.append("#### Re-referencing the excluded cells")
+    lines.append("")
+    mid = sensitivity[sensitivity["reference_rule"] == "median_3_8"].iloc[0]
+    mid_lo = ph("rsc_mid_lo", int(mid["ref_lo"]), "d")
+    mid_hi = ph("rsc_mid_hi", int(mid["ref_hi"]), "d")
+    ceiling = ph("rsc_ceiling", float(mid["soh_ceiling_pct"]), ".0f")
+    lines.append(
+        "Every SOH above is measured against the median of the cell's "
+        "first five valid discharges. A gentler re-reference was checked "
+        "on the excluded cells: the median of discharges "
+        f"{mid_lo}-{mid_hi}, and the beginning-of-life peak (the maximum "
+        "of the first five). The SOH ceiling and the capacity-rise test "
+        "are held fixed, so a cell is returned only when the reference, "
+        "not the rule, was what excluded it."
+    )
+    lines.append("")
+    lines.append(
+        "| Excluded cell | Group | first five median soh_max | "
+        f"median {mid_lo}-{mid_hi} soh_max | BOL-peak soh_max | "
+        "Returned? |"
+    )
+    lines.append("|---|---|---|---|---|---|")
+    for _, row in excluded.sort_values("cell_id").iterrows():
+        cell_id = row["cell_id"]
+        cell = str(cell_id).lower()
+        by_rule = sensitivity[sensitivity["cell_id"] == cell_id].set_index(
+            "reference_rule"
+        )
+        first5 = float(by_rule.loc["first5_median", "soh_max"])
+        mid38 = float(by_rule.loc["median_3_8", "soh_max"])
+        peak = float(by_rule.loc["first5_max", "soh_max"])
+        labels = {
+            "median_3_8": "later-window median",
+            "first5_max": "BOL peak",
+            "median_1_10": "first-ten median",
+        }
+        gentler = by_rule.drop(index=["first5_median"])
+        returned = gentler[gentler["keep"]]
+        if len(returned):
+            verdict = "yes (" + ", ".join(
+                labels.get(rule, rule) for rule in returned.index
+            ) + ")"
+        else:
+            verdict = "no"
+        record("degradation", "re-reference first-5 median", cell_id,
+               "soh max", first5, "percent", REQUIRED["reference_sensitivity"])
+        record("degradation", "re-reference median 3-8", cell_id,
+               "soh max", mid38, "percent", REQUIRED["reference_sensitivity"])
+        record("degradation", "re-reference BOL peak", cell_id,
+               "soh max", peak, "percent", REQUIRED["reference_sensitivity"])
+        lines.append(
+            f"| {cell_id} | {row['group']} | "
+            f"{ph('rsc_' + cell + '_first5', first5, '.1f')} | "
+            f"{ph('rsc_' + cell + '_mid38', mid38, '.1f')} | "
+            f"{ph('rsc_' + cell + '_peak', peak, '.1f')} | {verdict} |"
+        )
+    lines.append("")
+    lines.append(
+        "The gentler rule the check started from returns nothing: none of "
+        "B0054, B0055 or B0056 comes back. Their capacity genuinely rises "
+        "from the recorded first discharge, so the drift is in the data, "
+        "not only in the reference; B0054 also stays above the ceiling. "
+        "The four G7 cells return under the beginning-of-life peak alone, "
+        f"because their reading above the {ceiling}% ceiling was a high "
+        "first cycle sitting above the early median rather than a real "
+        "rise. No G4 cell returns under any rule: its capacity rises "
+        "across the record by far more than a reference choice can "
+        "explain."
+    )
+    lines.append("")
+    lines.append(
+        "The peak reference is reported and not adopted: applying it "
+        "uniformly would rescale every kept cell's SOH, and a per-cell "
+        "fallback would make the reference depend on the outcome it is "
+        "tested against. The production reference is unchanged, so no "
+        "kept cell's SOH and no reported number moves."
+    )
     return "\n".join(lines)
 
 
@@ -1016,7 +1097,10 @@ def main():
             frames["rul_band"],
         ),
     )
-    degradation = region("degradation", build_degradation(audit))
+    degradation = region(
+        "degradation",
+        build_degradation(audit, frames["reference_sensitivity"]),
+    )
     dataset = region("dataset", build_dataset(audit))
     pack = region("pack", build_pack(frames["pack_detection"], frames["pack_false_alarms"]))
     final = region("final", build_final(

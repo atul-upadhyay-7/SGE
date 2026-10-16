@@ -189,6 +189,36 @@ degradation,slope,B0032,fade,0.2860633774,%/discharge,data/processed/cell_audit.
 degradation,slope,B0032,early fade,0.2860633774,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0053,fade,0.1251119247,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0053,early fade,0.2672707605,%/discharge,data/processed/cell_audit.csv
+degradation,re-reference first-5 median,B0033,soh max,146.3084888817,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0033,soh max,128.1707675132,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0033,soh max,142.6108262778,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0034,soh max,112.3140069053,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0034,soh max,118.0709510997,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0034,soh max,109.503833653,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0036,soh max,135.6982624733,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0036,soh max,136.0866318536,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0036,soh max,135.4484204427,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0045,soh max,122.2308179626,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0045,soh max,129.9298483089,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0045,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0046,soh max,114.9767060097,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0046,soh max,118.0325319538,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0046,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0047,soh max,111.0225489274,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0047,soh max,114.8358217718,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0047,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0048,soh max,110.6125074895,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0048,soh max,113.8106374682,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0048,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0054,soh max,106.4335632765,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0054,soh max,108.9721684597,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0054,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0055,soh max,104.9817117049,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0055,soh max,109.3306556583,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0055,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference first-5 median,B0056,soh max,103.6219622429,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference median 3-8,B0056,soh max,105.6642320652,percent,data/processed/data_reference_sensitivity.csv
+degradation,re-reference BOL peak,B0056,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
 dataset,summary,B0005,discharges,168.0,rows,data/processed/cell_audit.csv
 dataset,summary,B0005,initial SOH,101.1517277838,%,data/processed/cell_audit.csv
 dataset,summary,B0005,final SOH,72.1976685847,%,data/processed/cell_audit.csv
