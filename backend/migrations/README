@@ -1,0 +1,6 @@
+# Alembic migration scripts live in `versions/`.
+
+Schema changes are applied with `alembic upgrade head` and must never be
+made by hand (PRD §5). Create a new revision with:
+
+    alembic revision --autogenerate -m "describe change"
