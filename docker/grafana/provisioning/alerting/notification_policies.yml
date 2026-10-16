@@ -1,0 +1,16 @@
+# Route every firing alert to the local webhook receiver. This replaces
+# Grafana's default policy tree; the compose stack runs no other routes,
+# so there is nothing to preserve. The short group_wait keeps the demo
+# responsive; group_interval and repeat_interval stay at Grafana's
+# normal cadence so a sustained fault is not re-sent every evaluation.
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: battery-pdm-webhook
+    group_by:
+      - alertname
+      - grafana_folder
+    group_wait: 10s
+    group_interval: 1m
+    repeat_interval: 4h

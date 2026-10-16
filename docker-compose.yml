@@ -16,7 +16,9 @@
 # the exporter serves the live per-cell gauges, Prometheus scrapes it,
 # and Grafana's built-in Prometheus datasource backs the alert rules,
 # because the JSON-datasource plugin cannot run alerts ("alerting":
-# false).
+# false). Firing alerts are delivered to alert-sink, a local mock
+# webhook receiver (the provisioned contact point), so the path ends
+# in a real notification rather than only a rule changing state.
 #
 # STATUS: run with Docker on a host with the daemon up; the core stack
 # and the demo profile both start, and Grafana serves the provisioned
@@ -86,6 +88,17 @@ services:
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./dashboard/provisioning/dashboards:/var/lib/grafana/dashboards:ro
     depends_on: [api, prometheus]
+
+  alert-sink:                # mock webhook receiver: where firing alerts land
+    <<: *app
+    command: python docker/webhook_receiver.py
+    environment:
+      PDM_WEBHOOK_HOST: 0.0.0.0
+      PDM_WEBHOOK_LOG: /app/logs/alerts_received.jsonl
+    volumes:
+      - ./logs:/app/logs
+    ports: ["127.0.0.1:9000:9000"]
+    depends_on: [grafana]
 
   demo-publisher:            # stand-in for the ESP32; faults are SYNTHETIC
     <<: *app

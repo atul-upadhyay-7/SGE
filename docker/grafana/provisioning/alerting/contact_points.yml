@@ -1,0 +1,21 @@
+# Grafana contact point for the compose stack: the local mock webhook
+# receiver (the `alert-sink` service). Grafana provisions this at
+# startup and notification_policies.yml routes every firing rule to it,
+# so the alert path ends in a real delivery instead of the rule simply
+# changing colour in the UI.
+#
+# The receiver records each notification to logs/alerts_received.jsonl;
+# scripts/verify_alerts.sh asserts that file is non-empty after a rule
+# fires.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: battery-pdm-webhook
+    receivers:
+      - uid: battery_pdm_webhook
+        type: webhook
+        settings:
+          url: http://alert-sink:9000/
+          httpMethod: POST
+        disableResolveMessage: false

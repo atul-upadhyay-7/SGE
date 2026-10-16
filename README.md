@@ -11,7 +11,7 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 |---|---|
 | **9 of 19 cells kept** | The audit keeps nine cells (G1×4, G3×4, G9×1); ten are excluded for a raised SOH ceiling or a capacity that rises across the record. The re-reference check shows the exclusion is not a reference artifact. |
 | **RUL only on G1** | Remaining-life labels need a cell that reaches 80% SOH; only the four G1 cells do, so every RUL number is leave-one-cell-out over three training trajectories. |
-| **Alerts** | Grafana evaluates the rules itself through a Prometheus exporter and they fire on the injected fault, but no notification contact point (email/webhook) is configured, so a firing rule is not delivered anywhere. |
+| **Alerts** | Grafana evaluates the rules itself through a Prometheus exporter and they fire on the injected fault; firing alerts are delivered to a provisioned local webhook contact point (`alert-sink` in the compose stack), so the notification path is exercised end to end. No external email/pager endpoint is configured. |
 | **Model versus formula** | A full discharge is Coulomb counting (a formula, no model). The partial window is the only place a model is scored against the window formula; the full-feature SOH benchmark is offline and is not the online estimator. |
 
 ---
@@ -731,7 +731,7 @@ Use `--delay` of 0.7 s or more: faster replay dropped messages in testing.
 What is and is not verified, and the sources behind each threshold, are in
 [`docs/RESEARCH.md`](docs/RESEARCH.md). In short: the pipeline (MQTT, SOH
 services, bridge, API, Grafana) was run end to end both directly and via
-`docker compose --profile demo up --build` (all six containers up, Grafana
+`docker compose --profile demo up --build` (all eight containers up, Grafana
 serving both provisioned dashboards); the ESP32 firmware in `firmware/` is
 **not tested on hardware**; all faults in demos are **synthetic**.
 
@@ -783,6 +783,17 @@ curl -s -u admin:admin \
 `scripts/grafana_alerts.py` prints the same health and state per
 rule, and `tests/test_alert_datasource.py` fails if any rule queries
 a plugin whose `plugin.json` has `"alerting": false`.
+
+The compose stack also provisions a **webhook contact point** to a
+local mock receiver (`alert-sink`, `docker/webhook_receiver.py`) and a
+notification policy that routes every firing alert to it; each
+notification is appended to `logs/alerts_received.jsonl`. A firing rule
+therefore ends in a delivery, not just a colour change, and
+`tests/test_alert_delivery.py` fails if the contact point or the policy
+that routes to it goes missing. `scripts/verify_alerts.sh` brings up the
+demo stack, waits for Grafana to report a firing rule, then waits for
+that payload to arrive at the receiver, and fails unless both happen.
+(The lighter native `dashboard/` deployment provisions no contact point.)
 
 ## Dashboard
 
@@ -989,6 +1000,6 @@ python run_pipeline.py --skip-train
 
 The driver backs up models/results and writes per-stage logs and quality-gate reports. `--quick` is a smoke test, not the headline 20-iteration result. `--only` is diagnostic and never claims a full training pass. The quality gates are smoke checks on four NASA cells, not client acceptance or hardware validation. Run `python -m pytest -q` for the current test count, and `bash scripts/verify.sh` to re-verify a clean clone end to end.
 
-What is still unverified: real pack data, variable-load validation and ESP32 hardware. The retirement threshold stays at 80% pending the team decision; the older tracker plan says 70%. Other pack rules fire often on this dataset, so the overall false-alarm count is not zero even though the resistance-spike and thermal thresholds stayed clean. Alerts are evaluated and fire in Grafana (see *Alert rules*) but no notification contact point is configured, so a firing rule is not delivered anywhere.
+What is still unverified: real pack data, variable-load validation and ESP32 hardware. The retirement threshold stays at 80% pending the team decision; the older tracker plan says 70%. Other pack rules fire often on this dataset, so the overall false-alarm count is not zero even though the resistance-spike and thermal thresholds stayed clean. Alerts are evaluated and fire in Grafana (see *Alert rules*), and the firing alert is delivered to a provisioned local webhook contact point (`alert-sink` in the compose stack), so the notification path is exercised end to end; no external email/pager endpoint is configured.
 
 Repository size: `.git` is about 226 MB because the NASA dataset and the trained models were committed early. They are ignored now (`*.mat`, `BMS Dataset/`, `data/raw/`) but the blobs stay in history, and the history is not rewritten; see the size note in `CHANGES.md`. A fresh clone downloads all of it.
