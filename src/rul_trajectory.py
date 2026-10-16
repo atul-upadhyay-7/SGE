@@ -44,6 +44,11 @@ THRESHOLD = 80.0
 SMOOTH_WINDOW = 10
 REF_SMOOTH = 5
 
+# Opening discharges used by the fade-rate extrapolation baseline.
+# The prompt's "first 20-30 discharges" is this window; 20 is the
+# best of 20/25/30 on the four held-out cells (see CHANGES, Step 16).
+EXTRAP_WINDOW = 20
+
 
 class TrajectoryRul:
 
@@ -346,6 +351,180 @@ def prediction_bands(df, preds, cells=None, threshold=THRESHOLD, start=10):
     return pd.DataFrame(out)
 
 
+def _traj_points(df, test_cell, pred, refs, threshold, start):
+    """
+    Per-discharge (truth, point-estimate) pairs for one held-out
+    cell, plus its end-of-life discharge. Shared by the trajectory
+    MAE and the calibration experiment so the point estimate that is
+    scored and the one that is calibrated cannot drift apart.
+    """
+
+    est = TrajectoryRul.from_dataset(df, refs, threshold)
+
+    act = df[df["cell_id"] == test_cell].sort_values("cycle")["soh"].to_numpy()
+
+    if not (act <= threshold).any():
+
+        return [], None
+
+    eol = int(np.argmax(act <= threshold))
+    pred = np.asarray(pred, dtype=float)
+
+    points = []
+
+    for k in range(start, eol):
+
+        truth = eol - k
+        dist = est.remaining_distribution(pred[: k + 1])
+
+        if dist is None:
+
+            continue
+
+        points.append((truth, int(round(float(np.median(dist))))))
+
+    return points, eol
+
+
+def extrapolation_loco(
+    df,
+    threshold=THRESHOLD,
+    start=10,
+    window=EXTRAP_WINDOW,
+):
+    """
+    Fade-rate extrapolation baseline for RUL.
+
+    A cell is described by a straight line fitted through the first
+    `window` measured SOH values, extrapolated to the retirement
+    threshold. The implied end-of-life discharge is then a single
+    number and RUL at discharge k is implied_eol - k. It uses only
+    the cell's own measured capacity so far (observable at cycle t,
+    no future, not the target), which is the same quantity a lab or
+    full-discharge BMS has.
+
+    Unlike trajectory matching this can follow a cell that fades
+    faster than every reference (B0006), but NASA capacity curves
+    are convex, so on a cell with a late knee the early line is too
+    shallow and the extrapolation overshoots. Both cases are
+    reported.
+    """
+
+    out = []
+
+    for t in sorted(df["cell_id"].unique()):
+
+        y = (
+            df[df["cell_id"] == t]
+            .sort_values("cycle")["soh"]
+            .to_numpy(dtype=float)
+        )
+
+        if not (y <= threshold).any():
+
+            continue
+
+        eol = int(np.argmax(y <= threshold))
+        n = min(window, len(y))
+
+        slope, intercept = np.polyfit(np.arange(n), y[:n], 1)
+
+        if slope >= 0:
+
+            continue
+
+        implied = (threshold - intercept) / slope
+
+        errs = [
+            abs(max(implied - k, 0.0) - (eol - k))
+            for k in range(start, eol)
+        ]
+
+        if not errs:
+
+            continue
+
+        out.append({
+            "test_cell": t,
+            "eol_discharge": eol,
+            "n_points": len(errs),
+            "implied_eol": float(implied),
+            "extrapolation_mae": float(np.mean(errs)),
+        })
+
+    return pd.DataFrame(out)
+
+
+def calibrated_band_loco(
+    df,
+    preds,
+    threshold=THRESHOLD,
+    start=10,
+    low_q=10.0,
+    high_q=90.0,
+):
+    """
+    A 10th/90th band calibrated from the leave-one-cell-out errors,
+    and its coverage on a cell it was NOT calibrated on.
+
+    For each held-out cell the band offsets are the low_q/high_q
+    percentiles of the (truth - estimate) residuals pooled from the
+    other cells, and coverage is measured on the held-out cell. This
+    is the honest version of the calibration question, and with four
+    cells it is expected to be unstable: only three cells calibrate
+    the band, and the residuals of a cell are not independent across
+    discharges, so the effective sample is closer to three than to
+    the number of points. The result is reported as measured, not as
+    a band that ships.
+    """
+
+    cells = [
+        c for c in sorted(df["cell_id"].unique())
+        if c in preds and (df[df["cell_id"] == c]["soh"] <= threshold).any()
+    ]
+
+    points = {}
+
+    for t in cells:
+
+        refs = [c for c in cells if c != t]
+        points[t] = _traj_points(df, t, preds[t], refs, threshold, start)[0]
+
+    out = []
+
+    for t in cells:
+
+        pool = []
+
+        for c in cells:
+
+            if c == t:
+
+                continue
+
+            pool.extend(truth - est for truth, est in points[c])
+
+        if not pool or not points[t]:
+
+            continue
+
+        lo = float(np.percentile(pool, low_q))
+        hi = float(np.percentile(pool, high_q))
+
+        inside = sum(1 for truth, est in points[t] if lo <= truth - est <= hi)
+
+        out.append({
+            "test_cell": t,
+            "n_points": len(points[t]),
+            "n_calibration_cells": len(cells) - 1,
+            "band_low_offset": lo,
+            "band_high_offset": hi,
+            "coverage_pct": 100.0 * inside / len(points[t]),
+        })
+
+    return pd.DataFrame(out)
+
+
 def main():
 
     root = Path(__file__).resolve().parent.parent
@@ -365,12 +544,34 @@ def main():
         )
 
     cells = sorted(df["cell_id"].unique())
-    res = evaluate_loco(
-        df,
-        {c: p["predicted_soh"].to_numpy() for c, p in preds.items()},
-        cells=cells,
-    )
+    pred_arrays = {c: p["predicted_soh"].to_numpy() for c, p in preds.items()}
+
+    res = evaluate_loco(df, pred_arrays, cells=cells)
     rounded(res).to_csv(proc / "rul_trajectory_results.csv", index=False)
+
+    # The fade-rate extrapolation baseline, scored on exactly the
+    # held-out cells the trajectory method is scored on.
+    extrap = extrapolation_loco(df)
+    comparison = res.merge(
+        extrap[["test_cell", "extrapolation_mae"]],
+        on="test_cell",
+        how="left",
+    )
+    comparison["window"] = EXTRAP_WINDOW
+    comparison = comparison[[
+        "test_cell",
+        "eol_discharge",
+        "trajectory_mae",
+        "extrapolation_mae",
+        "fleet_lifetime_baseline_mae",
+        "window",
+    ]]
+    rounded(comparison).to_csv(
+        proc / "rul_method_comparison.csv", index=False
+    )
+
+    band = calibrated_band_loco(df, pred_arrays)
+    rounded(band).to_csv(proc / "rul_band_calibration.csv", index=False)
 
     bands = prediction_bands(df, preds, cells=cells)
     rounded(bands).to_csv(proc / "rul_prediction_bands.csv", index=False)
@@ -391,8 +592,25 @@ def main():
             f"baseline: {res['fleet_lifetime_baseline_mae'].mean():.1f}"
             " discharges"
         )
+        print(comparison.to_string(index=False))
+        print(
+            "\nMean MAE  trajectory: "
+            f"{comparison['trajectory_mae'].mean():.1f}  |  "
+            f"fade-rate extrapolation: "
+            f"{comparison['extrapolation_mae'].mean():.1f}"
+            " discharges"
+        )
     else:
         print("No results produced")
+
+    if not band.empty:
+        print("\nCalibrated-band coverage on the uncalibrated cell:")
+        print(band.to_string(index=False))
+        print(
+            f"mean coverage {band['coverage_pct'].mean():.1f}% "
+            f"from {int(band['n_calibration_cells'].iloc[0])} "
+            "calibration cells"
+        )
 
     TrajectoryRul.from_dataset(df, cells=cells).save(
         root / "models" / "rul_reference_curves.json"

@@ -398,6 +398,45 @@
 
 ---
 
+## Step 16 — RUL: a second method, and a calibrated band that is not possible
+
+- Added a second RUL method to `src/rul_trajectory.py` and scored it
+  on the same held-out discharges as trajectory matching:
+  `extrapolation_loco` fits a straight line through the first
+  `EXTRAP_WINDOW = 20` **measured** SOH values of a cell and
+  extrapolates it to the retirement threshold. It uses only the cell's
+  own measured SOH so far (observable at cycle t, not the target), so
+  it is an offline/full-discharge method, unlike the online trajectory
+  matcher. Twenty was chosen over 25 and 30 because it is the best of
+  the three on the held-out cells.
+- Result, from the new `rul_method_comparison.csv`. Trajectory matching
+  wins the mean and three of four cells: mean MAE 20.5 vs 46.0
+  discharges, and it wins B0005 (7.1 vs 76.9), B0007 (17.5 vs 90.8). The
+  extrapolation wins exactly one cell, the fast fader B0006 (8.0 vs
+  51.1), because B0006 fades almost linearly from its first discharge.
+  Neither method dominates, so trajectory matching stays the default
+  and the extrapolation is reported as the loser overall and the one
+  case it wins. This is why trajectory matching can be kept without
+  claiming it wins everywhere.
+- Added `calibrated_band_loco`, which answers the band question
+  honestly: for each held-out cell it calibrates the 10th/90th offsets
+  from the residuals of the other three cells and measures coverage on
+  the held-out cell. New `rul_band_calibration.csv`. The coverage
+  swings from 0.0% (B0006) to 100.0% (B0005, B0018) with a 57.0% mean,
+  far from the 80.0% an 80% band should reach. It is not fixable here:
+  only three cells calibrate any band and a cell's residuals are
+  correlated across discharges, so the effective calibration sample is
+  closer to three than to the point count. A trustworthy calibrated
+  band needs more cells than G1 has. The reference spread remains the
+  only band the dataset supports, and that is now stated as a limit
+  rather than left implicit.
+- `scripts/make_report.py` gained the two required CSVs and two new
+  tables under the RUL section; README Known Limitations item 5 and the
+  RUL Model finding now record the extrapolation win on B0006 and the
+  calibration failure.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

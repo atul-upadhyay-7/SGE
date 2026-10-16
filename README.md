@@ -154,6 +154,34 @@ When the full discharge is available, SOH is read directly from the measured cap
 | B0007 | 124 | 17.5 | 37.5 | 17.5% | 14.6 |
 | B0018 | 77 | 6.5 | 29.0 | 82.1% | 20.3 |
 | **Mean** | — | 20.5 | 34.3 | 48.3% | 21.6 |
+
+#### Trajectory matching versus early-fade extrapolation
+
+The matcher was also scored against a fade-rate extrapolation: a straight line through the first 20 measured SOH values of the cell, extended to the retirement threshold. Both are leave-one-cell-out and use the same held-out discharges, so the columns are comparable.
+
+| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | Fleet-lifetime baseline MAE |
+|---|---|---|---|
+| B0005 | 7.1 | 76.9 | 24.8 |
+| B0006 | 51.1 | 8.0 | 46.0 |
+| B0007 | 17.5 | 90.8 | 37.5 |
+| B0018 | 6.5 | 8.2 | 29.0 |
+| **Mean** | 20.5 | 46.0 | 34.3 |
+
+Trajectory matching wins the mean and three of the four cells. The extrapolation wins exactly one cell, B0006, and loses badly on B0005 and B0007: B0006 fades almost linearly from its first discharge, so its early line already points near the right end of life, whereas B0005 and B0007 hold their capacity and then drop through a late knee, so the same line places end of life far too late and the estimate overshoots. Neither method dominates, so trajectory matching stays the default and the extrapolation is kept here as the reported loser overall and the one case it wins.
+
+#### Calibrating a real 10th-to-90th band
+
+The reference-spread band above is a quantile of the reference cells' remaining life, not a calibrated error band. The honest version calibrates the band on the other cells and measures it on a cell it never saw: for each held-out cell the offsets are the 10th and 90th percentile of the (truth - estimate) residuals pooled from the other three cells.
+
+| Held-out cell | Max points | Calibration cells | Lower offset | Upper offset | Coverage |
+|---|---|---|---|---|---|
+| B0005 | 96 | 3 | -51.0 | 27.0 | 100.0% |
+| B0006 | 50 | 3 | -6.0 | 25.0 | 0.0% |
+| B0007 | 114 | 3 | -52.0 | 10.0 | 28.1% |
+| B0018 | 67 | 3 | -50.0 | 25.0 | 100.0% |
+| **Mean** | — | — | — | — | 57.0% |
+
+A 10th-to-90th band should cover four discharges in five, and this one misses by a wide margin and swings from 0.0% to 100.0% across cells. It is not fixable here: only three cells calibrate any held-out band, and one cell's residuals are correlated across its discharges, so the effective calibration sample is closer to three than to the number of points. A trustworthy calibrated band needs more cells than the four in G1; the reference spread remains the only band this dataset supports.
 <!-- make_report:rul:end -->
 
 > **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.
@@ -356,6 +384,9 @@ operator. Data-hungry dev tests live in `tests/` (`pytest`).
 │       ├── soh_null_baselines.csv         # Constant predictor baselines
 │       ├── soh_predictions_*.csv          # Per-cell SOH predictions
 │       ├── rul_results.csv                # RUL model scores
+│       ├── rul_trajectory_results.csv     # Trajectory matching + reference spread
+│       ├── rul_method_comparison.csv      # Trajectory vs fade-rate extrapolation
+│       ├── rul_band_calibration.csv       # Leave-one-cell-out band calibration
 │       ├── rul_degradation_rates.csv      # Cell degradation characteristics
 │       ├── rul_null_baselines.csv         # RUL constant baselines
 │       ├── rul_predictions_*.csv          # Per-cell RUL predictions
@@ -803,7 +834,7 @@ All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held 
 ### RUL Model
 
 - **Challenge:** With few cells, the model has very few examples of full degradation trajectories. RUL is dominated by the held-out cell's own future behavior.
-- **Finding:** The trajectory-matching method beats the fleet-lifetime baseline on the mean but not on every cell; a plain cycle-level regression does not beat a constant. The degradation rate analysis provides per-cell fade rates, and the trajectory method provides the remaining-life estimate. See the RUL table for the current numbers.
+- **Finding:** The trajectory-matching method beats the fleet-lifetime baseline on the mean but not on every cell; a plain cycle-level regression does not beat a constant. It also loses on the fast-fading B0006 to a simple early-fade extrapolation, which the RUL table reports as well. The degradation rate analysis provides per-cell fade rates, and the trajectory method provides the remaining-life estimate. See the RUL table for the current numbers.
 
 ---
 
@@ -866,9 +897,14 @@ amount of tuning removes them.
 
 5. **The RUL trajectory method does not win everywhere.** It beats
    the fleet-lifetime baseline on the mean, but it loses on B0006
-   (see the RUL table). Its interval is a reference spread, not a
-   calibrated band, and on B0006 it is 0% — the whole spread sits
-   above the truth, as explained under the RUL table. With three
+   to the early-fade extrapolation (see the RUL table). Its interval
+   is a reference spread, not a calibrated band, and on B0006 it is
+   0% — the whole spread sits above the truth. Calibrating a real
+   10th-to-90th band from the other cells does not work here either:
+   it swings from 0% to 100% across held-out cells, because only
+   three cells calibrate any band and a cell's residuals are
+   correlated across discharges, so the effective calibration sample
+   is closer to three than to the number of points. With three
    training trajectories, the held-out cell's own future behaviour
    dominates. The usable RUL-family output is the per-cell fade rate
    plus the trajectory estimate, not a claim of uniform superiority.

@@ -1,0 +1,5 @@
+test_cell,n_points,n_calibration_cells,band_low_offset,band_high_offset,coverage_pct
+B0005,96,3,-51.0,27.0,100.0
+B0006,50,3,-6.0,25.0,0.0
+B0007,114,3,-52.0,10.0,28.0701754386
+B0018,67,3,-50.0,25.0,100.0

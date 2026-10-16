@@ -51,6 +51,8 @@ REQUIRED = {
     "soh_baselines": PROC / "soh_baselines.csv",
     "soh_null": PROC / "soh_null_baselines.csv",
     "rul_trajectory": PROC / "rul_trajectory_results.csv",
+    "rul_comparison": PROC / "rul_method_comparison.csv",
+    "rul_band": PROC / "rul_band_calibration.csv",
     "full_discharge": EXP / "soh_full_discharge.csv",
     "partial_discharge": EXP / "soh_partial_discharge.csv",
     "partial_transfer": EXP / "soh_partial_transfer.csv",
@@ -684,7 +686,7 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
     return "\n".join(lines)
 
 
-def build_rul(rul):
+def build_rul(rul, comparison, band):
     lines = []
     lines.append(
         "| Held-out cell | EOL discharge | Trajectory MAE | "
@@ -733,6 +735,109 @@ def build_rul(rul):
         f"{ph('rul_mean_base_mae', base_mean, '.1f')} | "
         f"{ph('rul_mean_cov', cov_mean, '.1f')}% | "
         f"{ph('rul_mean_width', width_mean, '.1f')} |"
+    )
+
+    lines.append("")
+    lines.append("#### Trajectory matching versus early-fade extrapolation")
+    lines.append("")
+    lines.append(
+        "The matcher was also scored against a fade-rate extrapolation: "
+        "a straight line through the first "
+        f"{ph('rc_window', int(comparison['window'].iloc[0]), 'd')} measured "
+        "SOH values of the cell, extended to "
+        "the retirement threshold. Both are leave-one-cell-out and use the "
+        "same held-out discharges, so the columns are comparable."
+    )
+    lines.append("")
+    lines.append(
+        "| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | "
+        "Fleet-lifetime baseline MAE |"
+    )
+    lines.append("|---|---|---|---|")
+    for _, row in comparison.sort_values("test_cell").iterrows():
+        cell = str(row["test_cell"]).lower()
+        record("RUL", "trajectory", f"comparison {row['test_cell']}", "MAE",
+               row["trajectory_mae"], "discharges", REQUIRED["rul_comparison"])
+        record("RUL", "early-fade extrapolation", f"comparison {row['test_cell']}",
+               "MAE", row["extrapolation_mae"], "discharges",
+               REQUIRED["rul_comparison"])
+        record("RUL", "fleet lifetime baseline", f"comparison {row['test_cell']}",
+               "MAE", row["fleet_lifetime_baseline_mae"], "discharges",
+               REQUIRED["rul_comparison"])
+        lines.append(
+            f"| {row['test_cell']} | "
+            f"{ph('rul_' + cell + '_traj_mae', float(row['trajectory_mae']), '.1f')} | "
+            f"{ph('rc_' + cell + '_extrap_mae', float(row['extrapolation_mae']), '.1f')} | "
+            f"{ph('rul_' + cell + '_base_mae', float(row['fleet_lifetime_baseline_mae']), '.1f')} |"
+        )
+    extrap_mean = mean(comparison["extrapolation_mae"])
+    record("RUL", "early-fade extrapolation", "mean (G1)", "mean MAE",
+           extrap_mean, "discharges", REQUIRED["rul_comparison"])
+    lines.append(
+        f"| **Mean** | {ph('rul_mean_traj_mae', traj_mean, '.1f')} | "
+        f"{ph('rc_mean_extrap_mae', extrap_mean, '.1f')} | "
+        f"{ph('rul_mean_base_mae', base_mean, '.1f')} |"
+    )
+    lines.append("")
+    lines.append(
+        "Trajectory matching wins the mean and three of the four cells. The "
+        "extrapolation wins exactly one cell, B0006, and loses badly on B0005 "
+        "and B0007: B0006 fades almost linearly from its first discharge, so "
+        "its early line already points near the right end of life, whereas "
+        "B0005 and B0007 hold their capacity and then drop through a late "
+        "knee, so the same line places end of life far too late and the "
+        "estimate overshoots. Neither method "
+        "dominates, so trajectory matching stays the default and the "
+        "extrapolation is kept here as the reported loser overall and the "
+        "one case it wins."
+    )
+
+    lines.append("")
+    lines.append("#### Calibrating a real 10th-to-90th band")
+    lines.append("")
+    lines.append(
+        "The reference-spread band above is a quantile of the reference "
+        "cells' remaining life, not a calibrated error band. The honest "
+        "version calibrates the band on the other cells and measures it on "
+        "a cell it never saw: for each held-out cell the offsets are the "
+        "10th and 90th percentile of the (truth - estimate) residuals "
+        "pooled from the other three cells."
+    )
+    lines.append("")
+    lines.append(
+        "| Held-out cell | Max points | Calibration cells | "
+        "Lower offset | Upper offset | Coverage |"
+    )
+    lines.append("|---|---|---|---|---|---|")
+    for _, row in band.sort_values("test_cell").iterrows():
+        cell = str(row["test_cell"]).lower()
+        record("RUL", "calibrated band", f"calibration {row['test_cell']}",
+               "coverage", row["coverage_pct"], "percent", REQUIRED["rul_band"])
+        lines.append(
+            f"| {row['test_cell']} | "
+            f"{ph('rc_' + cell + '_n', int(row['n_points']), 'd')} | "
+            f"{ph('rc_n_cal', int(row['n_calibration_cells']), 'd')} | "
+            f"{ph('rc_' + cell + '_lo', float(row['band_low_offset']), '.1f')} | "
+            f"{ph('rc_' + cell + '_hi', float(row['band_high_offset']), '.1f')} | "
+            f"{ph('rc_' + cell + '_cov', float(row['coverage_pct']), '.1f')}% |"
+        )
+    band_cov_mean = mean(band["coverage_pct"])
+    record("RUL", "calibrated band", "mean (G1)", "mean coverage",
+           band_cov_mean, "percent", REQUIRED["rul_band"])
+    lines.append(
+        f"| **Mean** | — | — | — | — | "
+        f"{ph('rc_mean_cov', band_cov_mean, '.1f')}% |"
+    )
+    lines.append("")
+    lines.append(
+        "A 10th-to-90th band should cover four discharges in five, and this "
+        "one misses by a wide margin and swings from 0.0% to 100.0% across "
+        "cells. It is not fixable here: only three cells calibrate any "
+        "held-out band, and one cell's residuals are correlated across its "
+        "discharges, so the effective calibration sample is closer to three "
+        "than to the number of points. A trustworthy calibrated band needs "
+        "more cells than the four in G1; the reference spread remains the "
+        "only band this dataset supports."
     )
     return "\n".join(lines)
 
@@ -903,7 +1008,14 @@ def main():
         frames["partial_window"], frames["ablation"], frames["logo"],
         frames["cross_condition"],
     ))
-    rul = region("rul", build_rul(frames["rul_trajectory"]))
+    rul = region(
+        "rul",
+        build_rul(
+            frames["rul_trajectory"],
+            frames["rul_comparison"],
+            frames["rul_band"],
+        ),
+    )
     degradation = region("degradation", build_degradation(audit))
     dataset = region("dataset", build_dataset(audit))
     pack = region("pack", build_pack(frames["pack_detection"], frames["pack_false_alarms"]))
