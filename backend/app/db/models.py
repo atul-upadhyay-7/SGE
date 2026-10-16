@@ -79,6 +79,30 @@ class TelemetrySample(Base):
     )
 
 
+class TelemetryRejection(Base):
+    """An auditable record of a payload that failed ingestion (FR-02, FR-04).
+
+    Every rejection carries a stable machine ``reason`` plus the original
+    payload, so an operator can understand *why* a sample never reached the
+    telemetry table. This table is the quarantine: it is append-only and
+    never queried on the hot path.
+    """
+
+    __tablename__ = "telemetry_rejections"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    device_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    message_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source: Mapped[str] = mapped_column(String(16), default="mqtt")
+    reason: Mapped[str] = mapped_column(String(64), index=True)
+    detail: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    raw_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class BatteryCycle(Base):
     """A discharge cycle and its aggregated features (FR-06)."""
 

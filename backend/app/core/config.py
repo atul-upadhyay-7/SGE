@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_recycle_s: int = 1800
+    # Tests set this to avoid reusing a pooled connection across the
+    # per-test event loops that pytest-asyncio creates.
+    db_use_nullpool: bool = False
 
     # --- MQTT -------------------------------------------------------------
     mqtt_enabled: bool = True
@@ -66,6 +69,20 @@ class Settings(BaseSettings):
     temperature_min_c: float = -40.0
     temperature_max_c: float = 100.0
     max_schema_version: int = 1
+
+    # "Unusual but valid" thresholds. A sample beyond these is still stored
+    # but flagged, so operators can triage without losing data (FR-04).
+    cell_imbalance_warn_v: float = 0.10
+
+    # --- Ingestion pipeline (FR-02) --------------------------------------
+    # The MQTT consumer must never wait on Postgres. Validated samples are
+    # handed to a bounded in-memory queue and written in batches by a
+    # dedicated writer task. The bound makes back-pressure explicit: when the
+    # queue is full the sample is dropped with a counted, logged reason
+    # rather than growing memory without limit.
+    ingest_queue_max: int = 10000
+    ingest_batch_size: int = 500
+    ingest_flush_interval_s: float = 0.5
 
     @property
     def mqtt_telemetry_topic(self) -> str:

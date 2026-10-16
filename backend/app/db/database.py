@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 
@@ -27,13 +28,19 @@ class Base(DeclarativeBase):
     """Declarative base shared by every ORM model."""
 
 
+def _engine_kwargs() -> dict:
+    if _settings.db_use_nullpool:
+        return {"poolclass": NullPool}
+    return {
+        "pool_pre_ping": True,
+        "pool_size": _settings.db_pool_size,
+        "max_overflow": _settings.db_max_overflow,
+        "pool_recycle": _settings.db_pool_recycle_s,
+    }
+
+
 engine: AsyncEngine = create_async_engine(
-    _settings.database_url,
-    echo=_settings.db_echo,
-    pool_pre_ping=True,
-    pool_size=_settings.db_pool_size,
-    max_overflow=_settings.db_max_overflow,
-    pool_recycle=_settings.db_pool_recycle_s,
+    _settings.database_url, echo=_settings.db_echo, **_engine_kwargs()
 )
 
 SessionLocal = async_sessionmaker(

@@ -48,3 +48,11 @@ async def health_mqtt(request: Request, response: Response) -> dict:
         response.status_code = 503
         return {"status": "error", "mqtt": "disconnected", **status}
     return {"status": "ok", "mqtt": "disabled" if not status["enabled"] else "connected", **status}
+
+
+@router.get("/health/ingestion", summary="Ingestion pipeline counters")
+async def health_ingestion(request: Request) -> dict:
+    service = getattr(request.app.state, "ingestion", None)
+    if service is None:
+        return {"status": "error", "ingestion": "not_started"}
+    return {"status": "ok", "ingestion": "running", **service.stats()}
