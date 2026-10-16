@@ -10,9 +10,13 @@ Outputs (data/processed/experiments/)
     soh_partial_discharge.csv  window-only models + window formula
     ablation_features.csv      feature-set ablation, G1 leave-one-cell-out
     per_cell_results.csv       per-cell MAE behind the ablation
-    logo_results.csv           leave-one-group-out on surviving groups
-    cross_condition.csv        raw vs cell-relative features against the
-                               Coulomb formula, leave-one-group-out
+    logo_results.csv           raw window leave-one-group-out on surviving
+                               groups (the cross-condition failure)
+    cross_condition.csv        raw vs cell-relative window features against
+                               the window formula, leave-one-group-out
+    soh_partial_transfer.csv   partial-discharge model cell by cell, against
+                               the window formula (LOCO G1/G3 + B0053)
+    soh_partial_reference_window.csv  partial task vs the baseline length
 
 Design notes
 ------------
@@ -26,7 +30,10 @@ Design notes
 * The partial-discharge formula uses the 4.0-3.4 V window instead:
       vw_soh = vw_capacity_ah / vw_capacity_ref * 100
   Window-only models use the vw_* features alone, which a BMS can
-  measure without a full discharge.
+  measure without a full discharge. This window formula is the
+  physics comparator for the SOH models: they are scored on the
+  partial-discharge task, not against a formula that sees the full
+  cycle.
 * The ablation holds the estimator at its default settings; the
   point is the feature set, not the tuning.
 """
@@ -354,15 +361,33 @@ NORM_FEATURES = [
     "current_ratio",
 ]
 
+# The partial-discharge model input set: only quantities measured
+# inside the 4.0-3.4 V window, each either a ratio to the cell's own
+# early-window baseline or already scale-free (capacity per amp).
+# No full-discharge quantity (duration, resistance, end voltage)
+# enters, because a BMS that sees only the window never measures
+# them. This is the set the partial-discharge task is scored on.
+WINDOW_NORM_FEATURES = [
+    "vw_capacity_ratio",
+    "vw_capacity_per_amp",
+    "vw_time_ratio",
+    "vw_voltage_ratio",
+    "vw_dqdv_height_ratio",
+]
 
-def cell_relative_features(df):
+
+def cell_relative_features(df, ref_window=REF_WINDOW):
     """
     Add per-cell baseline-relative columns.
 
-    The baseline is the median of the first REF_WINDOW valid values
+    The baseline is the median of the first `ref_window` valid values
     of each cell, taken in discharge order. It only uses a cell's
     own opening discharges, so it is available at inference time
     and does not see the target or any future cycle.
+
+    `ref_window` is a parameter because a new cell may have only a
+    couple of discharges before the first prediction; the
+    reference-window sensitivity experiment measures what that costs.
 
     Returns a copy of `df` with the NORM_FEATURES columns added.
     """
@@ -373,7 +398,7 @@ def cell_relative_features(df):
 
         ref = (
             df.groupby("cell_id")[column]
-            .transform(lambda s: s.dropna().head(REF_WINDOW).median())
+            .transform(lambda s: s.dropna().head(ref_window).median())
         )
         # A cell whose baseline is zero (or missing) would divide
         # by zero; fall back to the cell's own median, then to 1.0
@@ -399,29 +424,42 @@ def cell_relative_features(df):
     return df
 
 
-def coulomb_formula(df):
-    """Per-row Coulomb-counting SOH estimate and its per-cell MAE."""
+def window_formula(df, ref_window=REF_WINDOW):
+    """
+    The physics baseline a BMS can compute from the 4.0-3.4 V window
+    alone: the window's amp-hours over the cell's own early-window
+    median, as a percentage. It never sees the full discharge, which
+    is why it is the fair comparator for the partial-discharge model.
+    """
 
-    q = df["discharge_duration_s"].abs() * df["current_mean"].abs()
-    refs = formula_reference(df.assign(_q=q), "_q")
     df = df.copy()
-    df["_coulomb"] = q / df["cell_id"].map(refs) * 100.0
+    refs = formula_reference(df, "vw_capacity_ah", window=ref_window)
+    df["_window_formula"] = (
+        df["vw_capacity_ah"] / df["cell_id"].map(refs) * 100.0
+    )
     return df
 
 
-def cross_condition(df, prod):
-    """
-    Raw versus cell-relative features across operating conditions,
-    against the Coulomb-counting formula on the same cells.
+def _model_mae_r2(train, test, features, model_name):
+    model = build_model(model_name)
+    model.fit(train[features], train[TARGET])
+    pred = model.predict(test[features])
+    return _mae(test[TARGET], pred), _r2(test[TARGET], pred)
 
-    For each surviving group, train on every other group and test
-    on the held-out one. The held-out cell ids are written out so a
-    single-cell group (G9 = B0053) is reported on its own line
-    rather than hidden inside a mean.
+
+def cross_condition(df):
+    """
+    Raw versus cell-relative window features across operating
+    conditions, against the window formula on the same cells.
+
+    This is the partial-discharge question: a BMS that only sees the
+    4.0-3.4 V window. For each surviving group, train on every other
+    group and test on the held-out one. The held-out cell ids are
+    written out so a single-cell group (G9 = B0053) is reported on
+    its own line rather than hidden inside a mean.
     """
 
-    df = cell_relative_features(df)
-    df = coulomb_formula(df)
+    df = window_formula(cell_relative_features(df))
 
     groups = sorted(df[GROUP_COL].dropna().unique())
 
@@ -431,36 +469,31 @@ def cross_condition(df, prod):
 
         train = df[df[GROUP_COL] != test_group]
         test = df[df[GROUP_COL] == test_group]
-        cells = test["cell_id"].dropna().unique().tolist()
-        cell_label = ",".join(sorted(cells))
+        cells = sorted(test["cell_id"].dropna().unique().tolist())
+        cell_label = ",".join(cells)
 
-        # The physics baseline on exactly the held-out cells.
-        coulomb_mae = _mae(test[TARGET], test["_coulomb"])
-        coulomb_r2 = _r2(test[TARGET], test["_coulomb"])
-
+        # The window formula on exactly the held-out cells.
         rows.append({
             "test_group": test_group,
             "test_cells": cell_label,
             "n_cells": int(len(cells)),
             "n_cycles": int(len(test)),
-            "method": "Coulomb formula",
+            "method": "window formula",
             "feature_set": "physics",
             "model": ".",
             "n_features": 0,
-            "mae_pct": coulomb_mae,
-            "r2": coulomb_r2,
+            "mae_pct": _mae(test[TARGET], test["_window_formula"]),
+            "r2": _r2(test[TARGET], test["_window_formula"]),
         })
 
         for feature_set, features in (
-            ("raw", prod),
-            ("cell_relative", NORM_FEATURES),
+            ("raw", VW_FEATURES),
+            ("cell_relative", WINDOW_NORM_FEATURES),
         ):
 
             for model_name in ("ElasticNet", "XGBoost"):
 
-                model = build_model(model_name)
-                model.fit(train[features], train[TARGET])
-                pred = model.predict(test[features])
+                mae, r2 = _model_mae_r2(train, test, features, model_name)
 
                 rows.append({
                     "test_group": test_group,
@@ -471,9 +504,173 @@ def cross_condition(df, prod):
                     "feature_set": feature_set,
                     "model": model_name,
                     "n_features": len(features),
-                    "mae_pct": _mae(test[TARGET], pred),
-                    "r2": _r2(test[TARGET], pred),
+                    "mae_pct": mae,
+                    "r2": r2,
                 })
+
+    return pd.DataFrame(rows)
+
+
+def partial_discharge_transfer(df, ref_window=REF_WINDOW):
+    """
+    The partial-discharge task, cell by cell: predict SOH from the
+    4.0-3.4 V window alone, with the window formula scored on
+    exactly the same held-out rows.
+
+    Two protocols:
+
+      * leave-one-cell-out within G1, and within G3;
+      * train on every G1 and G3 cell and test on B0053 (G9), a
+        condition the model has never seen.
+
+    Returns one row per (protocol, test cell, model).
+    """
+
+    data = window_formula(
+        cell_relative_features(df, ref_window=ref_window),
+        ref_window=ref_window,
+    )
+
+    rows = []
+
+    def score(protocol, test, train):
+
+        label = (
+            str(test["cell_id"].iloc[0]) if len(test) else "MEAN"
+        )
+
+        for model_name in ("ElasticNet", "XGBoost"):
+
+            mae, r2 = _model_mae_r2(
+                train, test, WINDOW_NORM_FEATURES, model_name
+            )
+
+            rows.append({
+                "protocol": protocol,
+                "test_cell": label,
+                "model": model_name,
+                "n_features": len(WINDOW_NORM_FEATURES),
+                "mae_pct": mae,
+                "r2": r2,
+                "n_cycles": int(len(test)),
+                "ref_window": ref_window,
+            })
+
+        rows.append({
+            "protocol": protocol,
+            "test_cell": label,
+            "model": "window_formula",
+            "n_features": 0,
+            "mae_pct": _mae(test[TARGET], test["_window_formula"]),
+            "r2": _r2(test[TARGET], test["_window_formula"]),
+            "n_cycles": int(len(test)),
+            "ref_window": ref_window,
+        })
+
+    for group in ("G1", "G3"):
+
+        g = data[data[GROUP_COL] == group]
+
+        for cell in sorted(g["cell_id"].unique()):
+
+            score(
+                f"leave-one-cell-out: {group}",
+                g[g["cell_id"] == cell],
+                g[g["cell_id"] != cell],
+            )
+
+    score(
+        "train G1+G3, test B0053",
+        data[data[GROUP_COL] == "G9"],
+        data[data[GROUP_COL].isin(["G1", "G3"])],
+    )
+
+    return pd.DataFrame(rows)
+
+
+def reference_window_sensitivity(df, windows=(1, 2, 3, 5)):
+    """
+    How many of a cell's own opening discharges the cell-relative
+    baseline needs.
+
+    The window features are rebuilt with a baseline over the first
+    `n` discharges for every n in `windows`, and the partial task is
+    re-run: the within-group leave-one-cell-out mean over G1+G3, and
+    the transfer to B0053. A new cell with only one or two discharges
+    has a noisy baseline; this measures the cost.
+    """
+
+    rows = []
+
+    for n in windows:
+
+        data = window_formula(
+            cell_relative_features(df, ref_window=n), ref_window=n
+        )
+
+        models = ("ElasticNet", "XGBoost", "window_formula")
+        per_cell = {m: [] for m in models}
+        per_cell_r2 = {m: [] for m in models}
+        n_loco = 0
+
+        for group in ("G1", "G3"):
+
+            g = data[data[GROUP_COL] == group]
+
+            for cell in sorted(g["cell_id"].unique()):
+
+                test = g[g["cell_id"] == cell]
+                train = g[g["cell_id"] != cell]
+                n_loco += len(test)
+
+                for model_name in ("ElasticNet", "XGBoost"):
+                    mae, r2 = _model_mae_r2(
+                        train, test, WINDOW_NORM_FEATURES, model_name
+                    )
+                    per_cell[model_name].append(mae)
+                    per_cell_r2[model_name].append(r2)
+
+                per_cell["window_formula"].append(
+                    _mae(test[TARGET], test["_window_formula"])
+                )
+                per_cell_r2["window_formula"].append(
+                    _r2(test[TARGET], test["_window_formula"])
+                )
+
+        for model_name in models:
+            rows.append({
+                "ref_window": n,
+                "protocol": "leave-one-cell-out: G1+G3",
+                "model": model_name,
+                "mae_pct": float(np.mean(per_cell[model_name])),
+                "r2": float(np.mean(per_cell_r2[model_name])),
+                "n_cycles": int(n_loco),
+            })
+
+        train = data[data[GROUP_COL].isin(["G1", "G3"])]
+        test = data[data[GROUP_COL] == "G9"]
+
+        for model_name in ("ElasticNet", "XGBoost"):
+            mae, r2 = _model_mae_r2(
+                train, test, WINDOW_NORM_FEATURES, model_name
+            )
+            rows.append({
+                "ref_window": n,
+                "protocol": "train G1+G3, test B0053",
+                "model": model_name,
+                "mae_pct": mae,
+                "r2": r2,
+                "n_cycles": int(len(test)),
+            })
+
+        rows.append({
+            "ref_window": n,
+            "protocol": "train G1+G3, test B0053",
+            "model": "window_formula",
+            "mae_pct": _mae(test[TARGET], test["_window_formula"]),
+            "r2": _r2(test[TARGET], test["_window_formula"]),
+            "n_cycles": int(len(test)),
+        })
 
     return pd.DataFrame(rows)
 
@@ -499,12 +696,21 @@ def main():
     rounded(summary).to_csv(EXP / "ablation_features.csv", index=False)
     rounded(per_cell).to_csv(EXP / "per_cell_results.csv", index=False)
 
-    prod = production_features(df)
-    cross = logo(df, prod)
+    cross = logo(df, VW_FEATURES)
     rounded(cross).to_csv(EXP / "logo_results.csv", index=False)
 
-    transfer = cross_condition(df, prod)
+    transfer = cross_condition(df)
     rounded(transfer).to_csv(EXP / "cross_condition.csv", index=False)
+
+    partial_transfer = partial_discharge_transfer(df)
+    rounded(partial_transfer).to_csv(
+        EXP / "soh_partial_transfer.csv", index=False
+    )
+
+    sensitivity = reference_window_sensitivity(df)
+    rounded(sensitivity).to_csv(
+        EXP / "soh_partial_reference_window.csv", index=False
+    )
 
     print("wrote experiments:")
     print(full.to_string(index=False))
@@ -514,6 +720,10 @@ def main():
     print(cross.to_string(index=False))
     print()
     print(transfer.to_string(index=False))
+    print()
+    print(partial_transfer.to_string(index=False))
+    print()
+    print(sensitivity.to_string(index=False))
 
 
 if __name__ == "__main__":

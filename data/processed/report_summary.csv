@@ -1,27 +1,87 @@
 task,method,protocol,metric,value,unit,source_file
 SOH,cross-condition,leave-one-group-out,in-condition ElasticNet MAE,1.8068727770909172,%,data/processed/soh_baselines.csv
-SOH,cross-condition,leave-one-group-out,worst raw ElasticNet MAE,47.611481161,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G1,raw ElasticNet MAE,42.2567839625,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G1,raw XGBoost MAE,14.0560721582,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G3,raw ElasticNet MAE,20.6926627367,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G3,raw XGBoost MAE,13.413607724,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G9,raw ElasticNet MAE,47.611481161,%,data/processed/experiments/logo_results.csv
-SOH,cross-condition,held-out G9,raw XGBoost MAE,3.0425689059,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,leave-one-group-out,worst raw window ElasticNet MAE,42.6635914883,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G1,raw window ElasticNet MAE,42.6635914883,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G1,raw window XGBoost MAE,14.9631849129,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G3,raw window ElasticNet MAE,16.2942926342,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G3,raw window XGBoost MAE,18.7507065832,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G9,raw window ElasticNet MAE,7.4728767154,%,data/processed/experiments/logo_results.csv
+SOH,cross-condition,held-out G9,raw window XGBoost MAE,6.6850497798,%,data/processed/experiments/logo_results.csv
 SOH,cross-condition,G1 nominal condition,ambient temperature,24.0,°C,data/processed/nasa_ml_dataset_clean.csv
 SOH,cross-condition,G1 nominal condition,discharge current,2.0,A,data/processed/nasa_ml_dataset_clean.csv
 SOH,cross-condition,G3 nominal condition,ambient temperature,43.0,°C,data/processed/nasa_ml_dataset_clean.csv
 SOH,cross-condition,G3 nominal condition,discharge current,4.0,A,data/processed/nasa_ml_dataset_clean.csv
 SOH,cross-condition,G9 nominal condition,ambient temperature,4.0,°C,data/processed/nasa_ml_dataset_clean.csv
 SOH,cross-condition,G9 nominal condition,discharge current,2.0,A,data/processed/nasa_ml_dataset_clean.csv
-SOH,cross-condition,held-out G1,Coulomb MAE,0.2954000309,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G1,cell-relative ElasticNet MAE,1.3706726206,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G1,cell-relative XGBoost MAE,8.5601925314,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G3,Coulomb MAE,0.2272916896,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G3,cell-relative ElasticNet MAE,1.3418174761,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G3,cell-relative XGBoost MAE,1.0629053829,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G9,Coulomb MAE,3.3926675203,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G9,cell-relative ElasticNet MAE,1.6725618879,%,data/processed/experiments/cross_condition.csv
-SOH,cross-condition,held-out G9,cell-relative XGBoost MAE,2.159903178,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G1,window formula MAE,10.9190694622,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G1,cell-relative ElasticNet MAE,4.5769293283,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G1,cell-relative XGBoost MAE,9.3770816475,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G3,window formula MAE,2.1290009115,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G3,cell-relative ElasticNet MAE,1.596203994,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G3,cell-relative XGBoost MAE,1.0653331251,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G9,window formula MAE,10.1483838713,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G9,cell-relative ElasticNet MAE,3.4237845854,%,data/processed/experiments/cross_condition.csv
+SOH,cross-condition,held-out G9,cell-relative XGBoost MAE,2.9871276212,%,data/processed/experiments/cross_condition.csv
+SOH,partial-discharge transfer,held-out B0005,window formula MAE,8.9086171207,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0005,ElasticNet MAE,1.3375185503,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0005,XGBoost MAE,1.0562372899,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0006,window formula MAE,18.8171254151,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0006,ElasticNet MAE,2.5092517348,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0006,XGBoost MAE,3.3141604965,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0007,window formula MAE,6.2902412245,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0007,ElasticNet MAE,1.1669591516,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0007,XGBoost MAE,0.875956311,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0018,window formula MAE,9.3169917137,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0018,ElasticNet MAE,1.701195299,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0018,XGBoost MAE,0.885635919,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,mean (leave-one-cell-out: G1),window formula MAE,10.8332438685,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,mean (leave-one-cell-out: G1),ElasticNet MAE,1.678731183925,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,mean (leave-one-cell-out: G1),XGBoost MAE,1.5329975041000001,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0029,window formula MAE,1.9443874809,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0029,ElasticNet MAE,0.7427763082,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0029,XGBoost MAE,0.6871550949,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0030,window formula MAE,1.1136894253,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0030,ElasticNet MAE,1.431101829,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0030,XGBoost MAE,1.2878904358,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0031,window formula MAE,1.0586779423,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0031,ElasticNet MAE,0.8015185048,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0031,XGBoost MAE,0.6501590657,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0032,window formula MAE,4.3992487974,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0032,ElasticNet MAE,4.1511352374,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0032,XGBoost MAE,1.6424626144,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,mean (leave-one-cell-out: G3),window formula MAE,2.129000911475,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,mean (leave-one-cell-out: G3),ElasticNet MAE,1.78163296985,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,mean (leave-one-cell-out: G3),XGBoost MAE,1.0669168027,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0053,window formula MAE,10.1483838713,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0053,ElasticNet MAE,3.4237845854,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0053,XGBoost MAE,2.9871276212,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",window formula MAE,10.1483838713,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",ElasticNet MAE,3.4237845854,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",XGBoost MAE,2.9871276212,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",window formula MAE,15.1573446147,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",ElasticNet MAE,1.4610524838,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",XGBoost MAE,1.8207054538,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=2",window formula MAE,9.1439329226,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=2",ElasticNet MAE,1.3135834584,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=2",XGBoost MAE,1.4705735288,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=3",window formula MAE,6.588440262,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=3",ElasticNet MAE,1.5962045772,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=3",XGBoost MAE,1.2598269239,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=5",window formula MAE,6.48112239,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=5",ElasticNet MAE,1.7301820769,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=5",XGBoost MAE,1.2999571534,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=1",window formula MAE,78.5678996496,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=1",ElasticNet MAE,22.0880172389,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=1",XGBoost MAE,4.0079729756,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=2",window formula MAE,20.9786919405,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=2",ElasticNet MAE,7.1645457179,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=2",XGBoost MAE,4.0505083536,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=3",window formula MAE,9.4972310548,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=3",ElasticNet MAE,2.8285679475,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=3",XGBoost MAE,2.7404691842,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=5",window formula MAE,10.1483838713,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=5",ElasticNet MAE,3.4237845854,%,data/processed/experiments/soh_partial_reference_window.csv
+SOH,reference-window sensitivity,"Train G1+G3, test B0053, n=5",XGBoost MAE,2.9871276212,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,Coulomb formula,leave-one-cell-out (G1),mean MAE,0.7251200204998951,%,data/processed/soh_baselines.csv
 SOH,Coulomb formula,leave-one-cell-out (G1),mean R2,0.9925329383587246,,data/processed/soh_baselines.csv
 SOH,ElasticNet,leave-one-cell-out (G1),mean MAE,1.8068727770909172,%,data/processed/soh_baselines.csv

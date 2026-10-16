@@ -53,6 +53,8 @@ REQUIRED = {
     "rul_trajectory": PROC / "rul_trajectory_results.csv",
     "full_discharge": EXP / "soh_full_discharge.csv",
     "partial_discharge": EXP / "soh_partial_discharge.csv",
+    "partial_transfer": EXP / "soh_partial_transfer.csv",
+    "partial_window": EXP / "soh_partial_reference_window.csv",
     "ablation": EXP / "ablation_features.csv",
     "logo": EXP / "logo_results.csv",
     "cross_condition": EXP / "cross_condition.csv",
@@ -160,7 +162,7 @@ def _cc_row(cross, group, feature_set, model, column):
     return row, float(row[column].iloc[0])
 
 
-def _cc_coulomb(cross, group, column):
+def _cc_physics(cross, group, column):
     row = cross[
         (cross["test_group"] == group)
         & (cross["feature_set"] == "physics")
@@ -177,19 +179,28 @@ def build_cross_condition(logo, cross, clean, soh_base):
     """
     The cross-condition section that opens Key Results.
 
-    Table 1 is the raw-feature leave-one-group-out failure; table 2
-    is the same protocol with per-cell baseline-relative features,
-    next to the Coulomb-counting formula measured on exactly the
-    held-out cells. B0053 is the only surviving G9 cell, so its line
-    is that cell alone, not a group average.
+    The system predicts SOH from the 4.0-3.4 V window alone (the
+    partial-discharge task), so every comparison here is on that
+    task. Table 1 is the raw-window-feature leave-one-group-out
+    failure; table 2 is the same protocol with per-cell
+    baseline-relative window features, next to the window formula
+    measured on exactly the held-out cells. B0053 is the only
+    surviving G9 cell, so its line is that cell alone, not a group
+    average.
     """
 
     lines = []
 
-    lines.append("#### Cross-condition transfer (leave-one-group-out)\n")
     lines.append(
-        "**The model does not transfer across conditions when it is "
-        "trained on raw cycle features.**"
+        "#### Cross-condition transfer (leave-one-group-out, "
+        "partial window only)\n"
+    )
+    lines.append(
+        "**On the partial-discharge task the model does not transfer "
+        "across conditions when it is trained on raw window features.** "
+        "A BMS that only watches the partial-discharge window never sees "
+        "the full discharge, so this is the honest version of the SOH "
+        "question: predict SOH from the window alone."
     )
 
     order = ["G1", "G3", "G9"]
@@ -201,14 +212,15 @@ def build_cross_condition(logo, cross, clean, soh_base):
     )
     record("SOH", "cross-condition", "leave-one-group-out", "in-condition ElasticNet MAE",
            in_cell_en, "%", REQUIRED["soh_baselines"])
-    record("SOH", "cross-condition", "leave-one-group-out", "worst raw ElasticNet MAE",
+    record("SOH", "cross-condition", "leave-one-group-out", "worst raw window ElasticNet MAE",
            raw_en_max, "%", REQUIRED["logo"])
     lines.append(
-        f"In leave-one-cell-out within G1 the same ElasticNet model "
-        f"reaches {ph('cc_in_cell_en_mae', in_cell_en, '.2f')}% MAE; "
-        f"held out across conditions it climbs to as much as "
-        f"{ph('cc_worst_raw_en_mae', raw_en_max, '.2f')}%. The table below "
-        f"is that failure, measured, not a model claim.\n"
+        f"With the full feature set, leave-one-cell-out within G1 the "
+        f"same ElasticNet model reaches "
+        f"{ph('cc_in_cell_en_mae', in_cell_en, '.2f')}% MAE; held out "
+        f"across conditions on raw window features it climbs to as much "
+        f"as {ph('cc_worst_raw_en_mae', raw_en_max, '.2f')}%. The table "
+        f"below is that failure, measured, not a model claim.\n"
     )
 
     lines.append("| Held-out group | Cells | Cycles | ElasticNet MAE (%) | XGBoost MAE (%) |")
@@ -221,9 +233,9 @@ def build_cross_condition(logo, cross, clean, soh_base):
         cycles = int(rows["n_cycles"].iloc[0])
         g = group.lower()
         record("SOH", "cross-condition", f"held-out {group}",
-               "raw ElasticNet MAE", en, "%", REQUIRED["logo"])
+               "raw window ElasticNet MAE", en, "%", REQUIRED["logo"])
         record("SOH", "cross-condition", f"held-out {group}",
-               "raw XGBoost MAE", xg, "%", REQUIRED["logo"])
+               "raw window XGBoost MAE", xg, "%", REQUIRED["logo"])
         lines.append(
             f"| {label[group]} | {ph('logo_' + g + '_cells', cells, 'd')} | "
             f"{ph('logo_' + g + '_cycles', cycles, 'd')} | "
@@ -242,26 +254,26 @@ def build_cross_condition(logo, cross, clean, soh_base):
                _cc_cond(clean, group, "nominal_current_a"), "A",
                REQUIRED["clean"])
     lines.append(
-        "**Cell-relative features recover most of the gap, but the "
-        "physics formula still wins on the multi-cell groups.** "
-        "Because the groups differ in ambient temperature "
+        "**Cell-relative window features recover the transfer, and the "
+        "model then beats the window formula on the held-out "
+        "condition.** Because the groups differ in ambient temperature "
         f"(G1 {ph('cc_g1_temp', int(_cc_cond(clean, 'G1', 'nominal_temperature_c')), 'd')} °C, "
         f"G3 {ph('cc_g3_temp', int(_cc_cond(clean, 'G3', 'nominal_temperature_c')), 'd')} °C, "
         f"G9 {ph('cc_g9_temp', int(_cc_cond(clean, 'G9', 'nominal_temperature_c')), 'd')} °C) "
         f"and current (G1 {ph('cc_g1_amp', int(_cc_cond(clean, 'G1', 'nominal_current_a')), 'd')} A, "
         f"G3 {ph('cc_g3_amp', int(_cc_cond(clean, 'G3', 'nominal_current_a')), 'd')} A, "
         f"G9 {ph('cc_g9_amp', int(_cc_cond(clean, 'G9', 'nominal_current_a')), 'd')} A), "
-        "the raw levels do not line up. Replacing them with each cell's own "
-        "early-discharge baselines — window capacity divided by the "
-        "cell's first-five-discharge median and by its current, plus "
-        "temperature rise and baseline ratios — makes the ElasticNet "
-        "transfer to a condition it has never seen. The "
-        "Coulomb-counting formula is scored on exactly the held-out "
-        "cells for comparison.\n"
+        "the raw levels do not line up. Dividing each window quantity by "
+        "the cell's own first-five-discharge median and by its current "
+        "puts every cell on the same scale and makes the ElasticNet "
+        "transfer to a condition it has never seen. The window formula "
+        "— the window's amp-hours over that same per-cell median — is "
+        "the best a BMS can do from the window alone, so it is scored on "
+        "exactly the held-out cells for comparison.\n"
     )
 
     lines.append(
-        "| Held-out group | Cells | Cycles | Coulomb formula MAE (%) | "
+        "| Held-out group | Cells | Cycles | window formula MAE (%) | "
         "raw ElasticNet MAE (%) | cell-relative ElasticNet MAE (%) | "
         "cell-relative XGBoost MAE (%) |"
     )
@@ -269,13 +281,13 @@ def build_cross_condition(logo, cross, clean, soh_base):
     for group in order:
         cells = int(cross[cross["test_group"] == group]["n_cells"].iloc[0])
         cycles = int(cross[cross["test_group"] == group]["n_cycles"].iloc[0])
-        coulomb = _cc_coulomb(cross, group, "mae_pct")
+        formula = _cc_physics(cross, group, "mae_pct")
         _, raw_en = _cc_row(cross, group, "raw", "ElasticNet", "mae_pct")
         _, rel_en = _cc_row(cross, group, "cell_relative", "ElasticNet", "mae_pct")
         _, rel_xgb = _cc_row(cross, group, "cell_relative", "XGBoost", "mae_pct")
         g = group.lower()
         record("SOH", "cross-condition", f"held-out {group}",
-               "Coulomb MAE", coulomb, "%", REQUIRED["cross_condition"])
+               "window formula MAE", formula, "%", REQUIRED["cross_condition"])
         record("SOH", "cross-condition", f"held-out {group}",
                "cell-relative ElasticNet MAE", rel_en, "%",
                REQUIRED["cross_condition"])
@@ -285,7 +297,7 @@ def build_cross_condition(logo, cross, clean, soh_base):
         lines.append(
             f"| {label[group]} | {ph('cc_' + g + '_cells', cells, 'd')} | "
             f"{ph('cc_' + g + '_cycles', cycles, 'd')} | "
-            f"{ph('cc_' + g + '_coulomb_mae', coulomb, '.2f')} | "
+            f"{ph('cc_' + g + '_coulomb_mae', formula, '.2f')} | "
             f"{ph('cc_' + g + '_raw_en_mae', raw_en, '.2f')} | "
             f"{ph('cc_' + g + '_rel_en_mae', rel_en, '.2f')} | "
             f"{ph('cc_' + g + '_rel_xgb_mae', rel_xgb, '.2f')} |"
@@ -297,24 +309,200 @@ def build_cross_condition(logo, cross, clean, soh_base):
         f"cell alone, never averaged into a group. Reading it: the "
         f"cell-relative ElasticNet error on B0053 is "
         f"{ph('cc_g9_rel_en_mae', _cc_row(cross, 'G9', 'cell_relative', 'ElasticNet', 'mae_pct')[1], '.2f')}% "
-        f"against the Coulomb formula's "
-        f"{ph('cc_g9_coulomb_mae', _cc_coulomb(cross, 'G9', 'mae_pct'), '.2f')}%, "
-        f"so there the model beats the formula. On the two multi-cell "
-        f"groups it does not: G1 "
+        f"against the window formula's "
+        f"{ph('cc_g9_coulomb_mae', _cc_physics(cross, 'G9', 'mae_pct'), '.2f')}%, "
+        f"and the cell-relative XGBoost error is "
+        f"{ph('cc_g9_rel_xgb_mae', _cc_row(cross, 'G9', 'cell_relative', 'XGBoost', 'mae_pct')[1], '.2f')}% "
+        f"— both beat the formula on a condition the model has never "
+        f"seen. On the two multi-cell groups the model also beats it "
+        f"cell-by-cell (G1 ElasticNet "
         f"{ph('cc_g1_rel_en_mae', _cc_row(cross, 'G1', 'cell_relative', 'ElasticNet', 'mae_pct')[1], '.2f')}% "
-        f"versus {ph('cc_g1_coulomb_mae', _cc_coulomb(cross, 'G1', 'mae_pct'), '.2f')}%, "
-        f"G3 {ph('cc_g3_rel_en_mae', _cc_row(cross, 'G3', 'cell_relative', 'ElasticNet', 'mae_pct')[1], '.2f')}% "
-        f"versus {ph('cc_g3_coulomb_mae', _cc_coulomb(cross, 'G3', 'mae_pct'), '.2f')}%. "
-        f"Across groups as a whole the model still cannot beat the "
-        f"Coulomb-counting formula; it wins on the one cross-condition "
-        f"cell and loses on the two conditions that train it.\n"
+        f"versus {ph('cc_g1_coulomb_mae', _cc_physics(cross, 'G1', 'mae_pct'), '.2f')}%, "
+        f"G3 ElasticNet "
+        f"{ph('cc_g3_rel_en_mae', _cc_row(cross, 'G3', 'cell_relative', 'ElasticNet', 'mae_pct')[1], '.2f')}% "
+        f"versus {ph('cc_g3_coulomb_mae', _cc_physics(cross, 'G3', 'mae_pct'), '.2f')}%), "
+        f"though XGBoost is weaker on G1. The cell-by-cell partial-"
+        f"discharge section below reports the same task with "
+        f"leave-one-cell-out validation.\n"
+    )
+
+    return "\n".join(lines)
+
+
+def build_partial_transfer(partial):
+    """
+    The partial-discharge task scored cell by cell, next to the
+    window formula on exactly the same held-out rows.
+    """
+
+    lines = []
+
+    lines.append("#### Partial-discharge SOH, cell by cell (window only)\n")
+    lines.append(
+        "The same task, scored one held-out cell at a time: "
+        "leave-one-cell-out within G1 and within G3, then train on "
+        "every G1 and G3 cell and test on B0053, a condition the model "
+        "has never seen. The window formula is scored on exactly the "
+        "held-out rows.\n"
+    )
+    lines.append(
+        "| Protocol | Held-out cell | Cycles | window formula MAE (%) | "
+        "ElasticNet MAE (%) | XGBoost MAE (%) |"
+    )
+    lines.append("|---|---|---|---|---|---|")
+
+    protocols = [
+        ("leave-one-cell-out: G1", "loco_g1", "leave-one-cell-out: G1"),
+        ("leave-one-cell-out: G3", "loco_g3", "leave-one-cell-out: G3"),
+        ("train G1+G3, test B0053", "b0053", "Train G1+G3, test B0053"),
+    ]
+
+    for key, tag, display in protocols:
+
+        block = partial[partial["protocol"] == key]
+
+        for cell in sorted(block["test_cell"].unique()):
+
+            rows = block[block["test_cell"] == cell]
+            cell_id = str(cell).lower()
+            cyc = int(rows["n_cycles"].iloc[0])
+
+            formula = float(
+                rows.loc[rows["model"] == "window_formula", "mae_pct"].iloc[0]
+            )
+            en = float(
+                rows.loc[rows["model"] == "ElasticNet", "mae_pct"].iloc[0]
+            )
+            xgb = float(
+                rows.loc[rows["model"] == "XGBoost", "mae_pct"].iloc[0]
+            )
+
+            record("SOH", "partial-discharge transfer", f"held-out {cell}",
+                   "window formula MAE", formula, "%",
+                   REQUIRED["partial_transfer"])
+            record("SOH", "partial-discharge transfer", f"held-out {cell}",
+                   "ElasticNet MAE", en, "%", REQUIRED["partial_transfer"])
+            record("SOH", "partial-discharge transfer", f"held-out {cell}",
+                   "XGBoost MAE", xgb, "%", REQUIRED["partial_transfer"])
+
+            lines.append(
+                f"| {display} | {cell} | {ph('pt_' + tag + '_' + cell_id + '_cyc', cyc, 'd')} | "
+                f"{ph('pt_' + tag + '_' + cell_id + '_formula', formula, '.2f')} | "
+                f"{ph('pt_' + tag + '_' + cell_id + '_en', en, '.2f')} | "
+                f"{ph('pt_' + tag + '_' + cell_id + '_xgb', xgb, '.2f')} |"
+            )
+
+        means = {
+            "formula": float(
+                block.loc[block["model"] == "window_formula", "mae_pct"].mean()
+            ),
+            "en": float(
+                block.loc[block["model"] == "ElasticNet", "mae_pct"].mean()
+            ),
+            "xgb": float(
+                block.loc[block["model"] == "XGBoost", "mae_pct"].mean()
+            ),
+        }
+        for suffix, model in (
+            ("formula", "window formula"),
+            ("en", "ElasticNet"),
+            ("xgb", "XGBoost"),
+        ):
+            record("SOH", "partial-discharge transfer", f"mean ({key})",
+                   f"{model} MAE", means[suffix], "%",
+                   REQUIRED["partial_transfer"])
+        lines.append(
+            f"| **{display} — mean** | — | — | "
+            f"{ph('pt_' + tag + '_mean_formula', means['formula'], '.2f')} | "
+            f"{ph('pt_' + tag + '_mean_en', means['en'], '.2f')} | "
+            f"{ph('pt_' + tag + '_mean_xgb', means['xgb'], '.2f')} |"
+        )
+
+    return "\n".join(lines)
+
+
+def build_reference_window(sensitivity):
+    """
+    How many of a cell's own opening discharges the cell-relative
+    baseline needs, on the partial-discharge task.
+    """
+
+    lines = []
+
+    lines.append("#### Reference-window sensitivity (partial-discharge)\n")
+    lines.append(
+        "The cell-relative features need a baseline from the cell's own "
+        "first `n` discharges; a new cell may have very few. Rebuilding "
+        "the baseline for one, two, three and five opening discharges "
+        "and re-running the task:\n"
+    )
+
+    protocols = [
+        ("leave-one-cell-out: G1+G3", "loco", "Leave-one-cell-out (G1+G3)"),
+        ("train G1+G3, test B0053", "b0053", "Train G1+G3, test B0053"),
+    ]
+
+    for key, tag, display in protocols:
+
+        block = sensitivity[sensitivity["protocol"] == key]
+
+        lines.append(f"\n**{display}**\n")
+        lines.append(
+            "| Discharges used as baseline | window formula MAE (%) | "
+            "ElasticNet MAE (%) | XGBoost MAE (%) |"
+        )
+        lines.append("|---|---|---|---|")
+
+        for n in sorted(block["ref_window"].unique()):
+
+            rows = block[block["ref_window"] == n]
+
+            formula = float(
+                rows.loc[rows["model"] == "window_formula", "mae_pct"].iloc[0]
+            )
+            en = float(
+                rows.loc[rows["model"] == "ElasticNet", "mae_pct"].iloc[0]
+            )
+            xgb = float(
+                rows.loc[rows["model"] == "XGBoost", "mae_pct"].iloc[0]
+            )
+
+            model_rows = {
+                "window formula": ("formula", formula),
+                "ElasticNet": ("en", en),
+                "XGBoost": ("xgb", xgb),
+            }
+            for model, (suffix, score) in model_rows.items():
+                record("SOH", "reference-window sensitivity",
+                       f"{display}, n={int(n)}", f"{model} MAE", score, "%",
+                       REQUIRED["partial_window"])
+
+            lines.append(
+                f"| {ph('rw_' + tag + '_n' + str(int(n)), int(n), 'd')} | "
+                f"{ph('rw_' + tag + '_n' + str(int(n)) + '_formula', formula, '.2f')} | "
+                f"{ph('rw_' + tag + '_n' + str(int(n)) + '_en', en, '.2f')} | "
+                f"{ph('rw_' + tag + '_n' + str(int(n)) + '_xgb', xgb, '.2f')} |"
+            )
+
+    lines.append("")
+    lines.append(
+        "Inside a group the picture is mixed: the plain window formula "
+        "is sensitive to the baseline length, while the learned models "
+        "stay flat because the held-out cell is trained on siblings at "
+        "the same condition. The cross-condition transfer to B0053 is "
+        "where the baseline length matters for the model too: one or two "
+        "opening discharges set the scale too coarsely and the error "
+        "spikes, and from three discharges it settles near its floor. "
+        "The practical reading: give a new cell a few discharges before "
+        "trusting its cell-relative SOH.\n"
     )
 
     return "\n".join(lines)
 
 
 def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
-                  full, partial, ablation, logo, cross):
+                  full, partial, partial_transfer, partial_window,
+                  ablation, logo, cross):
     lines = []
 
     # Cross-condition transfer opens Key Results: the model that
@@ -324,7 +512,23 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
     lines.append(build_cross_condition(logo, cross, clean, soh_base))
     lines.append("")
 
-    lines.append("#### State of Health (SOH)\n")
+    lines.append(build_partial_transfer(partial_transfer))
+    lines.append("")
+
+    lines.append(build_reference_window(partial_window))
+    lines.append("")
+
+    lines.append("#### Offline SOH benchmark (full feature set)\n")
+    lines.append(
+        "This benchmark is deliberately offline: it uses every production "
+        "feature, including full-discharge signals such as duration and "
+        "resistance that a BMS only observes once the discharge has "
+        "finished. It is a model-to-model reference; the online task, and "
+        "the only place a model is compared against a physics formula, is "
+        "the partial-discharge section above. The full-discharge Coulomb "
+        "row is the formula that would be used when a complete discharge "
+        "is available.\n"
+    )
     lines.append("| Method | Validation | Mean MAE (%) | Mean R² |")
     lines.append("|---|---|---|---|")
 
@@ -403,7 +607,15 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
             f"| {ph('soh_nested_' + cell + '_r2', float(row['R2']), '.3f')} |"
         )
 
-    lines.append("\n#### Full- versus partial-discharge SOH\n")
+    lines.append("\n#### Full- versus partial-discharge formulas (no model)\n")
+    lines.append(
+        "When the full discharge is available, SOH is read directly "
+        "from the measured capacity by Coulomb counting and no model is "
+        "used; the error is the formula's, not a prediction's. When "
+        "only the window is available the same kind of formula is much "
+        "weaker, which is exactly why the partial-discharge models "
+        "above exist.\n"
+    )
     lines.append("| Method | Held-out cell | MAE (%) |")
     lines.append("|---|---|---|")
     full_g1 = full[full["cell_id"].isin(["B0005", "B0006", "B0007", "B0018"])]
@@ -639,7 +851,7 @@ def build_latency(latency):
     return "\n".join(lines)
 
 
-def build_final(soh_res, soh_nested, soh_base, soh_null, rul):
+def build_final(soh_res, soh_nested, soh_base, soh_null, partial_transfer, rul):
     lines = []
     lines.append("| Task | Method | Protocol | Score | Baseline | Unit |")
     lines.append("|---|---|---|---|---|---|")
@@ -648,12 +860,25 @@ def build_final(soh_res, soh_nested, soh_base, soh_null, rul):
     null = mean(soh_null.loc[soh_null["baseline"] == "constant_global_mean", "MAE"])
     nested = mean(soh_nested["MAE"])
     lines.append(
-        f"| SOH | Coulomb formula | leave-one-cell-out (G1) | {ph('soh_coulomb_mae', coulomb, '.2f')} "
+        f"| SOH (offline, full features) | Coulomb formula | leave-one-cell-out (G1) | {ph('soh_coulomb_mae', coulomb, '.2f')} "
         f"| constant mean {ph('soh_null_mae', null, '.2f')} | MAE % |"
     )
     lines.append(
-        f"| SOH | XGBoost (nested) | nested leave-one-cell-out (G1) | {ph('soh_xgb_nested_mae', nested, '.2f')} "
+        f"| SOH (offline, full features) | XGBoost (nested) | nested leave-one-cell-out (G1) | {ph('soh_xgb_nested_mae', nested, '.2f')} "
         f"| constant mean {ph('soh_null_mae', null, '.2f')} | MAE % |"
+    )
+
+    transfer = partial_transfer[
+        partial_transfer["protocol"] == "train G1+G3, test B0053"
+    ]
+    pt_xgb = float(transfer.loc[transfer["model"] == "XGBoost", "mae_pct"].iloc[0])
+    pt_formula = float(
+        transfer.loc[transfer["model"] == "window_formula", "mae_pct"].iloc[0]
+    )
+    lines.append(
+        f"| SOH (partial window) | Cell-relative XGBoost | train G1+G3, test B0053 | "
+        f"{ph('final_partial_xgb_mae', pt_xgb, '.2f')} | "
+        f"window formula {ph('final_partial_formula_mae', pt_formula, '.2f')} | MAE % |"
     )
 
     traj_mean = mean(rul["trajectory_mae"])
@@ -674,7 +899,8 @@ def main():
         frames["clean"], audit,
         frames["soh_results"], frames["soh_nested"], frames["soh_baselines"],
         frames["soh_null"], frames["full_discharge"],
-        frames["partial_discharge"], frames["ablation"], frames["logo"],
+        frames["partial_discharge"], frames["partial_transfer"],
+        frames["partial_window"], frames["ablation"], frames["logo"],
         frames["cross_condition"],
     ))
     rul = region("rul", build_rul(frames["rul_trajectory"]))
@@ -683,7 +909,7 @@ def main():
     pack = region("pack", build_pack(frames["pack_detection"], frames["pack_false_alarms"]))
     final = region("final", build_final(
         frames["soh_results"], frames["soh_nested"], frames["soh_baselines"],
-        frames["soh_null"], frames["rul_trajectory"],
+        frames["soh_null"], frames["partial_transfer"], frames["rul_trajectory"],
     ))
 
     readme = README.read_text()

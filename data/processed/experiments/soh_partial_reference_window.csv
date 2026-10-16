@@ -1,0 +1,25 @@
+ref_window,protocol,model,mae_pct,r2,n_cycles
+1,leave-one-cell-out: G1+G3,ElasticNet,1.4610524838,0.8668175702,796
+1,leave-one-cell-out: G1+G3,XGBoost,1.8207054538,0.6764816627,796
+1,leave-one-cell-out: G1+G3,window_formula,15.1573446147,-22.0944497954,796
+1,"train G1+G3, test B0053",ElasticNet,22.0880172389,-38.9126407785,55
+1,"train G1+G3, test B0053",XGBoost,4.0079729756,-0.7082029187,55
+1,"train G1+G3, test B0053",window_formula,78.5678996496,-504.0436807533,55
+2,leave-one-cell-out: G1+G3,ElasticNet,1.3135834584,0.9052830212,796
+2,leave-one-cell-out: G1+G3,XGBoost,1.4705735288,0.8544511722,796
+2,leave-one-cell-out: G1+G3,window_formula,9.1439329226,-3.4421495648,796
+2,"train G1+G3, test B0053",ElasticNet,7.1645457179,-3.5850380114,55
+2,"train G1+G3, test B0053",XGBoost,4.0505083536,-1.1421269484,55
+2,"train G1+G3, test B0053",window_formula,20.9786919405,-38.5448444256,55
+3,leave-one-cell-out: G1+G3,ElasticNet,1.5962045772,0.8241224668,796
+3,leave-one-cell-out: G1+G3,XGBoost,1.2598269239,0.9041614096,796
+3,leave-one-cell-out: G1+G3,window_formula,6.588440262,-0.4014931184,796
+3,"train G1+G3, test B0053",ElasticNet,2.8285679475,-0.8644693583,55
+3,"train G1+G3, test B0053",XGBoost,2.7404691842,-0.7686608613,55
+3,"train G1+G3, test B0053",window_formula,9.4972310548,-10.4710851396,55
+5,leave-one-cell-out: G1+G3,ElasticNet,1.7301820769,0.7530103103,796
+5,leave-one-cell-out: G1+G3,XGBoost,1.2999571534,0.8952675202,796
+5,leave-one-cell-out: G1+G3,window_formula,6.48112239,-0.3598789942,796
+5,"train G1+G3, test B0053",ElasticNet,3.4237845854,-1.1745775103,55
+5,"train G1+G3, test B0053",XGBoost,2.9871276212,-0.8610080826,55
+5,"train G1+G3, test B0053",window_formula,10.1483838713,-11.5430721974,55

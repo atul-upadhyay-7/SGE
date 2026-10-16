@@ -1,0 +1,28 @@
+protocol,test_cell,model,n_features,mae_pct,r2,n_cycles,ref_window
+leave-one-cell-out: G1,B0005,ElasticNet,5,1.3375185503,0.9797323531,168,5
+leave-one-cell-out: G1,B0005,XGBoost,5,1.0562372899,0.9832155371,168,5
+leave-one-cell-out: G1,B0005,window_formula,0,8.9086171207,-0.1948068724,168,5
+leave-one-cell-out: G1,B0006,ElasticNet,5,2.5092517348,0.944651414,168,5
+leave-one-cell-out: G1,B0006,XGBoost,5,3.3141604965,0.8628196669,168,5
+leave-one-cell-out: G1,B0006,window_formula,0,18.8171254151,-2.1588745617,168,5
+leave-one-cell-out: G1,B0007,ElasticNet,5,1.1669591516,0.9777931302,168,5
+leave-one-cell-out: G1,B0007,XGBoost,5,0.875956311,0.9861413192,168,5
+leave-one-cell-out: G1,B0007,window_formula,0,6.2902412245,0.116125262,168,5
+leave-one-cell-out: G1,B0018,ElasticNet,5,1.701195299,0.9499931028,132,5
+leave-one-cell-out: G1,B0018,XGBoost,5,0.885635919,0.9843179061,132,5
+leave-one-cell-out: G1,B0018,window_formula,0,9.3169917137,-0.8670604007,132,5
+leave-one-cell-out: G3,B0029,ElasticNet,5,0.7427763082,0.9252790321,40,5
+leave-one-cell-out: G3,B0029,XGBoost,5,0.6871550949,0.9459178831,40,5
+leave-one-cell-out: G3,B0029,window_formula,0,1.9443874809,0.4433711157,40,5
+leave-one-cell-out: G3,B0030,ElasticNet,5,1.431101829,0.7881095036,40,5
+leave-one-cell-out: G3,B0030,XGBoost,5,1.2878904358,0.7799475823,40,5
+leave-one-cell-out: G3,B0030,window_formula,0,1.1136894253,0.7624714,40,5
+leave-one-cell-out: G3,B0031,ElasticNet,5,0.8015185048,0.8494841437,40,5
+leave-one-cell-out: G3,B0031,XGBoost,5,0.6501590657,0.900071211,40,5
+leave-one-cell-out: G3,B0031,window_formula,0,1.0586779423,0.3475238508,40,5
+leave-one-cell-out: G3,B0032,ElasticNet,5,4.1511352374,-0.3909601972,40,5
+leave-one-cell-out: G3,B0032,XGBoost,5,1.6424626144,0.7197090562,40,5
+leave-one-cell-out: G3,B0032,window_formula,0,4.3992487974,-1.3277817469,40,5
+"train G1+G3, test B0053",B0053,ElasticNet,5,3.4237845854,-1.1745775103,55,5
+"train G1+G3, test B0053",B0053,XGBoost,5,2.9871276212,-0.8610080826,55,5
+"train G1+G3, test B0053",B0053,window_formula,0,10.1483838713,-11.5430721974,55,5

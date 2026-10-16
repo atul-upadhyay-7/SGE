@@ -352,6 +352,50 @@
   before any data exists is a NoData alert (a consequence of
   `noDataState: Alerting`) and resolves once the exporter has data.
 
+## Step 15 — SOH honesty: full discharge is a formula, the window is the model
+
+- Removed the claim that the machine-learning model competes with the
+  Coulomb-counting formula. They answer different questions: with a
+  **full discharge** the capacity is measured, so SOH is read by
+  Coulomb counting and no model is involved; the partial **window**
+  is the only signal a BMS has online, and that is the task every
+  SOH model is scored on.
+- Added a top-of-README statement saying exactly that, and rewrote the
+  Evaluation Protocol note and Known Limitations item 2 so no prose
+  says the model loses to the formula it is not supposed to replace.
+- `src/run_experiments.py`:
+  - `cell_relative_features` now takes a `ref_window` argument (the
+    number of opening discharges the per-cell baseline uses).
+  - `cross_condition` and `logo_results.csv` now use **window**
+    features (`VW_FEATURES` / `WINDOW_NORM_FEATURES`) and score the
+    **window formula** (`vw_capacity_ah / per-cell median`), replacing
+    the full-cycle Coulomb baseline. Step 10's comparison is
+    superseded: the old numbers are in git history and are not the
+    current report.
+  - Added `partial_discharge_transfer`, which scores the partial task
+    cell by cell — leave-one-cell-out within G1 and within G3, and
+    train on every G1/G3 cell and test on B0053 — with the window
+    formula on the same held-out rows. New CSV
+    `soh_partial_transfer.csv`.
+  - Added `reference_window_sensitivity`, which rebuilds the baseline
+    for one, two, three and five opening discharges. New CSV
+    `soh_partial_reference_window.csv`.
+- Result, all from the CSVs. Raw window features do not transfer
+  (ElasticNet 42.66% G1, 16.29% G3, 7.47% B0053). Cell-relative window
+  features fix it and the model then beats the window formula on
+  every held-out group: ElasticNet 4.58% vs 10.92% (G1), 1.60% vs
+  2.13% (G3), 3.42% vs 10.15% (B0053). Cell by cell, B0006 — the cell
+  the full-feature model predicted worst — is 2.51% (ElasticNet) and
+  3.31% (XGBoost) against the window formula's 18.82%.
+- The reference-window table is reported as measured: inside a group
+  the learned models barely move with the baseline length, while the
+  window formula does; the cross-condition transfer to B0053 is the
+  one that degrades sharply with only one or two opening discharges.
+- Updated `scripts/make_report.py` (new regions and tables),
+  `tests/test_cross_condition.py` (the claims now pin the window
+  formula and the reference-window behavior), and the module
+  docstring of `src/run_experiments.py`.
+
 ---
 
 ## Final performance & baseline comparison
@@ -359,8 +403,9 @@
 <!-- make_report:final -->
 | Task | Method | Protocol | Score | Baseline | Unit |
 |---|---|---|---|---|---|
-| SOH | Coulomb formula | leave-one-cell-out (G1) | 0.73 | constant mean 9.28 | MAE % |
-| SOH | XGBoost (nested) | nested leave-one-cell-out (G1) | 2.65 | constant mean 9.28 | MAE % |
+| SOH (offline, full features) | Coulomb formula | leave-one-cell-out (G1) | 0.73 | constant mean 9.28 | MAE % |
+| SOH (offline, full features) | XGBoost (nested) | nested leave-one-cell-out (G1) | 2.65 | constant mean 9.28 | MAE % |
+| SOH (partial window) | Cell-relative XGBoost | train G1+G3, test B0053 | 2.99 | window formula 10.15 | MAE % |
 | RUL | Trajectory model | leave-one-cell-out (G1) | 20.5 | fleet lifetime 34.3 | discharges |
 <!-- make_report:final:end -->
 
