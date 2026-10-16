@@ -310,8 +310,8 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "RUL Predicted vs Actual & 10th–90th Percentile Range",
-      "description": "Trajectory matching RUL with 10th and 90th percentile prediction bands. Counted in discharges.",
+      "title": "RUL Predicted vs Actual & Reference Spread",
+      "description": "Trajectory matching RUL with the 10th/90th percentile reference spread (per-reference-cell estimates, not a calibrated interval). Counted in discharges.",
       "gridPos": {
         "x": 12,
         "y": 15,
@@ -356,8 +356,8 @@
     {
       "id": 11,
       "type": "table",
-      "title": "RUL Predictions & Confidence Range",
-      "description": "Per-discharge RUL targets, predictions, and 10th/90th percentile bounds.",
+      "title": "RUL Predictions & Reference Spread",
+      "description": "Per-discharge RUL targets, predictions, and the 10th/90th percentile reference spread.",
       "gridPos": {
         "x": 12,
         "y": 23,

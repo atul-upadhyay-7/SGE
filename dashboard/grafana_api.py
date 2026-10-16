@@ -405,10 +405,12 @@ def handle_timeseries(target, scoped_vars=None):
     elif target == "rul_range_by_cycle":
         # The RUL band is the per-reference spread computed by
         # src/rul_trajectory.py under leave-one-cell-out and stored in
-        # rul_prediction_bands. There is no honest interval without
-        # that table, so only the point estimate is drawn then. The
-        # actual-RUL series is a separate, observed quantity (cycles
-        # to 80% SOH) and comes from rul_predictions_all.
+        # rul_prediction_bands: the 10th/90th percentiles of the
+        # per-reference remaining-life estimates, not a calibrated
+        # interval. There is no band without that table, so only the
+        # point estimate is drawn then. The actual-RUL series is a
+        # separate, observed quantity (cycles to 80% SOH) and comes
+        # from rul_predictions_all.
         has_bands = object_exists(conn, "rul_prediction_bands")
         has_preds = object_exists(conn, "rul_predictions_all")
         scope = "rul_prediction_bands" if has_bands else (
@@ -434,7 +436,7 @@ def handle_timeseries(target, scoped_vars=None):
                     (cell,)
                 ).fetchall()
                 series.append({
-                    "target": f"RUL 10th Percentile — {cell}",
+                    "target": f"RUL Reference Spread Low — {cell}",
                     "datapoints": [[r["rul_p10"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
                 series.append({
@@ -442,7 +444,7 @@ def handle_timeseries(target, scoped_vars=None):
                     "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
                 series.append({
-                    "target": f"RUL 90th Percentile — {cell}",
+                    "target": f"RUL Reference Spread High — {cell}",
                     "datapoints": [[r["rul_p90"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
             elif has_preds:
@@ -627,7 +629,7 @@ def handle_table(target, scoped_vars=None):
                 "No RUL prediction bands; run src/rul_trajectory.py."
             )
         # Latest predicted remaining life per cell, and the mean of
-        # each cell's own 10th/90th reference interval at that cycle.
+        # each cell's own reference-spread interval at that cycle.
         row = conn.execute(
             "SELECT AVG(predicted_rul), AVG(rul_p10), AVG(rul_p90) "
             "FROM ("
@@ -647,7 +649,7 @@ def handle_table(target, scoped_vars=None):
             "type": "table",
             "columns": [
                 {"text": "Est. Discharges Left", "type": "number"},
-                {"text": "10th-90th Range", "type": "string"},
+                {"text": "Reference Spread Range", "type": "string"},
             ],
             "rows": [[round(val, 1), f"{round(lo, 1)} – {round(hi, 1)} discharges"]],
         }
@@ -742,8 +744,8 @@ def handle_table(target, scoped_vars=None):
             {"text": "Discharge", "type": "number"},
             {"text": "Actual Discharges", "type": "number"},
             {"text": "Predicted Discharges", "type": "number"},
-            {"text": "10th Percentile", "type": "number"},
-            {"text": "90th Percentile", "type": "number"},
+            {"text": "Reference Spread Low", "type": "number"},
+            {"text": "Reference Spread High", "type": "number"},
         ]
         rows_data = [list(r) for r in rows]
         conn.close()

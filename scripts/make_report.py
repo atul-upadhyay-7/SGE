@@ -476,7 +476,8 @@ def build_rul(rul):
     lines = []
     lines.append(
         "| Held-out cell | EOL discharge | Trajectory MAE | "
-        "Fleet-lifetime baseline MAE | 10th-90th coverage | Mean band width |"
+        "Fleet-lifetime baseline MAE | Reference-spread coverage | "
+        "Mean reference-spread width |"
     )
     lines.append("|---|---|---|---|---|---|")
     for _, row in rul.sort_values("test_cell").iterrows():
@@ -489,11 +490,11 @@ def build_rul(rul):
         record("RUL", "EOL", f"held-out {row['test_cell']}",
                "EOL discharge", row["eol_discharge"], "discharges",
                REQUIRED["rul_trajectory"])
-        record("RUL", "band coverage", f"held-out {row['test_cell']}",
-               "10th-90th coverage", row["band_coverage_pct"], "percent",
+        record("RUL", "reference-spread coverage", f"held-out {row['test_cell']}",
+               "reference-spread coverage", row["band_coverage_pct"], "percent",
                REQUIRED["rul_trajectory"])
-        record("RUL", "band width", f"held-out {row['test_cell']}",
-               "mean band width", row["band_width_mean"], "discharges",
+        record("RUL", "reference-spread width", f"held-out {row['test_cell']}",
+               "mean reference-spread width", row["band_width_mean"], "discharges",
                REQUIRED["rul_trajectory"])
         lines.append(
             f"| {row['test_cell']} | {ph('rul_' + cell + '_eol', int(row['eol_discharge']), 'd')} | "
@@ -511,9 +512,9 @@ def build_rul(rul):
            "discharges", REQUIRED["rul_trajectory"])
     record("RUL", "fleet lifetime baseline", "mean (G1)", "mean MAE", base_mean,
            "discharges", REQUIRED["rul_trajectory"])
-    record("RUL", "band coverage", "mean (G1)", "mean coverage",
+    record("RUL", "reference-spread coverage", "mean (G1)", "mean coverage",
            cov_mean, "percent", REQUIRED["rul_trajectory"])
-    record("RUL", "band width", "mean (G1)", "mean band width",
+    record("RUL", "reference-spread width", "mean (G1)", "mean reference-spread width",
            width_mean, "discharges", REQUIRED["rul_trajectory"])
     lines.append(
         f"| **Mean** | — | {ph('rul_mean_traj_mae', traj_mean, '.1f')} | "

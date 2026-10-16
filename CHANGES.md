@@ -208,6 +208,30 @@
 - B0053 is the only G9 cell the audit keeps. It is labelled
   `B0053 (G9)` in both tables and never averaged into a group mean.
 
+## Step 11 — The RUL interval is a reference spread, and named so
+
+- Renamed the RUL 10th/90th interval to a **reference spread**
+  everywhere it appears — the README table column
+  (`Reference-spread coverage`, `Mean reference-spread width`), the
+  `report_summary.csv` metric labels, the Grafana panel titles
+  (`RUL Predicted vs Actual & Reference Spread`) and the API table
+  columns (`Reference Spread Low`/`High`) — so nothing calls it a
+  prediction or confidence interval.
+- What it is: the 10th/90th percentiles of the remaining-life
+  estimates produced by the *reference cells* a curve is matched
+  against. It measures how much the answer depends on which
+  reference you match, not how often it contains the truth.
+- Its empirical coverage is measured, and it is 48.3% across the
+  four held-out cells — not the ~80% a "10th-90th" label implies.
+- B0006 is the 0.0% case and is explained in the README and here.
+  It fades faster than every reference cell (0.309 %/discharge, the
+  steepest of the four) and retires far sooner, so the matcher,
+  reading its remaining life off reference curves that aged more
+  slowly, over-predicts what is left and the true value lands below
+  the low end of the spread at every discharge. That is a
+  limitation of matching one cell against slower-ageing references,
+  and it is reported rather than hidden.
+
 ---
 
 ## Final performance & baseline comparison
@@ -1616,10 +1640,14 @@ verify.sh: ALL CHECKS PASSED
    3050, so only one can run at a time. Docker was used for the run
    above; the systemd units are the lighter alternative.
 2. The RUL 10th–90th band is the spread of the per-reference-cell
-   estimates, not a calibrated interval. Its empirical coverage is now
-   measured (48.3% across the four held-out cells, against the ~80% its
-   label implies) and reported, but the band has not been recalibrated
-   to hit a target coverage.
+   estimates, not a calibrated interval. It is now named a
+   reference spread everywhere (Step 11) and its empirical coverage
+   is measured and reported (48.3% across the four held-out cells,
+   against the ~80% its old label implied), including the B0006
+   mechanism that makes it 0.0% there. It has deliberately not been
+   recalibrated to hit a target coverage: with four cells a
+   conformal band would be marginal and would hide, rather than
+   fix, the per-cell failure.
 3. The online double-exponential fit was not re-validated; where it
    cannot be backed by a CSV it is marked legacy rather than reported.
 4. Grafana alert rules are provisioned

@@ -100,7 +100,7 @@ def test_discharges_left_is_database_backed_not_a_constant():
     The stat tile used to hardcode 16.0 with a fabricated +-20%
     range. It must now read rul_prediction_bands: the point value is
     the mean of each cell's latest prediction and the range is the
-    mean of each cell's own 10th/90th interval, so p10 < value < p90
+    mean of each cell's own reference spread, so p10 < value < p90
     and neither equals the old constants.
     """
 
@@ -139,12 +139,12 @@ def test_rul_prediction_bands_are_ordered_and_from_database():
     names = [c["text"] for c in frame["columns"]]
 
     assert names[3:6] == [
-        "Predicted Discharges", "10th Percentile", "90th Percentile",
+        "Predicted Discharges", "Reference Spread Low", "Reference Spread High",
     ]
 
     predicted = names.index("Predicted Discharges")
-    p10 = names.index("10th Percentile")
-    p90 = names.index("90th Percentile")
+    p10 = names.index("Reference Spread Low")
+    p90 = names.index("Reference Spread High")
 
     assert frame["rows"]
 

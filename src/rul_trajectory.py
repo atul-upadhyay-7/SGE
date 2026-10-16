@@ -96,8 +96,10 @@ class TrajectoryRul:
         Remaining discharges predicted by EVERY reference cell, from
         recent predicted SOH values (most recent last). None without
         references. The spread of these values across references is
-        the honest prediction interval: it says how much the answer
-        depends on which reference curve you happen to match.
+        the reference spread: it says how much the answer depends on
+        which reference curve you happen to match. It is not a
+        calibrated predictive interval, and its empirical coverage
+        is measured in evaluate_loco rather than assumed.
         """
 
         if not self.refs or len(recent_soh) == 0:
@@ -245,9 +247,11 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
             err_t.append(abs(e - truth))
             err_f.append(abs(f - truth))
 
-            # Empirical coverage of the 10th/90th band against the
-            # real remaining life: does the interval that ships on
-            # the dashboard actually contain the truth?
+            # Empirical coverage of the 10th/90th reference spread
+            # against the real remaining life: does the interval that
+            # ships on the dashboard actually contain the truth? It is
+            # a reference spread, not a calibrated band, so this number
+            # is expected to miss the nominal ~80%.
             p10, p90 = np.percentile(dist, [10.0, 90.0])
 
             widths.append(p90 - p10)
@@ -281,12 +285,13 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
 
 def prediction_bands(df, preds, cells=None, threshold=THRESHOLD, start=10):
     """
-    Per-cycle RUL point estimate with a real prediction interval.
+    Per-cycle RUL point estimate with the reference spread.
 
     For each held-out cell the reference set is the OTHER cells, so
-    the band that ends up on the dashboard is produced by exactly
+    the spread that ends up on the dashboard is produced by exactly
     the leave-one-cell-out protocol the reported MAE is measured
-    under. Columns: cell_id, cycle, predicted_rul, rul_p10, rul_p90.
+    under. It is a reference spread, not a calibrated interval.
+    Columns: cell_id, cycle, predicted_rul, rul_p10, rul_p90.
     """
 
     cells = sorted(cells) if cells is not None else sorted(df["cell_id"].unique())

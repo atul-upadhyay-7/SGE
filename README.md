@@ -96,7 +96,7 @@ B0053 is the only G9 cell the audit keeps, so its row is that cell alone, never 
 ### RUL Prediction (Remaining Useful Life)
 
 <!-- make_report:rul -->
-| Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE | 10th-90th coverage | Mean band width |
+| Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE | Reference-spread coverage | Mean reference-spread width |
 |---|---|---|---|---|---|
 | B0005 | 106 | 7.1 | 24.8 | 93.8% | 25.8 |
 | B0006 | 60 | 51.1 | 46.0 | 0.0% | 25.5 |
@@ -106,6 +106,8 @@ B0053 is the only G9 cell the audit keeps, so its row is that cell alone, never 
 <!-- make_report:rul:end -->
 
 > **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.
+
+> **The interval is a reference spread, not a calibrated band.** The `rul_p10`/`rul_p90` values are the 10th and 90th percentiles of the remaining-life estimates produced by the *reference cells* a curve is matched against, so they say how much the answer depends on which reference you match — nothing more. The column above reports the empirical coverage of that spread against the real remaining life: it is 48.3% on average, not the ~80% a "10th–90th" label would imply. B0006 is the worst case at 0.0%: it fades faster than every reference cell (0.309 %/discharge, the steepest of the four) and retires far sooner, so the matcher, reading its remaining life off reference curves that aged more slowly, over-predicts what is left and the true value lands below the low end of the spread at every point. That is a limitation of matching one cell against reference curves that retired later, and it is reported rather than hidden.
 
 ### Battery Degradation Characteristics
 
@@ -773,10 +775,12 @@ amount of tuning removes them.
 
 5. **The RUL trajectory method does not win everywhere.** It beats
    the fleet-lifetime baseline on the mean, but it loses on B0006
-   (see the RUL table). With three training trajectories, the
-   held-out cell's own future behaviour dominates. The usable
-   RUL-family output is the per-cell fade rate plus the trajectory
-   estimate, not a claim of uniform superiority.
+   (see the RUL table). Its interval is a reference spread, not a
+   calibrated band, and on B0006 it is 0% — the whole spread sits
+   above the truth, as explained under the RUL table. With three
+   training trajectories, the held-out cell's own future behaviour
+   dominates. The usable RUL-family output is the per-cell fade rate
+   plus the trajectory estimate, not a claim of uniform superiority.
 
 6. **Streaming versus offline cycle index.** Offline `cycle` is
    the raw array index; streaming `cycle` is the discharge
