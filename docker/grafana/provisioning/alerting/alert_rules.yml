@@ -3,6 +3,11 @@
 # The temperature bound is the maximum peak temperature in the clean
 # training dataset (63.0242 C), read from nasa_ml_dataset_clean.csv.
 # Every rule is query -> reduce(last) -> threshold(condition).
+#
+# The query datasource is Prometheus (uid battery-pdm-prom), not the JSON-datasource
+# plugin, because that plugin declares "alerting": false and Grafana's
+# alerting engine cannot evaluate it. noDataState and execErrState are
+# Alerting so a dead datasource is visible, not silently OK.
 apiVersion: 1
 
 groups:
@@ -20,9 +25,12 @@ groups:
             relativeTimeRange:
               from: 3600
               to: 0
-            datasourceUid: battery-pdm-ds
+            datasourceUid: battery-pdm-prom
             model:
-              target: live_soh_by_cycle
+              editorMode: code
+              expr: battery_pdm_cell_soh_percent
+              instant: false
+              range: true
           - refId: B
             queryType: ""
             datasourceUid: __expr__
@@ -40,8 +48,8 @@ groups:
                 - evaluator:
                     params: [80.0]
                     type: lt
-        noDataState: OK
-        execErrState: OK
+        noDataState: Alerting
+        execErrState: Alerting
         for: 0s
         annotations:
           summary: Battery cell SOH has dropped below the 80% retirement threshold.
@@ -57,9 +65,12 @@ groups:
             relativeTimeRange:
               from: 3600
               to: 0
-            datasourceUid: battery-pdm-ds
+            datasourceUid: battery-pdm-prom
             model:
-              target: live_temperature_by_cycle
+              editorMode: code
+              expr: battery_pdm_cell_peak_temperature_celsius
+              instant: false
+              range: true
           - refId: B
             queryType: ""
             datasourceUid: __expr__
@@ -77,8 +88,8 @@ groups:
                 - evaluator:
                     params: [63.0242]
                     type: gt
-        noDataState: OK
-        execErrState: OK
+        noDataState: Alerting
+        execErrState: Alerting
         for: 0s
         annotations:
           summary: Cell peak temperature exceeds the 63.0242 C maximum the SOH model trained on.

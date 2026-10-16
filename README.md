@@ -561,6 +561,8 @@ dashboard (10 panels: SOH/RUL degradations, predicted-vs-actual,
 model summaries, anomaly residuals/fade-rate + events). It needs
 the `simpod-json-datasource` plugin (v0.6.7+, already in
 `/var/lib/grafana/plugins` here) and the Flask API from Step 7.
+A second, **Battery PDM Prometheus** datasource is provisioned for
+the alert rules; see [Alert rules](#alert-rules).
 
 Open **[http://localhost:3050/d/battery-pdm-dash/battery-pdm-grafana](http://localhost:3050/d/battery-pdm-dash/battery-pdm-grafana)**
 directly to skip the dashboard list. Credentials are
@@ -643,14 +645,29 @@ Each rule is a three-node pipeline, `query → reduce(last) →
 threshold`, with the threshold as the condition, so Grafana reduces
 a multi-point series to the single value it compares.
 
-One honest caveat: the datasource is `simpod-json-datasource`, whose
-plugin declares `"alerting": false`. It is a frontend-only plugin, so
-Grafana's own alerting engine cannot query it (`plugin.unavailable`),
-and the rule never evaluates inside Grafana. `scripts/check_alerts.py`
-therefore reproduces exactly that logic — query the live target,
-reduce to the last value, compare to the bound — against the same
-JSON API, and reports FIRING/normal. On the current live data the
-SOH rule fires. Run it with `python scripts/check_alerts.py`.
+The alert query goes to a **Prometheus** datasource (uid
+`battery-pdm-prom`), not to the JSON-datasource plugin. That plugin
+declares `"alerting": false` and `"backend": false`, so Grafana's
+alerting engine cannot query it (`plugin.unavailable`) and a rule on
+it would never be evaluated. Instead `dashboard/alert_exporter.py`
+serves the latest per-cell gauges (`battery_pdm_cell_soh_percent`,
+`battery_pdm_cell_peak_temperature_celsius`, `battery_pdm_cell_resistance_ohm`)
+from `data/live_pack.db`, Prometheus scrapes it, and Grafana reads
+Prometheus. Both `noDataState` and `execErrState` are `Alerting`, so
+a dead or erroring datasource is visible instead of looking healthy.
+
+Grafana evaluates the rules itself. After replaying the NASA cells
+with an injected thermal fault, Grafana's own alert API reports both
+rules healthy and firing — one alert instance per failing cell:
+
+```bash
+curl -s -u admin:admin \
+  'http://localhost:3050/api/prometheus/grafana/api/v1/rules'
+```
+
+`scripts/grafana_alerts.py` prints the same health and state per
+rule, and `tests/test_alert_datasource.py` fails if any rule queries
+a plugin whose `plugin.json` has `"alerting": false`.
 
 ## Dashboard
 
@@ -836,6 +853,6 @@ python run_pipeline.py --skip-train
 
 The driver backs up models/results and writes per-stage logs and quality-gate reports. `--quick` is a smoke test, not the headline 20-iteration result. `--only` is diagnostic and never claims a full training pass. The quality gates are smoke checks on four NASA cells, not client acceptance or hardware validation. Run `python -m pytest -q` for the current test count, and `bash scripts/verify.sh` to re-verify a clean clone end to end.
 
-Synthetic resistance-spike and thermal rules detected all injected faults, with zero clean resistance/thermal flags. Other pack rules fire frequently on this dataset; do not claim zero overall false alarms. The Grafana alert rules are structured correctly (`query → reduce → threshold`) and their temperature bound is generated from the training data, but the JSON datasource plugin cannot back alerting (`"alerting": false`), so they are exercised by `scripts/check_alerts.py` rather than by Grafana's own engine. Real pack data, variable-load validation, and ESP32 hardware are still unverified. The retirement threshold stays at 80% pending the team decision; the older tracker plan says 70%.
+Synthetic resistance-spike and thermal rules detected all injected faults, with zero clean resistance/thermal flags. Other pack rules fire frequently on this dataset; do not claim zero overall false alarms. The Grafana alert rules are structured correctly (`query → reduce → threshold`), their temperature bound is generated from the training data, and Grafana's own engine evaluates them: the alert path uses a Prometheus datasource fed by `dashboard/alert_exporter.py`, not the JSON-datasource plugin, whose `plugin.json` has `"alerting": false`. Both rules were observed `health: ok` and `state: firing` on the demo fault, and `tests/test_alert_datasource.py` guards the datasource choice. Real pack data, variable-load validation, and ESP32 hardware are still unverified. The retirement threshold stays at 80% pending the team decision; the older tracker plan says 70%.
 
 Repository size: `.git` is about 226 MB because the NASA dataset and the trained models were committed early. They are ignored now (`*.mat`, `BMS Dataset/`, `data/raw/`) but the blobs stay in history, and the history is not rewritten; see the size note in `CHANGES.md`. A fresh clone downloads all of it.

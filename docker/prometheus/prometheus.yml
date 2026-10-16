@@ -1,0 +1,15 @@
+# Prometheus for the battery-pack demo.
+#
+# It scrapes the exporter (dashboard/alert_exporter.py), which serves
+# the latest per-cell SOH, peak temperature and resistance from
+# data/live_pack.db. Grafana's built-in Prometheus datasource reads
+# this and the provisioned alert rules query it, so the alerts are
+# evaluated by Grafana's own engine rather than by a script.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: battery_pdm
+    static_configs:
+      - targets: ["exporter:9101"]

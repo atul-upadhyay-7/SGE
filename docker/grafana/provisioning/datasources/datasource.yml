@@ -1,8 +1,19 @@
 apiVersion: 1
 datasources:
+  # Dashboard panels: the JSON API (frontend-only plugin, no alerting).
   - name: Battery PDM
     uid: battery-pdm-ds
     type: simpod-json-datasource
     access: proxy
     url: http://api:8099
     isDefault: true
+  # Alert rules: Prometheus (backend datasource, full alerting support).
+  - name: Battery PDM Prometheus
+    uid: battery-pdm-prom
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 5s

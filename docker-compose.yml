@@ -9,8 +9,14 @@
 #
 # `dns` is set explicitly below because the default Docker embedded
 # resolver forwards to the host's systemd-resolved stub (127.0.0.53),
-# which is unreachable from inside a container; Grafana then cannot
-# fetch its JSON-datasource plugin at first boot.
+#      which is unreachable from inside a container; Grafana then cannot
+#      fetch its JSON-datasource plugin at first boot.
+#
+# Dashboard panels read the JSON API (api). Alerts read Prometheus:
+# the exporter serves the live per-cell gauges, Prometheus scrapes it,
+# and Grafana's built-in Prometheus datasource backs the alert rules,
+# because the JSON-datasource plugin cannot run alerts ("alerting":
+# false).
 #
 # STATUS: run with Docker on a host with the daemon up; the core stack
 # and the demo profile both start, and Grafana serves the provisioned
@@ -45,12 +51,27 @@ services:
     command: python src/pack/bridge.py --host mosquitto
     depends_on: [mosquitto]
 
-  api:                       # JSON datasource for Grafana
+  api:                       # JSON datasource for Grafana panels
     <<: *app
     command: python dashboard/grafana_api.py
     environment:
       PDM_API_HOST: 0.0.0.0
     ports: ["127.0.0.1:8099:8099"]
+
+  exporter:                  # Prometheus exporter feeding Grafana's alert engine
+    <<: *app
+    command: python dashboard/alert_exporter.py
+    environment:
+      PDM_EXPORTER_HOST: 0.0.0.0
+    ports: ["127.0.0.1:9101:9101"]
+    depends_on: [bridge]
+
+  prometheus:                # backend datasource Grafana's alert rules query
+    image: prom/prometheus:v2.54.1
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on: [exporter]
 
   grafana:
     image: grafana/grafana-oss:11.2.0
@@ -64,7 +85,7 @@ services:
     volumes:
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./dashboard/provisioning/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on: [api]
+    depends_on: [api, prometheus]
 
   demo-publisher:            # stand-in for the ESP32; faults are SYNTHETIC
     <<: *app

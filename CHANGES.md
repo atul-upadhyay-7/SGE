@@ -296,6 +296,62 @@
 - A fresh clone downloads the full history; shrinking it would need
   `git filter-repo`, which this project deliberately does not run.
 
+## Step 14 — Grafana alerts are evaluated by Grafana itself
+
+- Fixed the Step 12 caveat instead of documenting it. The rules no
+  longer query the frontend-only JSON plugin.
+- Added `dashboard/alert_exporter.py`, a standard-library Prometheus
+  exporter that serves the latest per-cell gauges from
+  `data/live_pack.db` (written by the pack bridge):
+  `battery_pdm_cell_soh_percent`,
+  `battery_pdm_cell_peak_temperature_celsius`,
+  `battery_pdm_cell_resistance_ohm`, `battery_pdm_cell_discharge_cycle`.
+- Added Prometheus itself: `docker/prometheus/prometheus.yml` (5 s
+  scrape) and `exporter` + `prometheus` services in
+  `docker-compose.yml`.
+- Provisioned a second datasource, **Battery PDM Prometheus** (uid
+  `battery-pdm-prom`), in both provisioning trees. Dashboard panels
+  still use the JSON datasource; the alert queries use Prometheus,
+  which is a backend datasource with full alerting support.
+- Rewrote `scripts/make_alert_rules.py`: the query node's
+  `datasourceUid` is `battery-pdm-prom` and `model.expr` is the
+  Prometheus metric, and `noDataState` / `execErrState` are
+  `Alerting` (they were `OK`), so a datasource that is down or
+  erroring reports a problem instead of looking healthy.
+- Removed `scripts/check_alerts.py` and `tests/test_check_alerts.py`.
+  A script that re-implements the rule logic proves nothing about
+  Grafana. Added `scripts/grafana_alerts.py`, which reads Grafana's
+  own `GET /api/prometheus/grafana/api/v1/rules` and prints each
+  rule's health and state.
+- Added `tests/test_alert_datasource.py`: it resolves every rule's
+  datasource to its plugin and fails when the plugin's `plugin.json`
+  has `"alerting": false` (reading the real manifest where present,
+  with a committed fallback), so the alert path cannot silently
+  regress to the JSON plugin.
+
+- Firing proof — from `docker compose up -d` and replaying the NASA
+  cells with `--fault CELL3:thermal:60`, then Grafana's own alert API:
+
+  ```
+  $ python scripts/grafana_alerts.py --url http://localhost:3050 --user admin --password admin
+  alert rules from http://localhost:3050/api/prometheus/grafana/api/v1/rules
+
+  rule                                            health  state
+  Battery SOH Below Retirement Threshold              ok  firing
+  Inputs Outside Trained Operational Range            ok  firing
+
+  $ curl -s -u admin:admin 'http://localhost:3050/api/prometheus/grafana/api/v1/rules' \
+      | python3 /tmp/gstatus.py
+  Battery SOH Below Retirement Threshold        health=  ok state=  firing alerting_cells=['CELL1']
+  Inputs Outside Trained Operational Range      health=  ok state=  firing alerting_cells=['CELL3']
+  ```
+
+  Both rules report `health: "ok"`, so Grafana's engine evaluated
+  them, and `state: "firing"`, with one alert instance per failing
+  cell (SOH on CELL1, temperature on CELL3). The initial evaluation
+  before any data exists is a NoData alert (a consequence of
+  `noDataState: Alerting`) and resolves once the exporter has data.
+
 ---
 
 ## Final performance & baseline comparison
@@ -1714,15 +1770,7 @@ verify.sh: ALL CHECKS PASSED
    fix, the per-cell failure.
 3. The online double-exponential fit was not re-validated; where it
    cannot be backed by a CSV it is marked legacy rather than reported.
-4. Grafana alert rules are provisioned
-   (`dashboard/provisioning/alerting/alert_rules.yml` and the docker
-   copy) with the correct query → reduce → threshold structure and a
-   data-driven temperature bound, but Grafana still cannot run them:
-   the `simpod-json-datasource` plugin sets `"alerting": false`, so
-   the alerting engine reports `plugin.unavailable` for every query.
-   The rule logic itself is exercised by `scripts/check_alerts.py`
-   against the live JSON API (the SOH rule fires: last in-service SOH
-   < 80), but no notification was delivered by Grafana's own engine.
-   Making that work needs a backend datasource that supports alerting
-   (e.g. a SQLite datasource over `data/live_pack.db`), which is not
-   installed here.
+4. Grafana alerts are now evaluated by Grafana's own engine (Step 14)
+   through the Prometheus datasource. What is still not verified: no
+   notification contact point (email/webhook) is configured, so a rule
+   fires in Grafana but is not delivered anywhere.
