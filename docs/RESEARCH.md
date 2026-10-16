@@ -54,10 +54,15 @@ Measured on synthetic faults it finds resistance spikes but is weaker on thermal
 Retirement is 80% of initial capacity (the PdM brief's threshold; the tracker
 sheet says 70%, which is inconsistent and should be corrected one way or the
 other). RUL uses reference-trajectory matching, evaluated leave-one-cell-out:
-mean MAE 21.0 vs 32.7 discharges for a fleet-lifetime baseline. It loses on B0006
-(48.4 vs 42.0), the fast-fading cell. Straight-line extrapolation of the recent
-fade was far worse (MAE above 100) and is not used. With four cells this is a
-demonstration, not a validated life model.
+mean MAE about 20.5 vs 34.3 discharges for a fleet-lifetime baseline. It loses
+on B0006 to a straight-line early-fade extrapolation, which beats it there.
+Neither method dominates, so both are shown on every held-out cell and their
+disagreement (about 64 discharges on the mean) is reported as the indicative
+uncertainty rather than choosing the winning method per cell. With four cells
+this is a demonstration, not a validated life model. RUL is also not limited to
+G1: the random-load cells B0039, B0042, B0043 and B0044 reach 80% under the same
+rule and are excluded only because their load and temperature change across the
+record.
 
 ## SOH model and leakage
 

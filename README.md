@@ -10,7 +10,7 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 | Limit | What it means |
 |---|---|
 | **9 of 19 cells kept** | The audit keeps nine cells (G1×4, G3×4, G9×1); ten are excluded for a raised SOH ceiling or a capacity that rises across the record. The re-reference check shows the exclusion is not a reference artifact. |
-| **RUL only on G1** | Remaining-life labels need a cell that reaches 80% SOH; only the four G1 cells do, so every RUL number is leave-one-cell-out over three training trajectories. |
+| **RUL is indicative, and not only on G1** | Remaining-life labels need a cell that reaches 80% SOH. The four G1 cells do, so each is scored leave-one-cell-out over the other three trajectories, but four random-load cells (B0039, B0042, B0043, B0044) also reach 80% and are kept out of the model only because their load and temperature change across the record. Two RUL methods disagree by 63.8 discharges on the mean, so every RUL number is reported as indicative, not a forecast. |
 | **Alerts** | Grafana evaluates the rules itself through a Prometheus exporter and they fire on the injected fault; firing alerts are delivered to a provisioned local webhook contact point (`alert-sink` in the compose stack), so the notification path is exercised end to end. No external email/pager endpoint is configured. |
 | **Model versus formula** | A full discharge is Coulomb counting (a formula, no model). The partial window is the only place a model is scored against the window formula; the full-feature SOH benchmark is offline and is not the online estimator. |
 
@@ -155,9 +155,11 @@ When the full discharge is available, SOH is read directly from the measured cap
 | D — window features only | 5 | 1.86 | 2.57 |
 <!-- make_report:results:end -->
 
-### RUL Prediction (Remaining Useful Life)
+### RUL Prediction (Remaining Useful Life, Indicative)
 
 <!-- make_report:rul -->
+> **Indicative, not a forecast.** Every remaining-life number here is an estimate from a handful of reference trajectories under one load. It says where a cell sits on the average ageing path, not what will happen to that particular cell.
+
 | Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE | Reference-spread coverage | Mean reference-spread width |
 |---|---|---|---|---|---|
 | B0005 | 106 | 7.1 | 24.8 | 93.8% | 25.8 |
@@ -166,19 +168,19 @@ When the full discharge is available, SOH is read directly from the measured cap
 | B0018 | 77 | 6.5 | 29.0 | 82.1% | 20.3 |
 | **Mean** | — | 20.5 | 34.3 | 48.3% | 21.6 |
 
-#### Trajectory matching versus early-fade extrapolation
+#### Both methods, side by side on every held-out cell
 
-The matcher was also scored against a fade-rate extrapolation: a straight line through the first 20 measured SOH values of the cell, extended to the retirement threshold. Both are leave-one-cell-out and use the same held-out discharges, so the columns are comparable.
+The matcher was also scored against a fade-rate extrapolation: a straight line through the first 20 measured SOH values of the cell, extended to the retirement threshold. Both are leave-one-cell-out and use the same held-out discharges, so the columns are comparable. The last numeric column is the mean absolute gap between the two methods over those discharges.
 
-| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | Fleet-lifetime baseline MAE |
-|---|---|---|---|
-| B0005 | 7.1 | 76.9 | 24.8 |
-| B0006 | 51.1 | 8.0 | 46.0 |
-| B0007 | 17.5 | 90.8 | 37.5 |
-| B0018 | 6.5 | 8.2 | 29.0 |
-| **Mean** | 20.5 | 46.0 | 34.3 |
+| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | Method disagreement | Fleet-lifetime baseline MAE |
+|---|---|---|---|---|
+| B0005 | 7.1 | 76.9 | 81.4 | 24.8 |
+| B0006 | 51.1 | 8.0 | 59.1 | 46.0 |
+| B0007 | 17.5 | 90.8 | 107.1 | 37.5 |
+| B0018 | 6.5 | 8.2 | 7.5 | 29.0 |
+| **Mean** | 20.5 | 46.0 | 63.8 | 34.3 |
 
-Trajectory matching wins the mean and three of the four cells. The extrapolation wins exactly one cell, B0006, and loses badly on B0005 and B0007: B0006 fades almost linearly from its first discharge, so its early line already points near the right end of life, whereas B0005 and B0007 hold their capacity and then drop through a late knee, so the same line places end of life far too late and the estimate overshoots. Neither method dominates, so trajectory matching stays the default and the extrapolation is kept here as the reported loser overall and the one case it wins.
+No method is chosen per cell, and no cell is scored with the method that happens to win it: that would be reading the answer off the test set. Instead both methods are shown on every held-out cell and their disagreement is reported as the uncertainty. It is large — 63.8 discharges on the mean, and 107.1 on B0007 — because a line that overshoots a late knee and a matcher that follows reference curves can disagree by an entire lifetime. That width, not a point estimate, is the honest statement about RUL on four cells, and it is why the whole task is labelled indicative.
 
 #### Calibrating a real 10th-to-90th band
 
@@ -193,6 +195,10 @@ The reference-spread band above is a quantile of the reference cells' remaining 
 | **Mean** | — | — | — | — | 57.0% |
 
 A 10th-to-90th band should cover four discharges in five, and this one misses by a wide margin and swings from 0.0% to 100.0% across cells. It is not fixable here: only three cells calibrate any held-out band, and one cell's residuals are correlated across its discharges, so the effective calibration sample is closer to three than to the number of points. A trustworthy calibrated band needs more cells than the four in G1; the reference spread remains the only band this dataset supports.
+
+#### More cells that reach 80%? Yes, in the random-load groups
+
+RUL needs a cell that actually reaches the retirement threshold, so the groups the model leaves out were checked against the same SOH rule rather than assumed dead. The NASA random-load groups G5 (B0038-B0040) and G6 (B0041-B0044) were run through it: 7 cells checked, 5 reach 80%, and 4 of those also pass the same ceiling/rise keep filter (B0039, B0042, B0043, B0044). So the claim that only the four G1 cells reach 80% is false in general: four more cells do. They are still not added to the model, because their load and temperature change across the record, so their features are not comparable at a single operating condition — the reason they were left out is comparability, not ageing. B0041 reaches 80% too but is excluded, because the very-low-capacity runs the dataset's own notes flag corrupt its early reference capacity, so its SOH never has a trustworthy baseline.
 <!-- make_report:rul:end -->
 
 > **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.
@@ -419,11 +425,14 @@ operator. Data-hungry dev tests live in `tests/` (`pytest`).
 │       ├── rul_results.csv                # RUL model scores
 │       ├── rul_trajectory_results.csv     # Trajectory matching + reference spread
 │       ├── rul_method_comparison.csv      # Trajectory vs fade-rate extrapolation
+│       ├── rul_extrapolation_bands.csv    # Per-discharge extrapolation estimate
+│       ├── rul_method_disagreement.csv    # Trajectory vs extrapolation gap per cell
 │       ├── rul_band_calibration.csv       # Leave-one-cell-out band calibration
 │       ├── rul_degradation_rates.csv      # Cell degradation characteristics
 │       ├── rul_null_baselines.csv         # RUL constant baselines
 │       ├── rul_predictions_*.csv          # Per-cell RUL predictions
 │       ├── data_quality_report.csv/.json  # Data audit (cells, rows, fade, duplicates)
+│       ├── random_load_rul_check.csv      # Do B0038-B0044 reach 80%? (count only)
 │       └── soh_latency_benchmark.csv      # Measured inference latency
 ├── models/
 │   ├── soh_xgb_*.joblib                  # SOH models (per-cell + global)
@@ -432,6 +441,7 @@ operator. Data-hungry dev tests live in `tests/` (`pytest`).
 │   ├── load_data.py                      # .mat file parser → raw features
 │   ├── preprocessing.py                  # Data cleaning, target computation
 │   ├── data_quality.py                   # Dataset audit, fails loudly on a bad table
+│   ├── random_load.py                    # Random-load cells: do they reach 80%?
 │   ├── features.py                       # Feature list, extraction, leakage guards
 │   ├── evaluation.py                     # Shared scoring and LOCO protocol
 │   ├── train_soh.py                      # SOH model training pipeline
@@ -881,7 +891,7 @@ All models use **leave-one-cell-out (LOCO)** cross-validation: one cell is held 
 ### RUL Model
 
 - **Challenge:** With few cells, the model has very few examples of full degradation trajectories. RUL is dominated by the held-out cell's own future behavior.
-- **Finding:** The trajectory-matching method beats the fleet-lifetime baseline on the mean but not on every cell; a plain cycle-level regression does not beat a constant. It also loses on the fast-fading B0006 to a simple early-fade extrapolation, which the RUL table reports as well. The degradation rate analysis provides per-cell fade rates, and the trajectory method provides the remaining-life estimate. See the RUL table for the current numbers.
+- **Finding:** The trajectory-matching method beats the fleet-lifetime baseline on the mean but not on every cell; a plain cycle-level regression does not beat a constant. It also loses on the fast-fading B0006 to a simple early-fade extrapolation. Rather than pick the winning method per cell, the RUL table shows both methods on every held-out cell and reports their disagreement (63.8 discharges on the mean) as the indicative uncertainty. The degradation rate analysis provides per-cell fade rates, and the trajectory method provides the remaining-life estimate. See the RUL table for the current numbers.
 
 ---
 
@@ -942,17 +952,25 @@ amount of tuning removes them.
    never exhibited. It is reported, not hidden, and B0006 is not
    deleted to improve the score.
 
-5. **The RUL trajectory method does not win everywhere.** It beats
-   the fleet-lifetime baseline on the mean, but it loses on B0006
-   to the early-fade extrapolation (see the RUL table). Its interval
-   is a reference spread, not a calibrated band, and on B0006 it is
-   0% — the whole spread sits above the truth. Calibrating a real
-   10th-to-90th band from the other cells does not work here either:
-   it swings from 0% to 100% across held-out cells, because only
-   three cells calibrate any band and a cell's residuals are
-   correlated across discharges, so the effective calibration sample
-   is closer to three than to the number of points. With three
-   training trajectories, the held-out cell's own future behaviour
+5. **RUL is indicative, and the two methods disagree.** Trajectory
+   matching beats the fleet-lifetime baseline on the mean, but it
+   loses on B0006 to the early-fade extrapolation. Neither method
+   dominates, so no per-cell method is chosen: both are shown on
+   every held-out cell and their disagreement (63.8 discharges on
+   the mean, 107.1 on B0007) is reported as the uncertainty. That
+   width is why RUL is labelled indicative rather than a forecast.
+   Its interval is a reference spread, not a calibrated band, and
+   on B0006 it is 0% — the whole spread sits above the truth.
+   Calibrating a real 10th-to-90th band from the other cells does
+   not work here either: it swings from 0% to 100% across held-out
+   cells, because only three cells calibrate any band and a cell's
+   residuals are correlated across discharges, so the effective
+   calibration sample is closer to three than to the number of
+   points. RUL also does not depend on G1 alone: the random-load
+   cells B0039, B0042, B0043 and B0044 reach 80% and pass the same
+   keep filter, and are left out only because their load and
+   temperature change across the record. With three training
+   trajectories, the held-out cell's own future behaviour
    dominates. The usable RUL-family output is the per-cell fade rate
    plus the trajectory estimate, not a claim of uniform superiority.
 

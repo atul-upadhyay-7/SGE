@@ -79,6 +79,12 @@ Added a data-quality study to `src/data_cleaning.py` — `reference_capacity` na
 
 ---
 
+## Step 18 — RUL, honestly: indicative, both methods, and cells beyond G1
+
+`src/rul_trajectory.py` now factors the fade-rate extrapolation into a shared `_implied_eol` (so the estimate that is scored and the one the dashboard draws cannot drift), adds `extrapolation_bands` (per held-out cell and discharge, the extrapolation's implied remaining life, `data/processed/rul_extrapolation_bands.csv`) and `method_disagreement_loco` (per held-out cell, the mean and 90th-percentile absolute gap between the trajectory estimate and the extrapolation on the same discharges, `data/processed/rul_method_disagreement.csv`); the report now labels RUL **indicative**, shows both methods side by side on every held-out cell instead of keeping the extrapolation as a token loser, and reports the disagreement (63.8 discharges on the mean, 107.1 on B0007) as the uncertainty rather than choosing a per-cell winner. A new `src/random_load.py` runs the NASA random-load groups G5 (B0038-B0040) and G6 (B0041-B0044) through the production SOH rule and reports that 5 of 7 reach 80% and 4 (B0039, B0042, B0043, B0044) also pass the keep filter, so the "only four G1 cells reach 80%" claim is corrected to "four more cells do"; B0041 reaches 80% but is excluded because the very-low-capacity runs its notes flag corrupt its early reference capacity. `src/random_load.py` is a pipeline stage, `scripts/make_report.py` reads both new CSVs, and README (Known-limits row, RUL header, RUL Model section and Known Limitations item 5), `docs/RESEARCH.md` and this file were updated.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

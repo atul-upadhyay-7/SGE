@@ -386,6 +386,27 @@ def _traj_points(df, test_cell, pred, refs, threshold, start):
     return points, eol
 
 
+def _implied_eol(y, threshold, window):
+    """
+    End-of-life discharge implied by a straight line fitted through
+    the first `window` measured SOH values, or None when the line is
+    flat or rising (no threshold crossing ahead). Shared by the
+    scored extrapolation and the dashboard series so the estimate
+    that is scored and the one that is drawn cannot drift apart.
+    """
+
+    y = np.asarray(y, dtype=float)
+    n = min(window, len(y))
+
+    slope, intercept = np.polyfit(np.arange(n), y[:n], 1)
+
+    if slope >= 0:
+
+        return None
+
+    return float((threshold - intercept) / slope)
+
+
 def extrapolation_loco(
     df,
     threshold=THRESHOLD,
@@ -425,15 +446,11 @@ def extrapolation_loco(
             continue
 
         eol = int(np.argmax(y <= threshold))
-        n = min(window, len(y))
+        implied = _implied_eol(y, threshold, window)
 
-        slope, intercept = np.polyfit(np.arange(n), y[:n], 1)
-
-        if slope >= 0:
+        if implied is None:
 
             continue
-
-        implied = (threshold - intercept) / slope
 
         errs = [
             abs(max(implied - k, 0.0) - (eol - k))
@@ -450,6 +467,134 @@ def extrapolation_loco(
             "n_points": len(errs),
             "implied_eol": float(implied),
             "extrapolation_mae": float(np.mean(errs)),
+        })
+
+    return pd.DataFrame(out)
+
+
+def extrapolation_bands(
+    df,
+    cells=None,
+    threshold=THRESHOLD,
+    start=10,
+    window=EXTRAP_WINDOW,
+):
+    """
+    Per-cycle RUL from the fade-rate extrapolation, for the dashboard.
+
+    This is the second method drawn beside trajectory matching: a
+    straight line through the cell's first `window` measured SOH
+    values, extended to the retirement threshold. Its implied end of
+    life is a single number, so RUL at discharge index k is
+    max(implied_eol - k, 0) over the same in-service discharges the
+    extrapolation is scored on (start..eol-1). Columns: cell_id,
+    cycle, extrapolated_rul. It uses the cell's own measured SOH,
+    which a lab or full-discharge BMS has; it is not a forecast from
+    the model.
+    """
+
+    cells = sorted(cells) if cells is not None else sorted(df["cell_id"].unique())
+    out = []
+
+    for t in cells:
+
+        g = df[df["cell_id"] == t].sort_values("cycle")
+        y = g["soh"].to_numpy(dtype=float)
+        cycles = g["cycle"].to_numpy()
+
+        if not (y <= threshold).any():
+
+            continue
+
+        eol = int(np.argmax(y <= threshold))
+        implied = _implied_eol(y, threshold, window)
+
+        if implied is None:
+
+            continue
+
+        for k in range(start, eol):
+
+            out.append({
+                "cell_id": t,
+                "cycle": int(cycles[k]),
+                "extrapolated_rul": max(implied - k, 0.0),
+            })
+
+    return pd.DataFrame(out)
+
+
+def method_disagreement_loco(
+    df,
+    preds,
+    threshold=THRESHOLD,
+    start=10,
+    window=EXTRAP_WINDOW,
+):
+    """
+    How far the two RUL methods disagree, per held-out cell.
+
+    For every in-service discharge the two methods are scored on,
+    this is |trajectory estimate - extrapolation estimate|, using the
+    same point estimate and the same range as the reported MAE. The
+    mean of those differences is the disagreement the report shows as
+    the indicative uncertainty: it says how much the answer depends
+    on which method is used, not how far either is from the truth
+    (that is the reported MAE). No per-cell method is chosen; both
+    are kept. Columns: test_cell, n_points, mean_abs_disagreement,
+    p90_abs_disagreement.
+    """
+
+    cells = [
+        c for c in sorted(df["cell_id"].unique())
+        if c in preds and (df[df["cell_id"] == c]["soh"] <= threshold).any()
+    ]
+
+    all_cells = sorted(df["cell_id"].unique())
+    out = []
+
+    for t in cells:
+
+        y = (
+            df[df["cell_id"] == t]
+            .sort_values("cycle")["soh"]
+            .to_numpy(dtype=float)
+        )
+
+        eol = int(np.argmax(y <= threshold))
+        implied = _implied_eol(y, threshold, window)
+
+        if implied is None:
+
+            continue
+
+        refs = [c for c in all_cells if c != t]
+        est = TrajectoryRul.from_dataset(df, refs, threshold)
+        pred = np.asarray(preds[t], dtype=float)
+
+        diffs = []
+
+        for k in range(start, eol):
+
+            dist = est.remaining_distribution(pred[: k + 1])
+
+            if dist is None:
+
+                continue
+
+            traj = int(round(float(np.median(dist))))
+            extrap = max(implied - k, 0.0)
+            diffs.append(abs(traj - extrap))
+
+        if not diffs:
+
+            continue
+
+        out.append({
+            "test_cell": t,
+            "n_points": len(diffs),
+            "mean_abs_disagreement": float(np.mean(diffs)),
+            "p90_abs_disagreement": float(np.percentile(diffs, 90.0)),
         })
 
     return pd.DataFrame(out)
@@ -573,6 +718,21 @@ def main():
     band = calibrated_band_loco(df, pred_arrays)
     rounded(band).to_csv(proc / "rul_band_calibration.csv", index=False)
 
+    # The second method, per cycle, so the dashboard can draw both
+    # side by side on every held-out cell.
+    extrap_bands = extrapolation_bands(df, cells=cells)
+    rounded(extrap_bands).to_csv(
+        proc / "rul_extrapolation_bands.csv", index=False
+    )
+
+    # The disagreement between the two methods, the indicative
+    # uncertainty the report shows instead of picking a per-cell
+    # winner.
+    disagreement = method_disagreement_loco(df, pred_arrays)
+    rounded(disagreement).to_csv(
+        proc / "rul_method_disagreement.csv", index=False
+    )
+
     bands = prediction_bands(df, preds, cells=cells)
     rounded(bands).to_csv(proc / "rul_prediction_bands.csv", index=False)
 
@@ -610,6 +770,14 @@ def main():
             f"mean coverage {band['coverage_pct'].mean():.1f}% "
             f"from {int(band['n_calibration_cells'].iloc[0])} "
             "calibration cells"
+        )
+
+    if not disagreement.empty:
+        print("\nMethod disagreement (indicative uncertainty):")
+        print(disagreement.to_string(index=False))
+        print(
+            f"mean |trajectory - extrapolation|: "
+            f"{disagreement['mean_abs_disagreement'].mean():.1f} discharges"
         )
 
     TrajectoryRul.from_dataset(df, cells=cells).save(

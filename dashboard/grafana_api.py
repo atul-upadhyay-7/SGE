@@ -398,7 +398,7 @@ def handle_timeseries(target, scoped_vars=None):
                 "datapoints": [[r["rul_cycles_80"], cycle_to_ms(r["cycle"])] for r in rows],
             })
             series.append({
-                "target": f"Predicted RUL — {cell}",
+                "target": f"Predicted RUL (indicative) — {cell}",
                 "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
             })
 
@@ -413,6 +413,7 @@ def handle_timeseries(target, scoped_vars=None):
         # from rul_predictions_all.
         has_bands = object_exists(conn, "rul_prediction_bands")
         has_preds = object_exists(conn, "rul_predictions_all")
+        has_extrap = object_exists(conn, "rul_extrapolation_bands")
         scope = "rul_prediction_bands" if has_bands else (
             "rul_predictions_all" if has_preds else "nasa_ml_dataset"
         )
@@ -440,7 +441,7 @@ def handle_timeseries(target, scoped_vars=None):
                     "datapoints": [[r["rul_p10"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
                 series.append({
-                    "target": f"Predicted RUL — {cell}",
+                    "target": f"Predicted RUL (indicative) — {cell}",
                     "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
                 series.append({
@@ -454,9 +455,24 @@ def handle_timeseries(target, scoped_vars=None):
                     (cell,)
                 ).fetchall()
                 series.append({
-                    "target": f"Predicted RUL — {cell}",
+                    "target": f"Predicted RUL (indicative) — {cell}",
                     "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
+
+            # The second RUL method, drawn beside the trajectory
+            # estimate on the same discharges so the two are read
+            # together rather than as a single answer.
+            if has_extrap:
+                rows = conn.execute(
+                    "SELECT cycle, extrapolated_rul "
+                    "FROM rul_extrapolation_bands WHERE cell_id = ? ORDER BY cycle",
+                    (cell,)
+                ).fetchall()
+                if rows:
+                    series.append({
+                        "target": f"Early-fade Extrapolation — {cell}",
+                        "datapoints": [[r["extrapolated_rul"], cycle_to_ms(r["cycle"])] for r in rows],
+                    })
 
     elif target == "anomaly_residual_by_cycle":
         if not object_exists(conn, "anomaly_cycle_report"):
@@ -648,7 +664,7 @@ def handle_table(target, scoped_vars=None):
         return {
             "type": "table",
             "columns": [
-                {"text": "Est. Discharges Left", "type": "number"},
+                {"text": "Est. Discharges Left (indicative)", "type": "number"},
                 {"text": "Reference Spread Range", "type": "string"},
             ],
             "rows": [[round(val, 1), f"{round(lo, 1)} – {round(hi, 1)} discharges"]],
@@ -692,31 +708,51 @@ def handle_table(target, scoped_vars=None):
     elif table_name == "rul_range":
         has_bands = object_exists(conn, "rul_prediction_bands")
         has_preds = object_exists(conn, "rul_predictions_all")
+        has_extrap = object_exists(conn, "rul_extrapolation_bands")
         if not has_bands and not has_preds:
             conn.close()
             return error_table(
                 "No RUL predictions; run src/train_rul.py and "
                 "src/rul_trajectory.py."
             )
+
+        # The extrapolation column is the second RUL method, shown
+        # beside the trajectory estimate so no single method is
+        # presented as the answer. NULL when the table is absent.
+        def extrap(alias):
+            if not has_extrap:
+                return "NULL AS extrapolated"
+            return (
+                "(SELECT ROUND(e.extrapolated_rul, 1) "
+                "FROM rul_extrapolation_bands e "
+                f"WHERE e.cell_id = {alias}.cell_id "
+                f"AND e.cycle = {alias}.cycle) AS extrapolated"
+            )
+
         # Join the real leave-one-cell-out band (rul_prediction_bands)
         # with the observed actual RUL (rul_predictions_all) on
         # (cell_id, cycle). Percentiles are stored, never derived from
         # the point estimate.
         scope_table = "rul_prediction_bands" if has_bands else "rul_predictions_all"
         scope_sql, scope_params = scope_filter(conn, scope_table, scoped_vars)
+        where_sql = ""
         if scope_sql:
-            scope_sql = " WHERE b." + scope_sql if (has_bands and has_preds) else " WHERE " + scope_sql
+            where_sql = (
+                " WHERE b." + scope_sql if (has_bands and has_preds)
+                else " WHERE " + scope_sql
+            )
         if has_bands and has_preds:
             rows = conn.execute(
                 "SELECT b.cell_id, b.cycle, "
                 "ROUND(p.rul_cycles_80, 1) AS actual, "
                 "ROUND(b.predicted_rul, 1) AS predicted, "
                 "ROUND(b.rul_p10, 1) AS p10, "
-                "ROUND(b.rul_p90, 1) AS p90 "
-                "FROM rul_prediction_bands b "
+                "ROUND(b.rul_p90, 1) AS p90, "
+                + extrap("b") +
+                " FROM rul_prediction_bands b "
                 "LEFT JOIN rul_predictions_all p "
                 "  ON p.cell_id = b.cell_id AND p.cycle = b.cycle"
-                + scope_sql +
+                + where_sql +
                 " ORDER BY b.cell_id, b.cycle",
                 scope_params,
             ).fetchall()
@@ -725,8 +761,9 @@ def handle_table(target, scoped_vars=None):
                 "SELECT cell_id, cycle, NULL AS actual, "
                 "ROUND(predicted_rul, 1) AS predicted, "
                 "ROUND(rul_p10, 1) AS p10, "
-                "ROUND(rul_p90, 1) AS p90 "
-                "FROM rul_prediction_bands" + scope_sql +
+                "ROUND(rul_p90, 1) AS p90, "
+                + extrap("rul_prediction_bands") +
+                " FROM rul_prediction_bands" + where_sql +
                 " ORDER BY cell_id, cycle",
                 scope_params,
             ).fetchall()
@@ -734,8 +771,9 @@ def handle_table(target, scoped_vars=None):
             rows = conn.execute(
                 "SELECT cell_id, cycle, ROUND(rul_cycles_80, 1) AS actual, "
                 "ROUND(predicted_rul, 1) AS predicted, "
-                "NULL AS p10, NULL AS p90 "
-                "FROM rul_predictions_all" + scope_sql +
+                "NULL AS p10, NULL AS p90, "
+                + extrap("rul_predictions_all") +
+                " FROM rul_predictions_all" + where_sql +
                 " ORDER BY cell_id, cycle",
                 scope_params,
             ).fetchall()
@@ -746,6 +784,7 @@ def handle_table(target, scoped_vars=None):
             {"text": "Predicted Discharges", "type": "number"},
             {"text": "Reference Spread Low", "type": "number"},
             {"text": "Reference Spread High", "type": "number"},
+            {"text": "Early-fade Extrapolation", "type": "number"},
         ]
         rows_data = [list(r) for r in rows]
         conn.close()

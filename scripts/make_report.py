@@ -53,7 +53,9 @@ REQUIRED = {
     "soh_null": PROC / "soh_null_baselines.csv",
     "rul_trajectory": PROC / "rul_trajectory_results.csv",
     "rul_comparison": PROC / "rul_method_comparison.csv",
+    "rul_disagreement": PROC / "rul_method_disagreement.csv",
     "rul_band": PROC / "rul_band_calibration.csv",
+    "random_load": PROC / "random_load_rul_check.csv",
     "full_discharge": EXP / "soh_full_discharge.csv",
     "partial_discharge": EXP / "soh_partial_discharge.csv",
     "partial_transfer": EXP / "soh_partial_transfer.csv",
@@ -687,8 +689,15 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
     return "\n".join(lines)
 
 
-def build_rul(rul, comparison, band):
+def build_rul(rul, comparison, disagreement, band, random_load):
     lines = []
+    lines.append(
+        "> **Indicative, not a forecast.** Every remaining-life number here "
+        "is an estimate from a handful of reference trajectories under one "
+        "load. It says where a cell sits on the average ageing path, not "
+        "what will happen to that particular cell."
+    )
+    lines.append("")
     lines.append(
         "| Held-out cell | EOL discharge | Trajectory MAE | "
         "Fleet-lifetime baseline MAE | Reference-spread coverage | "
@@ -739,7 +748,7 @@ def build_rul(rul, comparison, band):
     )
 
     lines.append("")
-    lines.append("#### Trajectory matching versus early-fade extrapolation")
+    lines.append("#### Both methods, side by side on every held-out cell")
     lines.append("")
     lines.append(
         "The matcher was also scored against a fade-rate extrapolation: "
@@ -747,21 +756,28 @@ def build_rul(rul, comparison, band):
         f"{ph('rc_window', int(comparison['window'].iloc[0]), 'd')} measured "
         "SOH values of the cell, extended to "
         "the retirement threshold. Both are leave-one-cell-out and use the "
-        "same held-out discharges, so the columns are comparable."
+        "same held-out discharges, so the columns are comparable. The last "
+        "numeric column is the mean absolute gap between the two methods "
+        "over those discharges."
     )
     lines.append("")
     lines.append(
         "| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | "
-        "Fleet-lifetime baseline MAE |"
+        "Method disagreement | Fleet-lifetime baseline MAE |"
     )
-    lines.append("|---|---|---|---|")
+    lines.append("|---|---|---|---|---|")
+    disagree = disagreement.set_index("test_cell")
     for _, row in comparison.sort_values("test_cell").iterrows():
         cell = str(row["test_cell"]).lower()
+        gap = float(disagree.loc[row["test_cell"], "mean_abs_disagreement"])
         record("RUL", "trajectory", f"comparison {row['test_cell']}", "MAE",
                row["trajectory_mae"], "discharges", REQUIRED["rul_comparison"])
         record("RUL", "early-fade extrapolation", f"comparison {row['test_cell']}",
                "MAE", row["extrapolation_mae"], "discharges",
                REQUIRED["rul_comparison"])
+        record("RUL", "method disagreement", f"comparison {row['test_cell']}",
+               "mean absolute disagreement", gap, "discharges",
+               REQUIRED["rul_disagreement"])
         record("RUL", "fleet lifetime baseline", f"comparison {row['test_cell']}",
                "MAE", row["fleet_lifetime_baseline_mae"], "discharges",
                REQUIRED["rul_comparison"])
@@ -769,28 +785,36 @@ def build_rul(rul, comparison, band):
             f"| {row['test_cell']} | "
             f"{ph('rul_' + cell + '_traj_mae', float(row['trajectory_mae']), '.1f')} | "
             f"{ph('rc_' + cell + '_extrap_mae', float(row['extrapolation_mae']), '.1f')} | "
+            f"{ph('rc_' + cell + '_gap', gap, '.1f')} | "
             f"{ph('rul_' + cell + '_base_mae', float(row['fleet_lifetime_baseline_mae']), '.1f')} |"
         )
     extrap_mean = mean(comparison["extrapolation_mae"])
+    gap_mean = mean(disagreement["mean_abs_disagreement"])
+    worst = disagreement.sort_values("mean_abs_disagreement").iloc[-1]
     record("RUL", "early-fade extrapolation", "mean (G1)", "mean MAE",
            extrap_mean, "discharges", REQUIRED["rul_comparison"])
+    record("RUL", "method disagreement", "mean (G1)",
+           "mean absolute disagreement", gap_mean, "discharges",
+           REQUIRED["rul_disagreement"])
     lines.append(
         f"| **Mean** | {ph('rul_mean_traj_mae', traj_mean, '.1f')} | "
         f"{ph('rc_mean_extrap_mae', extrap_mean, '.1f')} | "
+        f"{ph('rc_mean_gap', gap_mean, '.1f')} | "
         f"{ph('rul_mean_base_mae', base_mean, '.1f')} |"
     )
     lines.append("")
     lines.append(
-        "Trajectory matching wins the mean and three of the four cells. The "
-        "extrapolation wins exactly one cell, B0006, and loses badly on B0005 "
-        "and B0007: B0006 fades almost linearly from its first discharge, so "
-        "its early line already points near the right end of life, whereas "
-        "B0005 and B0007 hold their capacity and then drop through a late "
-        "knee, so the same line places end of life far too late and the "
-        "estimate overshoots. Neither method "
-        "dominates, so trajectory matching stays the default and the "
-        "extrapolation is kept here as the reported loser overall and the "
-        "one case it wins."
+        "No method is chosen per cell, and no cell is scored with the method "
+        "that happens to win it: that would be reading the answer off the "
+        "test set. Instead both methods are shown on every held-out cell and "
+        "their disagreement is reported as the uncertainty. It is large — "
+        f"{ph('rc_mean_gap', gap_mean, '.1f')} discharges on the mean, and "
+        f"{ph('rc_worst_gap', float(worst['mean_abs_disagreement']), '.1f')} "
+        f"on {worst['test_cell']} — because a line that overshoots a late "
+        "knee and a matcher that follows reference curves can disagree by an "
+        "entire lifetime. That width, not a point estimate, is the honest "
+        "statement about RUL on four cells, and it is why the whole task is "
+        "labelled indicative."
     )
 
     lines.append("")
@@ -839,6 +863,42 @@ def build_rul(rul, comparison, band):
         "than to the number of points. A trustworthy calibrated band needs "
         "more cells than the four in G1; the reference spread remains the "
         "only band this dataset supports."
+    )
+    reaches = int(random_load["reaches_80"].sum())
+    usable = int((random_load["reaches_80"] & random_load["keep"]).sum())
+    total = int(len(random_load))
+    threshold = int(random_load["threshold"].iloc[0])
+    record("RUL", "random-load check", "B0038-B0044", "cells checked",
+           total, "cells", REQUIRED["random_load"])
+    record("RUL", "random-load check", "B0038-B0044",
+           "retirement threshold", threshold, "percent SOH",
+           REQUIRED["random_load"])
+    record("RUL", "random-load check", "B0038-B0044", "cells reaching 80%",
+           reaches, "cells", REQUIRED["random_load"])
+    record("RUL", "random-load check", "B0038-B0044",
+           "cells reaching 80% and kept", usable, "cells",
+           REQUIRED["random_load"])
+    lines.append("")
+    lines.append("#### More cells that reach 80%? Yes, in the random-load groups")
+    lines.append("")
+    lines.append(
+        "RUL needs a cell that actually reaches the retirement threshold, so "
+        "the groups the model leaves out were checked against the same SOH "
+        "rule rather than assumed dead. The NASA random-load groups G5 "
+        f"(B0038-B0040) and G6 (B0041-B0044) were run through it: "
+        f"{ph('rl_total', total, 'd')} cells checked, "
+        f"{ph('rl_reaches', reaches, 'd')} reach "
+        f"{ph('rl_threshold', threshold, 'd')}%, and "
+        f"{ph('rl_usable', usable, 'd')} of those also pass the same "
+        "ceiling/rise keep filter (B0039, B0042, B0043, B0044). So the claim "
+        "that only the four G1 cells reach 80% is false in general: four more "
+        "cells do. They are still not added to the model, because their load "
+        "and temperature change across the record, so their features are not "
+        "comparable at a single operating condition — the reason they were "
+        "left out is comparability, not ageing. B0041 reaches 80% too but is "
+        "excluded, because the very-low-capacity runs the dataset's own notes "
+        "flag corrupt its early reference capacity, so its SOH never has a "
+        "trustworthy baseline."
     )
     return "\n".join(lines)
 
@@ -1094,7 +1154,9 @@ def main():
         build_rul(
             frames["rul_trajectory"],
             frames["rul_comparison"],
+            frames["rul_disagreement"],
             frames["rul_band"],
+            frames["random_load"],
         ),
     )
     degradation = region(

@@ -28,6 +28,8 @@ import rul_trajectory as RT  # noqa: E402
 
 COMPARISON = REPO / "data" / "processed" / "rul_method_comparison.csv"
 BAND = REPO / "data" / "processed" / "rul_band_calibration.csv"
+DISAGREEMENT = REPO / "data" / "processed" / "rul_method_disagreement.csv"
+EXTRAP_BANDS = REPO / "data" / "processed" / "rul_extrapolation_bands.csv"
 CLEAN = REPO / "data" / "processed" / "nasa_ml_dataset_clean.csv"
 
 CELLS = ("B0005", "B0006", "B0007", "B0018")
@@ -121,3 +123,49 @@ def test_calibrated_band_does_not_reach_nominal_coverage(band):
     assert b0006 == 0.0, "B0006 should still be wholly outside the band"
     assert float(band["coverage_pct"].max()) >= 80.0
     assert float(band["coverage_pct"].min()) <= 20.0
+
+
+def test_implied_eol_is_the_scored_straight_line():
+    """The scored extrapolation and the drawn one share one function,
+    so the estimate that is scored and the one on the dashboard cannot
+    drift apart."""
+    linear = np.linspace(100.0, 60.0, 41)  # crosses 80 at index 20
+    assert RT._implied_eol(linear, 80.0, 20) == pytest.approx(20.0, abs=0.6)
+    rising = np.linspace(80.0, 95.0, 40)
+    assert RT._implied_eol(rising, 80.0, 20) is None
+
+
+def test_extrapolation_bands_are_monotone_remaining_life():
+    if not CLEAN.exists():
+        pytest.skip("clean dataset not built")
+    df = pd.read_csv(CLEAN)
+    bands = RT.extrapolation_bands(df, cells=list(CELLS))
+    assert set(bands["cell_id"]) == set(CELLS)
+    assert {"cell_id", "cycle", "extrapolated_rul"} == set(bands.columns)
+    for cell in CELLS:
+        b = bands[bands["cell_id"] == cell].sort_values("cycle")
+        assert (b["extrapolated_rul"] >= 0).all()
+        assert (b["extrapolated_rul"].diff().dropna() <= 1e-9).all()
+
+
+def test_method_disagreement_is_reported_as_the_uncertainty():
+    """The report no longer picks a per-cell method; it quotes the gap
+    between the two methods. With a late-knee overshoot that gap is
+    large, which is why RUL is labelled indicative."""
+    d = _load(DISAGREEMENT)
+    assert set(d["test_cell"]) == set(CELLS)
+    assert {
+        "n_points", "mean_abs_disagreement", "p90_abs_disagreement",
+    } <= set(d.columns)
+    assert (d["mean_abs_disagreement"] >= 0).all()
+    assert (d["p90_abs_disagreement"] >= d["mean_abs_disagreement"]).all()
+    assert float(d["mean_abs_disagreement"].mean()) > 20.0, (
+        "the two methods now agree closely; the indicative framing in the "
+        "report needs revisiting"
+    )
+
+
+def test_extrapolation_bands_artifact_covers_the_held_out_cells():
+    b = _load(EXTRAP_BANDS)
+    assert set(b["cell_id"]) == set(CELLS)
+    assert b.groupby("cell_id")["cycle"].count().min() > 0

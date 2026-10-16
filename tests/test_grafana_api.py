@@ -142,6 +142,8 @@ def test_rul_prediction_bands_are_ordered_and_from_database():
         "Predicted Discharges", "Reference Spread Low", "Reference Spread High",
     ]
 
+    assert "Early-fade Extrapolation" in names
+
     predicted = names.index("Predicted Discharges")
     p10 = names.index("Reference Spread Low")
     p90 = names.index("Reference Spread High")
