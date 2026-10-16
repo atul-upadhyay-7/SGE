@@ -79,6 +79,12 @@ The same task, scored one held-out cell at a time: leave-one-cell-out within G1 
 | Train G1+G3, test B0053 | B0053 | 55 | 10.15 | 3.42 | 2.99 |
 | **Train G1+G3, test B0053 — mean** | — | — | 10.15 | 3.42 | 2.99 |
 
+#### B0053: one cell, and an R² that says the shape is not learnt
+
+![Predicted versus true SOH for B0053 over discharge index](docs/soh_partial_B0053.png)
+
+B0053 is reported as the single cell it is, plotted predicted against true SOH over discharge index rather than only averaged into a metric. The partial-window XGBoost is close in level — MAE 2.99% — but its R² is -0.86, below even a constant mean, so it does not follow the fade: the low error comes from B0053's narrow SOH range, not from tracking its trajectory. That is the honest reading of the transfer — the cell-relative features carry the operating condition's level to a cell the model has never seen, not its degradation path.
+
 #### Reference-window sensitivity (partial-discharge)
 
 The cell-relative features need a baseline from the cell's own first `n` discharges; a new cell may have very few. Rebuilding the baseline for one, two, three and five opening discharges and re-running the task:

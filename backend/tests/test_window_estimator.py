@@ -47,6 +47,7 @@ def test_window_feature_lists_match_offline_pipeline():
         estimator.WINDOW_MIN_REFERENCE_DISCHARGES
         == features.WINDOW_MIN_REFERENCE_DISCHARGES
     )
+    assert estimator.WindowRangeError is features.WindowRangeError
 
 
 def test_predict_soh_matches_saved_csv_for_b0005():
@@ -91,3 +92,30 @@ def test_exactly_three_early_discharges_is_allowed():
 
     assert value == value  # not NaN
     assert 0.0 < value < 120.0
+
+
+@pytest.mark.parametrize("mean_voltage", [2.5, 4.4])
+def test_input_outside_the_trained_window_is_refused(mean_voltage):
+    """
+    The model was trained only on the 4.0-3.4 V window. A window
+    whose mean voltage is outside that band has no training data, so
+    the estimator must refuse it with a clear error rather than
+    impute and return a plausible-looking number.
+    """
+
+    rows = _rows()
+
+    early = rows.head(features.WINDOW_REFERENCE_WINDOW)
+
+    out_of_band = dict(rows.iloc[10])
+
+    out_of_band["vw_voltage_mean"] = mean_voltage
+
+    with pytest.raises(estimator.WindowRangeError) as excinfo:
+
+        estimator.predict_soh(out_of_band, early)
+
+    message = str(excinfo.value)
+
+    assert "window" in message.lower()
+    assert f"{mean_voltage}" in message

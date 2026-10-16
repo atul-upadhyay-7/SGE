@@ -35,6 +35,8 @@ TRANSFER = REPO / "data" / "processed" / "experiments" / "soh_partial_transfer.c
 WINDOW = REPO / "data" / "processed" / "experiments" / "soh_partial_reference_window.csv"
 PARTIAL = REPO / "data" / "processed" / "experiments" / "soh_partial_discharge.csv"
 CLEAN = REPO / "data" / "processed" / "nasa_ml_dataset_clean.csv"
+B0053_PRED = REPO / "data" / "processed" / "soh_partial_predictions_B0053.csv"
+B0053_PLOT = REPO / "docs" / "soh_partial_B0053.png"
 
 
 def _load(path):
@@ -180,3 +182,61 @@ def test_one_discharge_baseline_hurts_the_transfer(window):
         assert mae(1, model) > mae(5, model), (
             f"{model}: one-discharge baseline did not hurt the transfer"
         )
+
+
+def _r2(truth, predicted):
+    truth = np.asarray(truth, dtype=float)
+    predicted = np.asarray(predicted, dtype=float)
+    residual = np.sum((predicted - truth) ** 2)
+    total = np.sum((truth - truth.mean()) ** 2)
+    return 1.0 - residual / total
+
+
+def test_b0053_is_reported_as_one_cell_with_a_plot(transfer):
+    """B0053 is a single cell, so the report plots it rather than
+    hiding it behind an average. The plotted predictions must be the
+    ones the transfer table scored, and the R² must say plainly that
+    the model tracks the level, not the fade."""
+
+    preds = _load(B0053_PRED)
+
+    assert set(preds["cell_id"]) == {"B0053"}
+    assert len(preds) == 55
+    assert set(preds["discharge_index"]) == set(range(1, 56))
+    assert {
+        "soh",
+        "window_formula",
+        "predicted_elasticnet",
+        "predicted_xgboost",
+    } <= set(preds.columns)
+
+    row = transfer[
+        (transfer["protocol"] == "train G1+G3, test B0053")
+        & (transfer["test_cell"] == "B0053")
+    ]
+
+    for model, column in (
+        ("ElasticNet", "predicted_elasticnet"),
+        ("XGBoost", "predicted_xgboost"),
+    ):
+        expected = float(
+            row.loc[row["model"] == model, "mae_pct"].iloc[0]
+        )
+        got = float(np.mean(np.abs(preds["soh"] - preds[column])))
+        assert np.isclose(got, expected, rtol=1e-6, atol=1e-6), (
+            f"{model}: plotted MAE {got} disagrees with the table "
+            f"{expected}"
+        )
+
+        assert _r2(preds["soh"], preds[column]) < 0, (
+            f"{model}: R² is not negative; the report claims the model "
+            "does not follow the fade shape"
+        )
+
+    assert _r2(preds["soh"], preds["window_formula"]) < 0
+
+    assert B0053_PLOT.exists(), "the B0053 plot was not committed"
+    assert B0053_PLOT.stat().st_size > 0
+
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "docs/soh_partial_B0053.png" in readme

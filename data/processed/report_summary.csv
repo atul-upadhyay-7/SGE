@@ -58,6 +58,8 @@ SOH,partial-discharge transfer,held-out B0053,XGBoost MAE,2.9871276212,%,data/pr
 SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",window formula MAE,10.1483838713,%,data/processed/experiments/soh_partial_transfer.csv
 SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",ElasticNet MAE,3.4237845854,%,data/processed/experiments/soh_partial_transfer.csv
 SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",XGBoost MAE,2.9871276212,%,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0053,XGBoost R2,-0.8610080826,,data/processed/experiments/soh_partial_transfer.csv
+SOH,partial-discharge transfer,held-out B0053,ElasticNet R2,-1.1745775103,,data/processed/experiments/soh_partial_transfer.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",window formula MAE,15.1573446147,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",ElasticNet MAE,1.4610524838,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",XGBoost MAE,1.8207054538,%,data/processed/experiments/soh_partial_reference_window.csv

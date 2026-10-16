@@ -423,6 +423,45 @@ def build_partial_transfer(partial):
             f"{ph('pt_' + tag + '_mean_xgb', means['xgb'], '.2f')} |"
         )
 
+    # B0053 stands alone, so it can be plotted rather than only
+    # tabulated: predicted against true SOH over discharge index.
+    b0053 = partial[partial["protocol"] == "train G1+G3, test B0053"]
+
+    def _r2(model):
+        return float(
+            b0053.loc[b0053["model"] == model, "r2"].iloc[0]
+        )
+
+    xgb_r2 = _r2("XGBoost")
+    en_r2 = _r2("ElasticNet")
+    record("SOH", "partial-discharge transfer", "held-out B0053",
+           "XGBoost R2", xgb_r2, "", REQUIRED["partial_transfer"])
+    record("SOH", "partial-discharge transfer", "held-out B0053",
+           "ElasticNet R2", en_r2, "", REQUIRED["partial_transfer"])
+
+    xgb_mae = float(
+        b0053.loc[b0053["model"] == "XGBoost", "mae_pct"].iloc[0]
+    )
+
+    lines.append("")
+    lines.append("#### B0053: one cell, and an R² that says the shape is not learnt\n")
+    lines.append(
+        "![Predicted versus true SOH for B0053 over discharge index]"
+        "(docs/soh_partial_B0053.png)\n"
+    )
+    lines.append(
+        "B0053 is reported as the single cell it is, plotted predicted "
+        "against true SOH over discharge index rather than only averaged "
+        "into a metric. The partial-window XGBoost is close in level — MAE "
+        f"{ph('pt_b0053_b0053_xgb', xgb_mae, '.2f')}% — but its R² is "
+        f"{ph('pt_b0053_b0053_xgb_r2', xgb_r2, '.2f')}, below even a "
+        "constant mean, so it does not follow the fade: the low error comes "
+        "from B0053's narrow SOH range, not from tracking its trajectory. "
+        "That is the honest reading of the transfer — the cell-relative "
+        "features carry the operating condition's level to a cell the model "
+        "has never seen, not its degradation path."
+    )
+
     return "\n".join(lines)
 
 

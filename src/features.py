@@ -164,6 +164,74 @@ WINDOW_MODEL_FEATURES = [
 # amp, removing the 2 A (G1/G9) versus 4 A (G3) rate difference.
 WINDOW_NORMALIZATION_INPUTS = ["current_mean"]
 
+# The voltage band every WINDOW_FEATURES value is measured over. The
+# extractor in load_data.py aliases these (VOLTAGE_WINDOW_HIGH/LOW),
+# so the band the model was trained on has one definition here.
+WINDOW_VOLTAGE_HIGH = 4.0
+WINDOW_VOLTAGE_LOW = 3.4
+
+# Sensor-resolution slack when checking a measurement against the
+# band, so a value sitting on the boundary is not rejected.
+WINDOW_VOLTAGE_TOL = 1e-3
+
+
+class WindowRangeError(ValueError):
+    """Raised when a window measurement is not inside the trained band."""
+
+
+def validate_window_voltage(window_row):
+    """
+    Refuse a window measurement taken outside the 4.0-3.4 V band.
+
+    Every WINDOW_FEATURES value is defined between WINDOW_VOLTAGE_HIGH
+    and WINDOW_VOLTAGE_LOW, so a window whose mean voltage sits outside
+    that band was measured over a different span. The model has no
+    training data there and must not score it — silently imputing or
+    extrapolating would produce a plausible-looking number from an
+    input the model has never seen.
+
+    The mean is checked because it is bounded by construction: the
+    window runs from 4.0 to 3.4 V, so its mean is strictly inside.
+    A missing (NaN) voltage is left to the imputer; only a present,
+    out-of-band value is refused.
+    """
+
+    import numpy as np
+
+    if hasattr(window_row, "to_dict"):
+
+        row = window_row.to_dict()
+
+    else:
+
+        row = dict(window_row)
+
+    mean = row.get("vw_voltage_mean")
+
+    if mean is None:
+
+        return
+
+    mean = float(mean)
+
+    if np.isnan(mean):
+
+        return
+
+    if not (
+        WINDOW_VOLTAGE_LOW - WINDOW_VOLTAGE_TOL
+        <= mean
+        <= WINDOW_VOLTAGE_HIGH + WINDOW_VOLTAGE_TOL
+    ):
+
+        raise WindowRangeError(
+            "partial-window model input is outside the trained "
+            f"{WINDOW_VOLTAGE_HIGH:.1f}-{WINDOW_VOLTAGE_LOW:.1f} V window: "
+            f"vw_voltage_mean={mean:.4f} V. The model was trained only on "
+            "the window's mean voltage inside that band; a window measured "
+            "over a different span has no training data and is refused."
+        )
+
 # Baseline = median of the cell's first `WINDOW_REFERENCE_WINDOW`
 # valid discharges of each quantity.
 WINDOW_REFERENCE_WINDOW = 5
@@ -217,6 +285,11 @@ def window_model_row(
             "window_row is missing required inputs: "
             f"{missing}"
         )
+
+    # Refuse a measurement taken outside the trained voltage band
+    # before any ratio arithmetic, so the caller gets a clear error
+    # naming the window rather than a silently imputed prediction.
+    validate_window_voltage(row)
 
     early = [
         as_mapping(discharge) for discharge in early_discharges

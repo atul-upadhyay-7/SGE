@@ -10,6 +10,7 @@ import pandas as pd
 from scipy.io import loadmat
 
 from repro import rounded
+from features import WINDOW_VOLTAGE_HIGH, WINDOW_VOLTAGE_LOW
 
 
 PROCESSED_DIR = Path("data/processed")
@@ -152,9 +153,11 @@ RATED_CAPACITY_AH = 2.0
 # Voltage window shared by all cells. Every discharge crosses
 # this range, regardless of cutoff voltage (2.2–2.7 V across
 # cells). Features extracted from this window describe the
-# cell's state without requiring the full discharge.
-VOLTAGE_WINDOW_HIGH = 4.0
-VOLTAGE_WINDOW_LOW = 3.4
+# cell's state without requiring the full discharge. The band is
+# defined once in features.py so the model's guard checks the same
+# numbers this extractor uses.
+VOLTAGE_WINDOW_HIGH = WINDOW_VOLTAGE_HIGH
+VOLTAGE_WINDOW_LOW = WINDOW_VOLTAGE_LOW
 
 
 def _voltage_window_features(voltage, current, time):

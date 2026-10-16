@@ -18,6 +18,10 @@ Outputs (data/processed/experiments/)
                                the window formula (LOCO G1/G3 + B0053)
     soh_partial_reference_window.csv  partial task vs the baseline length
 
+Also writes data/processed/soh_partial_predictions_B0053.csv: the
+held-out B0053 discharges with the model and window-formula
+predictions, for the per-discharge report plot.
+
 Design notes
 ------------
 * The full-discharge formula is a physics baseline, not a model:
@@ -579,6 +583,47 @@ def partial_discharge_transfer(df, ref_window=REF_WINDOW):
     return pd.DataFrame(rows)
 
 
+def partial_transfer_predictions(df, ref_window=REF_WINDOW, cell="B0053"):
+    """
+    Per-discharge predictions for the cross-condition transfer cell.
+
+    Reports B0053 as the one cell it is, predicted against its true
+    SOH over discharge index, so the fade-shape question (does the
+    model track the trajectory, or only the level?) can be seen rather
+    than inferred from an aggregate. Fits the same models on the same
+    split as partial_discharge_transfer, and returns the held-out rows
+    with the model and window-formula predictions.
+    """
+
+    data = window_formula(
+        cell_relative_features(df, ref_window=ref_window),
+        ref_window=ref_window,
+    )
+
+    test = (
+        data[data["cell_id"] == cell]
+        .sort_values("discharge_index")
+    )
+    train = data[data[GROUP_COL].isin(["G1", "G3"])]
+
+    out = pd.DataFrame({
+        "cell_id": test["cell_id"].to_numpy(),
+        "discharge_index": test["discharge_index"].to_numpy(),
+        "soh": test[TARGET].to_numpy(),
+        "window_formula": test["_window_formula"].to_numpy(),
+    })
+
+    for model_name in ("ElasticNet", "XGBoost"):
+
+        model = build_model(model_name)
+        model.fit(train[WINDOW_NORM_FEATURES], train[TARGET])
+        out["predicted_" + model_name.lower()] = model.predict(
+            test[WINDOW_NORM_FEATURES]
+        )
+
+    return out
+
+
 def reference_window_sensitivity(df, windows=(1, 2, 3, 5)):
     """
     How many of a cell's own opening discharges the cell-relative
@@ -696,6 +741,11 @@ def main():
     partial_transfer = partial_discharge_transfer(df)
     rounded(partial_transfer).to_csv(
         EXP / "soh_partial_transfer.csv", index=False
+    )
+
+    b0053 = partial_transfer_predictions(df)
+    rounded(b0053).to_csv(
+        PROC / "soh_partial_predictions_B0053.csv", index=False
     )
 
     sensitivity = reference_window_sensitivity(df)

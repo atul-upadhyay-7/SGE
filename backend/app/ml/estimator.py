@@ -35,6 +35,9 @@ from features import (  # noqa: E402
     WINDOW_MODEL_FEATURES,
     WINDOW_REFERENCE_WINDOW,
     WINDOW_UNITS,
+    WINDOW_VOLTAGE_HIGH,
+    WINDOW_VOLTAGE_LOW,
+    WindowRangeError,
     window_model_row,
 )
 
@@ -117,7 +120,9 @@ def predict_soh(
     window_features
         The discharge's raw 4.0-3.4 V window measurement. Must carry
         every name in ``WINDOW_FEATURES`` plus ``current_mean`` (see
-        ``WINDOW_UNITS`` for units).
+        ``WINDOW_UNITS`` for units). The window's mean voltage must lie
+        inside the trained 4.0-3.4 V band; a value outside it is
+        refused rather than scored.
     early_discharges
         The cell's opening discharges, in order. At least
         ``WINDOW_MIN_REFERENCE_DISCHARGES`` are required; the baseline
@@ -130,6 +135,9 @@ def predict_soh(
     InsufficientReferenceError
         If fewer than ``WINDOW_MIN_REFERENCE_DISCHARGES`` early
         discharges are supplied.
+    WindowRangeError
+        If ``vw_voltage_mean`` is present and outside the trained
+        ``WINDOW_VOLTAGE_LOW`` to ``WINDOW_VOLTAGE_HIGH`` window.
     """
 
     rows = _as_rows(early_discharges)
