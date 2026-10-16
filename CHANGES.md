@@ -261,6 +261,23 @@
   data-driven bound; `tests/test_check_alerts.py` pins the firing
   logic above and below the bound.
 
+- Firing proof, from the live stack (the JSON API at :8099 and the
+  native Grafana at :3050):
+
+  ```
+  $ python scripts/check_alerts.py --require-firing
+  live series from http://localhost:8099
+
+  rule                                               value      bound  verdict
+  alert_soh_below_threshold                        70.4311 80.0000 (lt)  FIRING
+  alert_input_out_of_range                         41.0470 63.0242 (gt)  normal
+  exit=0
+  ```
+
+  And the reloaded Grafana rules carry the corrected shape
+  (`GET /api/prometheus/grafana/api/v1/rules`), each rule
+  `refIds: [A, B, C]`, `types: [query, reduce, threshold]`.
+
 ## Step 13 — Repository size, documented rather than rewritten
 
 - `.git` is about 226 MB. The NASA `.mat` dataset was committed
