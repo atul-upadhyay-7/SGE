@@ -1,9 +1,9 @@
 # Backend runtime + test dependencies for the BMS telemetry / SoH service.
 #
 # This is separate from the repo-root requirements.txt, which drives the
-# offline ML pipeline and the legacy streaming demo. The backend reuses
-# those packages (joblib, xgboost, scikit-learn) at inference time, so this
-# file is expected to be installed alongside the root one, not instead of it.
+# offline ML pipeline and the legacy streaming demo. The backend reuses the
+# same ML pins (numpy/pandas/scipy/scikit-learn/xgboost/joblib) at inference
+# time, so it also needs its own `src/` and `models/` sources alongside it.
 
 # REST API + ASGI server
 fastapi==0.116.1
@@ -27,3 +27,13 @@ httpx==0.28.1
 # Testing
 pytest==9.1.1
 pytest-asyncio==1.4.0
+
+# Shared ML runtime (FR-07). The backend imports `src/load_data.py` and
+# `src/streaming/cycle_tracker.py` directly and loads the XGBoost
+# partial-window artifacts in `models/`. Pins match the repo-root file.
+numpy==2.3.2
+pandas==2.3.2
+scipy==1.16.1
+scikit-learn==1.7.1
+xgboost==3.4.0
+joblib==1.5.2

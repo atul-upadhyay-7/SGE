@@ -16,6 +16,12 @@ RUN pip install -r requirements.txt
 
 COPY backend/ ./backend
 
+# Shared ML code and artifacts the backend imports at inference time (FR-07):
+# `app/ml/estimator.py` resolves the repository root as three levels up from
+# itself, so `src/` and `models/` must sit beside `backend/` at /app.
+COPY src/ ./src
+COPY models/ ./models
+
 WORKDIR /app/backend
 
 EXPOSE 8000
