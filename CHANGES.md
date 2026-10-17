@@ -127,6 +127,12 @@ End of life was being reported from two code paths. `src/rul_trajectory.py` loca
 
 ---
 
+## Step 26 — Does the SOH window model survive other loads?
+
+The README already said the random-load cells are "left out of the model because their load and temperature change across the record", which reads as though the partial-window model would fail on them. That was an untested assumption. The shipped model (`models/soh_window_all`) is trained only on the nine constant-current cells (the four G1 cells, the four G3 cells and B0053), so the four random-load cells the audit keeps — B0039 (G5) and B0042, B0043, B0044 (G6) — are a genuinely held-out condition. New `src/random_load_transfer.py` feeds each of them to that shipped model with exactly the online features (`features.window_model_row`: the window made relative to the cell's own first-five-discharge baseline, plus capacity per amp) and scores the result against the production-rule SOH, with the window formula on exactly the same discharges, writing `data/processed/soh_random_load_transfer.csv`. The model does not fail: it beats the window formula on all four cells (mean MAE 2.31% versus 8.07%) and tracks the fade (R² above zero) on three of them, so the exclusion is a comparability choice, not a transfer failure. B0039, whose load changes within the record, is the exception: its R² is -0.09, below a constant mean, so there the model reads the level and not the fade shape — the same caveat B0053 already carries. `random_load.audit_cell`'s production-rule frame was factored into `random_load.clean_cell_frame` so the transfer check scores the measured SOH the audit reports rather than re-deriving it; the audit output is byte-identical. The stage runs in `run_pipeline.py` after `random_load`; `scripts/make_report.py` renders the table into the results region, `README.md` gains a Known-limits-at-a-glance row and updates the two claims that said the random-load cells were excluded because the model could not handle them, and `tests/test_random_load_transfer.py` pins the artifact, the fresh recomputation, the shipped model's exclusion of these cells, the per-cell win over the formula, and the B0039 caveat.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

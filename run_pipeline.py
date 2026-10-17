@@ -13,18 +13,19 @@ Stages
    2. preprocessing    targets and the ML dataset
    3. data_cleaning    cleaned ML dataset + per-cell audit
    4. random_load      do B0038-B0044 reach 80%? (count, no model)
-   5. data_quality     audit, fails loudly on a bad table
-   6. train_soh        SOH models and artifacts
-   7. train_rul        RUL models and artifacts
-   8. rul_trajectory   RUL trajectories, bands and method disagreement
-   9. run_experiments  formulas, ablation, leave-one-group-out
-  10. pack_evaluate    pack alert engine on synthetic faults
-  11. anomaly          cycle screening
-  12. benchmark_latency inference latency
-  13. make_report      README/CHANGES numbers from the CSVs
-  14. make_alerts      Grafana alert rules from the training range
-  15. load_to_sqlite   dashboard database
-  16. pytest           the full suite
+   5. random_load_transfer  does the window model transfer to them?
+   6. data_quality     audit, fails loudly on a bad table
+   7. train_soh        SOH models and artifacts
+   8. train_rul        RUL models and artifacts
+   9. rul_trajectory   RUL trajectories, bands and method disagreement
+  10. run_experiments  formulas, ablation, leave-one-group-out
+  11. pack_evaluate    pack alert engine on synthetic faults
+  12. anomaly          cycle screening
+  13. benchmark_latency inference latency
+  14. make_report      README/CHANGES numbers from the CSVs
+  15. make_alerts      Grafana alert rules from the training range
+  16. load_to_sqlite   dashboard database
+  17. pytest           the full suite
 
 Any stage that exits non-zero stops the run. Nothing is
 swallowed: the failing stage, its command and its own output
@@ -63,6 +64,10 @@ STAGES = [
     ("preprocessing", [sys.executable, "src/preprocessing.py"]),
     ("data_cleaning", [sys.executable, "src/data_cleaning.py"]),
     ("random_load", [sys.executable, "src/random_load.py"]),
+    (
+        "random_load_transfer",
+        [sys.executable, "src/random_load_transfer.py"],
+    ),
     ("data_quality", [sys.executable, "src/data_quality.py"]),
     ("train_soh", [sys.executable, "src/train_soh.py"]),
     ("train_rul", [sys.executable, "src/train_rul.py"]),

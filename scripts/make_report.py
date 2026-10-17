@@ -67,6 +67,7 @@ REQUIRED = {
     "rul_disagreement": PROC / "rul_method_disagreement.csv",
     "rul_band": PROC / "rul_band_calibration.csv",
     "random_load": PROC / "random_load_rul_check.csv",
+    "random_load_transfer": PROC / "soh_random_load_transfer.csv",
     "rul_random_labels": PROC / "rul_random_load_labels.csv",
     "rul_g6_loco": PROC / "rul_cross_group_g6_loco.csv",
     "rul_g1_to_g6": PROC / "rul_cross_group_g1_to_g6.csv",
@@ -587,9 +588,129 @@ def build_reference_window(sensitivity):
     return "\n".join(lines)
 
 
+def build_random_load_transfer(frame):
+    """
+    The shipped partial-window SOH model on the random-load cells it
+    was never trained on.
+
+    Four G5/G6 cells reach the retirement threshold and pass the keep
+    filter but are left out of training because their load and
+    temperature change across the record. This scores the shipped
+    model on them with the same cell-relative window features, next to
+    the window formula on exactly the same discharges, and records
+    whether the exclusion is a transfer failure or only a
+    comparability choice.
+    """
+
+    lines = []
+    cells = frame[frame["cell_id"] != "MEAN"]
+
+    lines.append(
+        "#### Random-load transfer (cells the model was never trained on)\n"
+    )
+    lines.append(
+        "The random-load cells the audit keeps — B0039 from G5 and "
+        "B0042–B0044 from G6 — reach the retirement threshold and pass the "
+        "keep filter, but they are left out of training because their load "
+        "and temperature change across the record. Feeding them to the "
+        "shipped window model, which saw only the nine constant-current "
+        "cells, with the same cell-relative features, next to the window "
+        "formula on exactly the same discharges:\n"
+    )
+    lines.append(
+        "| Held-out cell | Group | Cycles | window formula MAE (%) | "
+        "window formula R² | cell-relative XGBoost MAE (%) | "
+        "cell-relative XGBoost R² |"
+    )
+    lines.append("|---|---|---|---|---|---|---|")
+
+    for _, row in cells.iterrows():
+
+        cell = str(row["cell_id"])
+        tag = cell.lower()
+
+        for metric, value, unit in (
+            ("window formula MAE", row["window_formula_mae_pct"], "%"),
+            ("window formula R2", row["window_formula_r2"], ""),
+            ("cell-relative XGBoost MAE", row["model_mae_pct"], "%"),
+            ("cell-relative XGBoost R2", row["model_r2"], ""),
+        ):
+            record("SOH", "random-load transfer", f"held-out {cell}",
+                   metric, value, unit, REQUIRED["random_load_transfer"])
+
+        lines.append(
+            f"| {cell} | {row['group']} | "
+            f"{ph(tag + '_rlt_cycles', int(row['n_cycles']), 'd')} | "
+            f"{ph(tag + '_rlt_formula_mae', float(row['window_formula_mae_pct']), '.2f')} | "
+            f"{ph(tag + '_rlt_formula_r2', float(row['window_formula_r2']), '.3f')} | "
+            f"{ph(tag + '_rlt_model_mae', float(row['model_mae_pct']), '.2f')} | "
+            f"{ph(tag + '_rlt_model_r2', float(row['model_r2']), '.3f')} |"
+        )
+
+    mean = frame[frame["cell_id"] == "MEAN"].iloc[0]
+
+    beaten = int(
+        (cells["model_mae_pct"] < cells["window_formula_mae_pct"]).sum()
+    )
+    positive = int((cells["model_r2"] > 0.0).sum())
+
+    record("SOH", "random-load transfer", "mean", "cell-relative XGBoost MAE",
+           mean["model_mae_pct"], "%", REQUIRED["random_load_transfer"])
+    record("SOH", "random-load transfer", "mean", "cell-relative XGBoost R2",
+           mean["model_r2"], "", REQUIRED["random_load_transfer"])
+    record("SOH", "random-load transfer", "mean", "window formula MAE",
+           mean["window_formula_mae_pct"], "%",
+           REQUIRED["random_load_transfer"])
+    record("SOH", "random-load transfer", "verdict",
+           "cells where the model beats the formula", beaten, "cells",
+           REQUIRED["random_load_transfer"])
+    record("SOH", "random-load transfer", "verdict",
+           "cells where the model R2 is positive", positive, "cells",
+           REQUIRED["random_load_transfer"])
+
+    lines.append(
+        f"| **Mean** | — | {ph('rlt_mean_cycles', int(mean['n_cycles']), 'd')} | "
+        f"{ph('rlt_mean_formula_mae', float(mean['window_formula_mae_pct']), '.2f')} | "
+        f"{ph('rlt_mean_formula_r2', float(mean['window_formula_r2']), '.3f')} | "
+        f"{ph('rlt_mean_model_mae', float(mean['model_mae_pct']), '.2f')} | "
+        f"{ph('rlt_mean_model_r2', float(mean['model_r2']), '.3f')} |"
+    )
+
+    lines.append("")
+
+    flat = cells[cells["model_r2"] <= 0.0]
+    flat_note = ""
+
+    if len(flat) == 1:
+
+        r = flat.iloc[0]
+        flat_note = (
+            f" The exception is {r['cell_id']} ({r['group']}): its R² is "
+            f"{ph(str(r['cell_id']).lower() + '_rlt_model_r2', float(r['model_r2']), '.3f')}, "
+            "below a constant mean, so there the model reads the level, "
+            "not the fade shape — the same caveat B0053 carries above."
+        )
+
+    lines.append(
+        f"The model does not fail on these cells. It beats the window "
+        f"formula on {ph('rlt_beaten', beaten, 'd')} of "
+        f"{ph('rlt_n_cells', int(len(cells)), 'd')}, with mean MAE "
+        f"{ph('rlt_mean_model_mae', float(mean['model_mae_pct']), '.2f')}% "
+        f"against the formula's "
+        f"{ph('rlt_mean_formula_mae', float(mean['window_formula_mae_pct']), '.2f')}%, "
+        f"and it tracks the fade (R² above zero) on "
+        f"{ph('rlt_positive', positive, 'd')} of "
+        f"{ph('rlt_n_cells', int(len(cells)), 'd')}."
+        f"{flat_note} The exclusion is therefore a comparability choice, "
+        "not a transfer failure.\n"
+    )
+
+    return "\n".join(lines)
+
+
 def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
                   full, partial, partial_transfer, partial_window,
-                  ablation, logo, cross):
+                  ablation, logo, cross, random_transfer):
     lines = []
 
     # Cross-condition transfer opens Key Results: the model that
@@ -600,6 +721,9 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
     lines.append("")
 
     lines.append(build_partial_transfer(partial_transfer))
+    lines.append("")
+
+    lines.append(build_random_load_transfer(random_transfer))
     lines.append("")
 
     lines.append(build_reference_window(partial_window))
@@ -1124,10 +1248,14 @@ def build_rul(rul, comparison, disagreement, band, random_load,
         f"{ph('rl_usable', usable, 'd')} of those also pass the same "
         "ceiling/rise keep filter (B0039, B0042, B0043, B0044). So the claim "
         "that only the four G1 cells reach 80% is false in general: four more "
-        "cells do. They are still not added to the model, because their load "
-        "and temperature change across the record, so their features are not "
-        "comparable at a single operating condition — the reason they were "
-        "left out is comparability, not ageing. B0041 reaches 80% too but is "
+        "cells do. They are still not added to the constant-current SOH/RUL "
+        "training set, because their load and temperature change across the "
+        "record, so their features are not comparable at a single operating "
+        "condition; but they are not left out because the model fails on them "
+        "— the shipped partial-window SOH model transfers to all of them and "
+        "beats the window formula (see the random-load transfer table under "
+        "*Key Results*), so the exclusion is a comparability choice. B0041 "
+        "reaches 80% too but is "
         "excluded, and its reference shows why: its opening "
         f"{ph('rl_b41_n', 10, 'd')} recorded discharges carry a median "
         f"{ph('rl_b41_early_cap', float(b41['early_capacity_median_ah']), '.3f')} Ah "
@@ -1610,7 +1738,7 @@ def main():
         frames["soh_null"], frames["full_discharge"],
         frames["partial_discharge"], frames["partial_transfer"],
         frames["partial_window"], frames["ablation"], frames["logo"],
-        frames["cross_condition"],
+        frames["cross_condition"], frames["random_load_transfer"],
     ))
     rul = region(
         "rul",

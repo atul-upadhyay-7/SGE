@@ -106,8 +106,18 @@ def _reference_diagnostics(g_clean, reference):
     }
 
 
-def audit_cell(raw_dir, cell_id, group):
-    """One row: does this cell reach 80% under the production rule?"""
+def clean_cell_frame(raw_dir, cell_id):
+    """
+    One cell's valid discharges under the production rule, with the
+    measured SOH and the reference capacity it was measured against.
+
+    This is the rule the audit applies, factored out so anything that
+    scores one of these cells (the RUL label check, the partial-window
+    transfer check) reads the same SOH target the audit reports rather
+    than re-deriving it. Rows are in discharge order. An empty frame
+    means the cell had no valid discharge; the returned reference is
+    then NaN.
+    """
 
     g = (
         parse_battery_file(Path(raw_dir) / f"{cell_id}.mat")
@@ -116,7 +126,33 @@ def audit_cell(raw_dir, cell_id, group):
     )
 
     valid = _valid_mask(g["capacity_ah"])
-    g_clean = g[valid].copy()
+    g_clean = g[valid].reset_index(drop=True)
+
+    if g_clean.empty:
+
+        return g_clean, np.nan
+
+    reference = reference_capacity(g_clean["capacity_ah"], REFERENCE_RULE)
+
+    if not np.isfinite(reference) or reference <= 0:
+
+        reference = float(g_clean["capacity_ah"].iloc[0])
+
+    reference = float(reference)
+
+    g_clean = g_clean.copy()
+    g_clean["reference_capacity_ah"] = reference
+    g_clean["soh"] = (
+        g_clean["capacity_ah"].astype(float) / reference * 100.0
+    )
+
+    return g_clean, reference
+
+
+def audit_cell(raw_dir, cell_id, group):
+    """One row: does this cell reach 80% under the production rule?"""
+
+    g_clean, reference = clean_cell_frame(raw_dir, cell_id)
 
     if g_clean.empty:
 
@@ -138,13 +174,7 @@ def audit_cell(raw_dir, cell_id, group):
             "reference_is_artifact": False,
         }
 
-    reference = reference_capacity(g_clean["capacity_ah"], REFERENCE_RULE)
-
-    if not np.isfinite(reference) or reference <= 0:
-
-        reference = float(g_clean["capacity_ah"].iloc[0])
-
-    soh = g_clean["capacity_ah"].astype(float) / reference * 100.0
+    soh = g_clean["soh"]
 
     eol_discharge = first_eol_discharge(soh, threshold=EOL_SOH_THRESHOLD)
     reaches = eol_discharge is not None

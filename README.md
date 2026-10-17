@@ -10,7 +10,8 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 | Limit | What it means |
 |---|---|
 | **9 of 19 cells kept** | The audit keeps nine cells (G1×4, G3×4, G9×1); ten are excluded for a raised SOH ceiling or a capacity that rises across the record. The re-reference check shows the exclusion is not a reference artifact. |
-| **RUL is indicative, and not only on G1** | Remaining-life labels need a cell that reaches 80% SOH. The four G1 cells do, so each is scored leave-one-cell-out over the other three trajectories, but four random-load cells (B0039, B0042, B0043, B0044) also reach 80% and are kept out of the model only because their load and temperature change across the record. Two RUL methods disagree by 63.8 discharges on the mean, so every RUL number is reported as indicative, not a forecast. |
+| **RUL is indicative, and not only on G1** | Remaining-life labels need a cell that reaches 80% SOH. The four G1 cells do, so each is scored leave-one-cell-out over the other three trajectories, but four random-load cells (B0039, B0042, B0043, B0044) also reach 80% and are kept out of the model because their load and temperature change across the record. Two RUL methods disagree by 63.8 discharges on the mean, so every RUL number is reported as indicative, not a forecast. |
+| **The window model transfers to the random-load cells it never saw** | The shipped partial-window SOH model is trained only on the nine constant-current cells, yet it beats the window formula on all four random-load cells the audit keeps, so their exclusion is a comparability choice, not a transfer failure (see *Random-load transfer* under Key Results). The caveat is B0039: its R² is below zero, so there the model reads the level, not the fade shape. |
 | **Alerts** | Grafana evaluates the rules itself through a Prometheus exporter and they fire on the injected fault; firing alerts are delivered to a provisioned local webhook contact point (`alert-sink` in the compose stack), so the notification path is exercised end to end. No external email/pager endpoint is configured. |
 | **Model versus formula** | A full discharge is Coulomb counting (a formula, no model). The partial window is the only place a model is scored against the window formula; the full-feature SOH benchmark is offline and is not the online estimator. |
 
@@ -122,6 +123,21 @@ The row the deployable estimator is held to is the B0005 leave-one-cell-out one 
 ![Predicted versus true SOH for B0053 over discharge index](docs/soh_partial_B0053.png)
 
 B0053 is reported as the single cell it is, plotted predicted against true SOH over discharge index rather than only averaged into a metric. The partial-window XGBoost is close in level — MAE 2.99% — but its R² is -0.86, below even a constant mean, so it does not follow the fade: the low error comes from B0053's narrow SOH range, not from tracking its trajectory. That is the honest reading of the transfer — the cell-relative features carry the operating condition's level to a cell the model has never seen, not its degradation path.
+
+#### Random-load transfer (cells the model was never trained on)
+
+The random-load cells the audit keeps — B0039 from G5 and B0042–B0044 from G6 — reach the retirement threshold and pass the keep filter, but they are left out of training because their load and temperature change across the record. Feeding them to the shipped window model, which saw only the nine constant-current cells, with the same cell-relative features, next to the window formula on exactly the same discharges:
+
+| Held-out cell | Group | Cycles | window formula MAE (%) | window formula R² | cell-relative XGBoost MAE (%) | cell-relative XGBoost R² |
+|---|---|---|---|---|---|---|
+| B0039 | G5 | 35 | 7.71 | -7.665 | 3.54 | -0.093 |
+| B0042 | G6 | 65 | 9.88 | -2.665 | 1.82 | 0.893 |
+| B0043 | G6 | 65 | 8.50 | -1.821 | 1.74 | 0.882 |
+| B0044 | G6 | 65 | 6.18 | -0.446 | 2.13 | 0.778 |
+| **Mean** | — | 230 | 8.07 | -3.149 | 2.31 | 0.615 |
+
+The model does not fail on these cells. It beats the window formula on 4 of 4, with mean MAE 2.31% against the formula's 8.07%, and it tracks the fade (R² above zero) on 3 of 4. The exception is B0039 (G5): its R² is -0.093, below a constant mean, so there the model reads the level, not the fade shape — the same caveat B0053 carries above. The exclusion is therefore a comparability choice, not a transfer failure.
+
 
 #### Reference-window sensitivity (partial-discharge)
 
@@ -242,7 +258,7 @@ A 10th-to-90th band should cover four discharges in five, and this one misses by
 
 #### More cells that reach 80%? Yes, in the random-load groups
 
-RUL needs a cell that actually reaches the retirement threshold, so the groups the model leaves out were checked against the same SOH rule rather than assumed dead. The NASA random-load groups G5 (B0038-B0040) and G6 (B0041-B0044) were run through it: 7 cells checked, 5 reach 80%, and 4 of those also pass the same ceiling/rise keep filter (B0039, B0042, B0043, B0044). So the claim that only the four G1 cells reach 80% is false in general: four more cells do. They are still not added to the model, because their load and temperature change across the record, so their features are not comparable at a single operating condition — the reason they were left out is comparability, not ageing. B0041 reaches 80% too but is excluded, and its reference shows why: its opening 10 recorded discharges carry a median 0.056 Ah at a mean 0.27 A — about a quarter of the group's own load — with the terminal voltage falling by only 0.049 V, against 0.89 Ah once the cell discharges normally later in life. Those opening runs are a measurement failure, not a low-capacity cell, but they are the majority of the record, so the rule that keeps only discharges above half the cell's median normalises against them and keeps them; the resulting 0.056 Ah reference is an artifact, its SOH rises above the ceiling and the cell is excluded — which is why no cell the pipeline trusts has a reference under half the median of its later valid discharges.
+RUL needs a cell that actually reaches the retirement threshold, so the groups the model leaves out were checked against the same SOH rule rather than assumed dead. The NASA random-load groups G5 (B0038-B0040) and G6 (B0041-B0044) were run through it: 7 cells checked, 5 reach 80%, and 4 of those also pass the same ceiling/rise keep filter (B0039, B0042, B0043, B0044). So the claim that only the four G1 cells reach 80% is false in general: four more cells do. They are still not added to the constant-current SOH/RUL training set, because their load and temperature change across the record, so their features are not comparable at a single operating condition; but they are not left out because the model fails on them — the shipped partial-window SOH model transfers to all of them and beats the window formula (see the random-load transfer table under *Key Results*), so the exclusion is a comparability choice. B0041 reaches 80% too but is excluded, and its reference shows why: its opening 10 recorded discharges carry a median 0.056 Ah at a mean 0.27 A — about a quarter of the group's own load — with the terminal voltage falling by only 0.049 V, against 0.89 Ah once the cell discharges normally later in life. Those opening runs are a measurement failure, not a low-capacity cell, but they are the majority of the record, so the rule that keeps only discharges above half the cell's median normalises against them and keeps them; the resulting 0.056 Ah reference is an artifact, its SOH rises above the ceiling and the cell is excluded — which is why no cell the pipeline trusts has a reference under half the median of its later valid discharges.
 
 #### RUL on the random-load cells, kept separate from G1
 
@@ -1093,7 +1109,12 @@ amount of tuning removes them.
    condition. The remaining caveat is the baseline itself: it needs
    the cell's own opening discharges, and with only one or two the
    error is much larger (the reference-window table under *Key
-   Results* shows the cost).
+   Results* shows the cost). The transfer is not limited to the
+   single held-out condition: the shipped model, trained only on the
+   nine constant-current cells, also beats the window formula on the
+   four random-load cells it never saw (the random-load transfer
+   table under *Key Results*), though on one of them its R² is below
+   zero, so there it reads the level and not the fade.
 
 3. **Cell-level generalisation is the open problem.** The headline
    is a mean over folds; the spread matters more than the mean.
@@ -1124,8 +1145,11 @@ amount of tuning removes them.
    calibration sample is closer to three than to the number of
    points. RUL also does not depend on G1 alone: the random-load
    cells B0039, B0042, B0043 and B0044 reach 80% and pass the same
-   keep filter, and are left out only because their load and
-   temperature change across the record. With three training
+   keep filter, and are not added to the training set because their
+   load and temperature change across the record; the partial-window
+   SOH model nonetheless transfers to them (the random-load transfer
+   table under *Key Results*), so the exclusion is a comparability
+   choice, not a transfer failure. With three training
    trajectories, the held-out cell's own future behaviour
    dominates. The usable RUL-family output is the per-cell fade rate
    plus the trajectory estimate, not a claim of uniform superiority.

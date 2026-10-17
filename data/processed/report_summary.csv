@@ -60,6 +60,27 @@ SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",ElasticNet MAE,3
 SOH,partial-discharge transfer,"mean (train G1+G3, test B0053)",XGBoost MAE,2.9871276212,%,data/processed/experiments/soh_partial_transfer.csv
 SOH,partial-discharge transfer,held-out B0053,XGBoost R2,-0.8610080826,,data/processed/experiments/soh_partial_transfer.csv
 SOH,partial-discharge transfer,held-out B0053,ElasticNet R2,-1.1745775103,,data/processed/experiments/soh_partial_transfer.csv
+SOH,random-load transfer,held-out B0039,window formula MAE,7.7136782759,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0039,window formula R2,-7.6654758602,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0039,cell-relative XGBoost MAE,3.5369977945,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0039,cell-relative XGBoost R2,-0.0926177371,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0042,window formula MAE,9.8824703423,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0042,window formula R2,-2.6648011305,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0042,cell-relative XGBoost MAE,1.8226227632,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0042,cell-relative XGBoost R2,0.8931786524,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0043,window formula MAE,8.4961281534,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0043,window formula R2,-1.8207636605,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0043,cell-relative XGBoost MAE,1.7414812316,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0043,cell-relative XGBoost R2,0.8821040839,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0044,window formula MAE,6.1767200703,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0044,window formula R2,-0.4460907416,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0044,cell-relative XGBoost MAE,2.1254599552,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,held-out B0044,cell-relative XGBoost R2,0.7784765621,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,mean,cell-relative XGBoost MAE,2.3066404361,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,mean,cell-relative XGBoost R2,0.6152853903,,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,mean,window formula MAE,8.0672492105,%,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,verdict,cells where the model beats the formula,4.0,cells,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,verdict,cells where the model R2 is positive,3.0,cells,data/processed/soh_random_load_transfer.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",window formula MAE,15.1573446147,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",ElasticNet MAE,1.4610524838,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",XGBoost MAE,1.8207054538,%,data/processed/experiments/soh_partial_reference_window.csv
