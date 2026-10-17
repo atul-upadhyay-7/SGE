@@ -34,6 +34,45 @@ OUTPUT_FILE = Path(
 # literature.
 EOL_SOH_THRESHOLD = 80.0
 
+
+def first_eol_discharge(
+    soh,
+    discharge_index=None,
+    threshold=EOL_SOH_THRESHOLD,
+):
+    """
+    The single end-of-life definition.
+
+    End of life is the first discharge whose measured SOH is strictly
+    below `threshold` (80% by default). The value returned is the
+    discharge number, counted from 1 to match `discharge_index` in the
+    cleaned dataset, or None for a cell that never retires inside the
+    recorded window.
+
+    `soh` is one cell's measured SOH, in discharge order. Pass
+    `discharge_index` when the numbering may have gaps (the cleaned
+    dataset can drop a row); without it the position in `soh` is taken
+    as the discharge number, so the first discharge is 1.
+
+    Every table that reports an end-of-life discharge calls this, so
+    the number cannot differ between tables. An earlier version of
+    rul_trajectory.py used a 0-based position instead, which made
+    B0005 read 106 there and 107 in the cross-group tables.
+    """
+
+    values = np.asarray(soh, dtype=float)
+    below = values < threshold
+
+    if not below.any():
+
+        return None
+
+    if discharge_index is None:
+
+        return int(np.argmax(below)) + 1
+
+    return int(np.asarray(discharge_index)[below].min())
+
 # Number of earliest cycles used for the "online" degradation
 # rate. A battery management system can only ever estimate its
 # fade rate from the cycles observed so far, so this column
@@ -219,12 +258,23 @@ def create_targets(df):
     # against the end of the test window, which makes the
     # target meaningful for a cell that is still healthy.
     # RUL is in discharges (discharge_index), not raw cycles.
-    eol_discharge = (
-        df[df["soh"] < EOL_SOH_THRESHOLD]
-        .groupby("cell_id")
-        ["discharge_index"]
-        .min()
-    )
+    #
+    # The definition lives in one place (first_eol_discharge);
+    # this only applies it per cell. Cells that never retire are
+    # left out of the mapping, so .map turns them into NaN below.
+    eol_discharge = {
+        cell_id: first_eol_discharge(
+            group["soh"],
+            group["discharge_index"],
+            EOL_SOH_THRESHOLD,
+        )
+        for cell_id, group in df.groupby("cell_id")
+    }
+    eol_discharge = {
+        cell_id: value
+        for cell_id, value in eol_discharge.items()
+        if value is not None
+    }
 
     df["eol_cycle_threshold"] = (
         df["cell_id"].map(eol_discharge)

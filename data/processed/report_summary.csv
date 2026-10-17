@@ -129,22 +129,22 @@ SOH,D_vw_only,leave-one-cell-out (G1),ElasticNet MAE,1.8631860371,%,data/process
 SOH,D_vw_only,leave-one-cell-out (G1),XGBoost MAE,2.574361209,%,data/processed/experiments/ablation_features.csv
 RUL,trajectory,held-out B0005,MAE,7.1145833333,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0005,MAE,24.7708333333,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0005,EOL discharge,106.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0005,EOL discharge,107.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0005,reference-spread coverage,93.75,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0005,mean reference-spread width,25.7916666667,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0006,MAE,51.06,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0006,MAE,46.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0006,EOL discharge,60.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0006,EOL discharge,61.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0006,reference-spread coverage,0.0,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0006,mean reference-spread width,25.52,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0007,MAE,17.4736842105,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0007,MAE,37.5175438596,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0007,EOL discharge,124.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0007,EOL discharge,125.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0007,reference-spread coverage,17.5438596491,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0007,mean reference-spread width,14.6035087719,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0018,MAE,6.4776119403,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0018,MAE,29.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0018,EOL discharge,77.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0018,EOL discharge,78.0,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0018,reference-spread coverage,82.0895522388,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0018,mean reference-spread width,20.3223880597,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,mean (G1),mean MAE,20.531469871025,discharges,data/processed/rul_trajectory_results.csv

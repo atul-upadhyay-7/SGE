@@ -206,10 +206,10 @@ When the full discharge is available, SOH is read directly from the measured cap
 
 | Held-out cell | EOL discharge | Trajectory MAE | Fleet-lifetime baseline MAE | Reference-spread coverage | Mean reference-spread width |
 |---|---|---|---|---|---|
-| B0005 | 106 | 7.1 | 24.8 | 93.8% | 25.8 |
-| B0006 | 60 | 51.1 | 46.0 | 0.0% | 25.5 |
-| B0007 | 124 | 17.5 | 37.5 | 17.5% | 14.6 |
-| B0018 | 77 | 6.5 | 29.0 | 82.1% | 20.3 |
+| B0005 | 107 | 7.1 | 24.8 | 93.8% | 25.8 |
+| B0006 | 61 | 51.1 | 46.0 | 0.0% | 25.5 |
+| B0007 | 125 | 17.5 | 37.5 | 17.5% | 14.6 |
+| B0018 | 78 | 6.5 | 29.0 | 82.1% | 20.3 |
 | **Mean** | — | 20.5 | 34.3 | 48.3% | 21.6 |
 
 #### Both methods, side by side on every held-out cell
@@ -310,9 +310,9 @@ The fade-rate extrapolation is a single straight line through a cell's first 20 
 | **Mean** | 114.5 | 98.5 | 63.3 |
 | **Median** | 17.1 | 26.1 | 18.3 |
 
-As an average the longer window looks better — mean MAE falls from 114.5 to 63.3 discharges — but that average is one cell. B0039 barely fades over its first discharges and then knees late, so its line at the default window lands 691 discharges past its real end of life; by 40 discharges the fit finally sees the knee and its error drops to 25.1. Everywhere else the longer window hurts: the median does not fall (17.1 to 18.3) and 5 of the 8 cells get worse, the two flat-opening G1 cells collapsing as the line flattens further — B0005 from 76.9 to 242.6 and B0007 from 90.8 to 179.7. The longer window is therefore not kept; the default stays at 20 discharges.
+As an average the longer window looks better — mean MAE falls from 114.5 to 63.3 discharges — but that average is one cell. B0039 barely fades over its first discharges and then knees late, so its line at the default window lands 692 discharges past its real end of life; by 40 discharges the fit finally sees the knee and its error drops to 25.1. Everywhere else the longer window hurts: the median does not fall (17.1 to 18.3) and 5 of the 8 cells get worse, the two flat-opening G1 cells collapsing as the line flattens further — B0005 from 76.9 to 242.6 and B0007 from 90.8 to 179.7. The longer window is therefore not kept; the default stays at 20 discharges.
 
-The figure shows what fails. B0005 and B0007 fade all but flatly over those 20 discharges, so the fitted line is far too shallow: it reaches 80% at discharge 183 for B0005 and 215 for B0007, while the cells actually retire at 107 and 125. The trajectory matcher never extrapolates that opening slope — it reads the cell's current level against reference curves — so it lands far closer on the same cells (B0005 7.1 against 76.9, B0007 17.5 against 90.8). The reverse holds on B0006, which fades from the first discharge and faster than any reference: there the matcher is the one that fails and the extrapolation is accurate.
+The figure shows what fails. B0005 and B0007 fade all but flatly over those 20 discharges, so the fitted line is far too shallow: it reaches 80% at discharge 184 for B0005 and 216 for B0007, while the cells actually retire at 107 and 125. The trajectory matcher never extrapolates that opening slope — it reads the cell's current level against reference curves — so it lands far closer on the same cells (B0005 7.1 against 76.9, B0007 17.5 against 90.8). The reverse holds on B0006, which fades from the first discharge and faster than any reference: there the matcher is the one that fails and the extrapolation is accurate.
 
 ![Measured SOH against discharge index for B0005 and B0007, with the fit window marked and the extrapolated line extended to the retirement threshold](docs/rul_extrapolation_B0005_B0007.png)
 <!-- make_report:rul:end -->

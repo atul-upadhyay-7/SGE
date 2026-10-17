@@ -42,9 +42,14 @@ for ax, cell in zip(axes, CELLS):
     soh = frame["soh"].to_numpy(dtype=float)
     x = np.arange(1, len(soh) + 1)
 
-    eol = RG._eol_index(soh)
     window = int(RG.EXTRAP_WINDOW)
-    implied = RG._implied_eol(soh, EOL_SOH_THRESHOLD, window)
+
+    # The measured curve is drawn against the 1-based discharge index.
+    # _eol_index/_implied_eol work on the 0-based fit axis, so both are
+    # shifted by 1 here and the line is drawn in the same coordinates
+    # (discharge d sits at fit-axis position d - 1).
+    eol_discharge = RG._eol_index(soh) + 1
+    implied = RG._implied_eol(soh, EOL_SOH_THRESHOLD, window) + 1.0
 
     slope, intercept = np.polyfit(np.arange(window), soh[:window], 1)
 
@@ -63,9 +68,9 @@ for ax, cell in zip(axes, CELLS):
         x[:window], soh[:window], color="#1f77b4", s=18, zorder=4,
     )
 
-    line_x = np.array([0.0, implied * 1.05])
+    line_x = np.array([1.0, implied * 1.05])
     ax.plot(
-        line_x, slope * line_x + intercept, color="#d62728", lw=1.6,
+        line_x, slope * (line_x - 1.0) + intercept, color="#d62728", lw=1.6,
         ls="--", label="Extrapolated fade line",
     )
 
@@ -74,8 +79,8 @@ for ax, cell in zip(axes, CELLS):
         label="Retirement threshold (80%)",
     )
     ax.axvline(
-        eol + 1, color="#2ca02c", lw=1.3, ls="-",
-        label=f"True EOL (discharge {eol + 1})",
+        eol_discharge, color="#2ca02c", lw=1.3, ls="-",
+        label=f"True EOL (discharge {eol_discharge})",
     )
     ax.axvline(
         implied, color="#d62728", lw=1.3, ls="-",
@@ -83,16 +88,16 @@ for ax, cell in zip(axes, CELLS):
     )
 
     ax.annotate(
-        "", xy=(implied, 90), xytext=(eol + 1, 90),
+        "", xy=(implied, 90), xytext=(eol_discharge, 90),
         arrowprops=dict(arrowstyle="<->", color="#d62728", lw=1.2),
     )
     ax.text(
-        (eol + 1 + implied) / 2, 91.5,
-        f"misses the knee by {implied - (eol + 1):.0f} discharges",
+        (eol_discharge + implied) / 2, 91.5,
+        f"misses the knee by {implied - eol_discharge:.0f} discharges",
         color="#d62728", ha="center", fontsize=8.5,
     )
 
-    ax.set_xlim(0, max(implied * 1.05, eol * 1.2))
+    ax.set_xlim(0, max(implied * 1.05, eol_discharge * 1.2))
     ax.set_ylim(70, 104)
     ax.set_xlabel("Discharge index")
     ax.set_ylabel("SOH (%)")

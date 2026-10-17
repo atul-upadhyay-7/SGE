@@ -38,9 +38,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from preprocessing import (  # noqa: E402
+    EOL_SOH_THRESHOLD,
+    first_eol_discharge,
+)
 from repro import rounded  # noqa: E402
 
-THRESHOLD = 80.0
+# One retirement threshold for the whole project, defined in
+# preprocessing so this module and the cleaned dataset cannot use
+# different numbers.
+THRESHOLD = EOL_SOH_THRESHOLD
 SMOOTH_WINDOW = 10
 REF_SMOOTH = 5
 
@@ -48,6 +55,24 @@ REF_SMOOTH = 5
 # The prompt's "first 20-30 discharges" is this window; 20 is the
 # best of 20/25/30 on the four held-out cells (see CHANGES, Step 16).
 EXTRAP_WINDOW = 20
+
+
+def _first_eol_position(soh, threshold=THRESHOLD):
+    """
+    0-based position of the first discharge below the retirement
+    threshold, or None.
+
+    The reported end-of-life discharge is this position plus 1 — the
+    same number preprocessing.first_eol_discharge returns and every
+    table stores. The position is kept for the per-discharge error
+    loops, which index arrays directly. The two used to disagree:
+    this module reported the raw position, so B0005 read 106 here and
+    107 in every other table.
+    """
+
+    eol = first_eol_discharge(soh, threshold=threshold)
+
+    return None if eol is None else eol - 1
 
 
 class TrajectoryRul:
@@ -70,6 +95,12 @@ class TrajectoryRul:
                 .to_numpy()
             )
 
+            # This reference-curve position is a modelling quantity,
+            # not a reported end of life: it is read off the *smoothed*
+            # curve and used only as a 0-based position in the
+            # "how many discharges did this reference have left"
+            # subtraction below. The end of life every table reports is
+            # first_eol_discharge on the measured SOH.
             below = smooth <= self.threshold
 
             if not below.any():
@@ -217,11 +248,13 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
             .to_numpy()
         )
 
-        if not (act <= threshold).any():
+        eol = _first_eol_position(act, threshold)
+
+        if eol is None:
 
             continue
 
-        eol = int(np.argmax(act <= threshold))
+        eol_discharge = eol + 1
         if t not in preds:
             continue
         pred = np.asarray(preds[t], dtype=float)
@@ -270,7 +303,7 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
         out.append(
             {
                 "test_cell": t,
-                "eol_discharge": eol,
+                "eol_discharge": eol_discharge,
                 "n_points": n,
                 "trajectory_mae": float(np.mean(err_t)),
                 "fleet_lifetime_baseline_mae": float(
@@ -363,11 +396,12 @@ def _traj_points(df, test_cell, pred, refs, threshold, start):
 
     act = df[df["cell_id"] == test_cell].sort_values("cycle")["soh"].to_numpy()
 
-    if not (act <= threshold).any():
+    eol = _first_eol_position(act, threshold)
+
+    if eol is None:
 
         return [], None
 
-    eol = int(np.argmax(act <= threshold))
     pred = np.asarray(pred, dtype=float)
 
     points = []
@@ -441,11 +475,12 @@ def extrapolation_loco(
             .to_numpy(dtype=float)
         )
 
-        if not (y <= threshold).any():
+        eol = _first_eol_position(y, threshold)
+
+        if eol is None:
 
             continue
 
-        eol = int(np.argmax(y <= threshold))
         implied = _implied_eol(y, threshold, window)
 
         if implied is None:
@@ -463,9 +498,12 @@ def extrapolation_loco(
 
         out.append({
             "test_cell": t,
-            "eol_discharge": eol,
+            "eol_discharge": eol + 1,
             "n_points": len(errs),
-            "implied_eol": float(implied),
+            # _implied_eol crosses the fit on the 0-based discharge
+            # axis, so +1 puts it on the same 1-based discharge scale
+            # as eol_discharge.
+            "implied_eol": float(implied) + 1.0,
             "extrapolation_mae": float(np.mean(errs)),
         })
 
@@ -502,11 +540,12 @@ def extrapolation_bands(
         y = g["soh"].to_numpy(dtype=float)
         cycles = g["cycle"].to_numpy()
 
-        if not (y <= threshold).any():
+        eol = _first_eol_position(y, threshold)
+
+        if eol is None:
 
             continue
 
-        eol = int(np.argmax(y <= threshold))
         implied = _implied_eol(y, threshold, window)
 
         if implied is None:
@@ -547,7 +586,10 @@ def method_disagreement_loco(
 
     cells = [
         c for c in sorted(df["cell_id"].unique())
-        if c in preds and (df[df["cell_id"] == c]["soh"] <= threshold).any()
+        if c in preds
+        and first_eol_discharge(
+            df[df["cell_id"] == c]["soh"], threshold=threshold
+        ) is not None
     ]
 
     all_cells = sorted(df["cell_id"].unique())
@@ -561,7 +603,12 @@ def method_disagreement_loco(
             .to_numpy(dtype=float)
         )
 
-        eol = int(np.argmax(y <= threshold))
+        eol = _first_eol_position(y, threshold)
+
+        if eol is None:
+
+            continue
+
         implied = _implied_eol(y, threshold, window)
 
         if implied is None:
@@ -625,7 +672,10 @@ def calibrated_band_loco(
 
     cells = [
         c for c in sorted(df["cell_id"].unique())
-        if c in preds and (df[df["cell_id"] == c]["soh"] <= threshold).any()
+        if c in preds
+        and first_eol_discharge(
+            df[df["cell_id"] == c]["soh"], threshold=threshold
+        ) is not None
     ]
 
     points = {}

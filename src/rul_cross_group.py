@@ -89,7 +89,10 @@ from data_cleaning import (  # noqa: E402
     reference_capacity,
 )
 from load_data import parse_battery_file, resolve_raw_dir  # noqa: E402
-from preprocessing import EOL_SOH_THRESHOLD  # noqa: E402
+from preprocessing import (  # noqa: E402
+    EOL_SOH_THRESHOLD,
+    first_eol_discharge,
+)
 from repro import rounded  # noqa: E402
 from rul_trajectory import (  # noqa: E402
     EXTRAP_WINDOW,
@@ -166,11 +169,18 @@ def _series(raw_dir, cell, group):
 
 
 def _eol_index(soh):
-    """First position whose SOH is below the retirement threshold."""
+    """
+    0-based position of the first discharge below the retirement
+    threshold, or None.
 
-    below = np.asarray(soh, dtype=float) < EOL_SOH_THRESHOLD
+    Reporting adds 1 to get the discharge number. The definition
+    itself is preprocessing.first_eol_discharge, so this and every
+    CSV agree on which discharge retires a cell.
+    """
 
-    return int(np.argmax(below)) if below.any() else None
+    eol = first_eol_discharge(soh, threshold=EOL_SOH_THRESHOLD)
+
+    return None if eol is None else eol - 1
 
 
 def label_table(series_by_cell):
@@ -378,7 +388,11 @@ def window_sweep(
                     "discharges": int(len(soh)),
                     "eol_discharge": eol + 1,
                     "window": int(window),
-                    "implied_eol": float(implied) if implied is not None
+                    # _implied_eol crosses the fit on the 0-based
+                    # discharge axis, so +1 puts it on the same
+                    # 1-based discharge scale as eol_discharge.
+                    "implied_eol": float(implied) + 1.0
+                    if implied is not None
                     else np.nan,
                     "mae": mae,
                 }

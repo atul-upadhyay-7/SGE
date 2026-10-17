@@ -50,6 +50,7 @@ from data_cleaning import (  # noqa: E402
     REFERENCE_RULE,
     _valid_mask,
     exclusion_reason,
+    first_eol_discharge,
     reference_capacity,
 )
 from load_data import parse_battery_file, resolve_raw_dir  # noqa: E402
@@ -145,8 +146,8 @@ def audit_cell(raw_dir, cell_id, group):
 
     soh = g_clean["capacity_ah"].astype(float) / reference * 100.0
 
-    below = (soh < EOL_SOH_THRESHOLD).to_numpy()
-    reaches = bool(below.any())
+    eol_discharge = first_eol_discharge(soh, threshold=EOL_SOH_THRESHOLD)
+    reaches = eol_discharge is not None
     reason = exclusion_reason(soh)
 
     row = {
@@ -160,7 +161,7 @@ def audit_cell(raw_dir, cell_id, group):
         "keep": not bool(reason),
         "reason": reason,
         "eol_discharge": (
-            float(int(np.argmax(below)) + 1) if reaches else np.nan
+            float(eol_discharge) if reaches else np.nan
         ),
     }
 

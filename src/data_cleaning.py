@@ -43,6 +43,7 @@ from repro import rounded  # noqa: E402
 from preprocessing import (  # noqa: E402
     EARLY_SLOPE_WINDOW,
     EOL_SOH_THRESHOLD,
+    first_eol_discharge,
     ols_slope,
 )
 
@@ -238,11 +239,19 @@ def _recompute_targets(df):
         df["eol_cycle_observed"] - df["discharge_index"]
     )
 
-    eol_discharge = (
-        df[df["soh"] < EOL_SOH_THRESHOLD]
-        .groupby("cell_id")["discharge_index"]
-        .min()
-    )
+    eol_discharge = {
+        cell_id: first_eol_discharge(
+            group["soh"],
+            group["discharge_index"],
+            EOL_SOH_THRESHOLD,
+        )
+        for cell_id, group in df.groupby("cell_id")
+    }
+    eol_discharge = {
+        cell_id: value
+        for cell_id, value in eol_discharge.items()
+        if value is not None
+    }
     df["eol_cycle_threshold"] = df["cell_id"].map(eol_discharge)
 
     has_eol = df["eol_cycle_threshold"].notna()

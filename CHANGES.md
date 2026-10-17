@@ -121,6 +121,12 @@ The README now opens its scope instead of leaving it to be inferred. A new **Wha
 
 ---
 
+## Step 25 — One end-of-life definition, shared by every table
+
+End of life was being reported from two code paths. `src/rul_trajectory.py` located the crossing with `int(np.argmax(y <= threshold))` — a 0-based position on its smoothed curve — so `rul_trajectory_results.csv` and `rul_method_comparison.csv` put B0005 at 106, B0006 at 60, B0007 at 124 and B0018 at 77, while every other table (the cross-group tables, the random-load labels and check, `cell_audit.csv`, the window sweep, the degradation rates and the cleaned dataset) put the same crossing at 107, 61, 125 and 78. The definition now lives in one place. `src/preprocessing.py` exports `first_eol_discharge(soh, discharge_index=None, threshold=EOL_SOH_THRESHOLD)`: the first discharge, counted from 1 to match `discharge_index`, whose measured SOH is strictly below 80%, or `None` for a cell that never retires. Every producer calls it — `preprocessing.py` and `data_cleaning.py` build `eol_cycle_threshold` from it, `rul_trajectory.py` routes `evaluate_loco`, `extrapolation_loco`, `extrapolation_bands`, `method_disagreement_loco`, `calibrated_band_loco` and `_traj_points` through a small `_first_eol_position`, `rul_cross_group.py` derives `_eol_index` from it and shifts the window sweep's `implied_eol` onto the same 1-based axis, and `random_load.py` reports `eol_discharge` from it. `docs/make_rul_extrapolation_plot.py` is drawn on the same 1-based axis and its PNG was regenerated. The two trajectory tables now read 107, 61, 125 and 78 and every table agrees cell by cell, while no RUL error metric moved — trajectory MAE 7.11 / 51.06 / 17.47 / 6.48 and extrapolation 76.9 / 8.0 / 90.8 / 8.2 are unchanged, because only the reported label changed, not the fit. `tests/test_eol_definition.py` reads every table that reports an end-of-life discharge and fails if two of them disagree for the same cell, if a reported number disagrees with the value recomputed from the cleaned SOH, or if a cell that never retires is given a number.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->
