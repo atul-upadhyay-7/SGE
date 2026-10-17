@@ -79,6 +79,8 @@ The same task, scored one held-out cell at a time: leave-one-cell-out within G1 
 | Train G1+G3, test B0053 | B0053 | 55 | 10.15 | 3.42 | 2.99 |
 | **Train G1+G3, test B0053 — mean** | — | — | 10.15 | 3.42 | 2.99 |
 
+The row the deployable estimator is held to is the B0005 leave-one-cell-out one — 1.34% ElasticNet and 1.06% XGBoost — on a cell its training set never contained. That is the accuracy number for B0005. The in-sample counterpart the backend regression test reads only shows the estimator runs the same deterministic pipeline at that cell; it is a determinism check, not accuracy, and is not quoted here.
+
 #### B0053: one cell, and an R² that says the shape is not learnt
 
 ![Predicted versus true SOH for B0053 over discharge index](docs/soh_partial_B0053.png)

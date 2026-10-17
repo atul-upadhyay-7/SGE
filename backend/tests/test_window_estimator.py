@@ -4,6 +4,13 @@ These are pure-ML tests. They need neither the database nor MQTT, so
 scripts/verify.sh runs them with ``--noconftest``; the app-level
 conftest imports the full FastAPI app (and its MQTT dependency), which
 this test does not exercise.
+
+The B0005 CSV these tests read is an *in-sample regression check, not
+accuracy*: the deployable model was trained on every audited cell
+including B0005, so reproducing it only proves the estimator runs the
+same deterministic pipeline. The held-out number for B0005 lives in
+``data/processed/soh_window_heldout_B0005.csv`` and is checked by
+``tests/test_window_heldout.py``.
 """
 
 from __future__ import annotations
@@ -23,7 +30,7 @@ from app.ml import estimator  # noqa: E402
 import features  # noqa: E402
 
 CSV = REPO_ROOT / "data" / "processed" / (
-    "soh_window_predictions_B0005.csv"
+    "soh_window_regression_B0005.csv"
 )
 
 TOL = 1e-6
@@ -52,8 +59,9 @@ def test_window_feature_lists_match_offline_pipeline():
 
 def test_predict_soh_matches_saved_csv_for_b0005():
     """
-    Every B0005 discharge, scored from the first five discharges as the
-    reference, must reproduce the saved prediction to within 1e-6.
+    In-sample regression check, not accuracy. Every B0005 discharge,
+    scored from the first five discharges as the reference, must
+    reproduce the saved prediction to within 1e-6.
     """
 
     rows = _rows()

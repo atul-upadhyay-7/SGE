@@ -1,0 +1,27 @@
+{
+  "features": [
+    "vw_capacity_ratio",
+    "vw_capacity_per_amp",
+    "vw_time_ratio",
+    "vw_voltage_ratio",
+    "vw_dqdv_height_ratio"
+  ],
+  "target": "soh",
+  "trained_on": [
+    "B0006",
+    "B0007",
+    "B0018"
+  ],
+  "imputer_medians": [
+    0.7293758370334995,
+    0.6275835159173524,
+    0.7293197761469126,
+    0.9981630738879795,
+    0.7360022502766672
+  ],
+  "library_versions": {
+    "xgboost": "3.4.0",
+    "scikit-learn": "1.7.1",
+    "python": "3.12.3"
+  }
+}

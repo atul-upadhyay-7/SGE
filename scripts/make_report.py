@@ -423,6 +423,33 @@ def build_partial_transfer(partial):
             f"{ph('pt_' + tag + '_mean_xgb', means['xgb'], '.2f')} |"
         )
 
+    # B0005 is the one cell with both an in-sample regression fixture
+    # and a held-out accuracy number; name the held-out one explicitly.
+    b0005 = partial[
+        (partial["protocol"] == "leave-one-cell-out: G1")
+        & (partial["test_cell"] == "B0005")
+    ]
+
+    b0005_en = float(
+        b0005.loc[b0005["model"] == "ElasticNet", "mae_pct"].iloc[0]
+    )
+    b0005_xgb = float(
+        b0005.loc[b0005["model"] == "XGBoost", "mae_pct"].iloc[0]
+    )
+
+    lines.append("")
+    lines.append(
+        "The row the deployable estimator is held to is the B0005 "
+        "leave-one-cell-out one — "
+        f"{ph('pt_loco_g1_b0005_en', b0005_en, '.2f')}% ElasticNet and "
+        f"{ph('pt_loco_g1_b0005_xgb', b0005_xgb, '.2f')}% XGBoost — on "
+        "a cell its training set never contained. That is the accuracy "
+        "number for B0005. The in-sample counterpart the backend "
+        "regression test reads only shows the estimator runs the same "
+        "deterministic pipeline at that cell; it is a determinism "
+        "check, not accuracy, and is not quoted here."
+    )
+
     # B0053 stands alone, so it can be plotted rather than only
     # tabulated: predicted against true SOH over discharge index.
     b0053 = partial[partial["protocol"] == "train G1+G3, test B0053"]
