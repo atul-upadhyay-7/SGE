@@ -145,6 +145,12 @@ Neither remaining-life method wins everywhere, so the project stopped presenting
 
 ---
 
+## Step 29 — README cut to a scope-and-results front page, and a generated model card
+
+The README had grown to 1250 lines and mixed the results with the setup manual, so the front page was cut to 206 lines: what the project is and is not, a known-limits table, what a real BMS must provide, a results-at-a-glance table, the known limitations, a documentation index and how to run verify. Every result table moved to `docs/RESULTS.md` (the Key Results, RUL, degradation and dataset sections) and the install/architecture/live-monitor/operations manual moved to `docs/SETUP.md`. The generated regions did not become hand-edited: `scripts/make_report.py` now routes each region to its own document — `bms_contract` and the new `results_glance` (the same body as the CHANGES `final` table) stay in the README, `results`/`rul`/`degradation`/`dataset` go to `docs/RESULTS.md`, `pack` to `docs/SETUP.md`, and a new `model_card` region to `docs/MODEL_CARD.md` — so the placeholder machinery is unchanged across all nine regions. `docs/MODEL_CARD.md` is generated, not written: the input names, units and refusal thresholds come from `src/features.py` (`WINDOW_UNITS`, `WINDOW_MODEL_FEATURES`, the window/noise/current bounds), the held-out accuracies from the partial-transfer and RUL-trajectory CSVs, and the tested noise and window levels from the robustness summary, so it restates the shipped contract and the measured held-out scores without a typed number. `docs/OWN_CELL_PROTOCOL.md` is the one hand-written page: how to log your own 18650 cells (1 Hz or faster, one row per second, monotonic seconds, three full reference discharges at a fixed current first) and the four CSV columns the loader and the streaming tracker both read. `scripts/check_numbers.py` and `scripts/verify.sh` now scan and sync the five documents, and the seven README-reading tests point at the document each section now lives in (`test_cross_condition.py` at the B0053 plot, `test_window_robustness.py`, `test_window_heldout.py`, `test_random_load_transfer.py` and `test_rul_range.py` at `docs/RESULTS.md`, `test_readme_numbers.py` at the copied `docs/` set); `test_readme_scope.py` is unchanged because both scope headings and the `bms_contract` region remain in the README.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

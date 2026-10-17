@@ -16,7 +16,7 @@ tests pin the claim five ways:
     moves it;
   * both shorter windows exceed the budget;
   * the two derived answers (smallest window, largest noise) follow
-    from the summary, and the README carries the section.
+    from the summary, and docs/RESULTS.md carries the section.
 """
 
 import sys
@@ -34,7 +34,7 @@ DETAIL = PROC / "soh_window_robustness.csv"
 SUMMARY = PROC / "soh_window_robustness_summary.csv"
 LIMITS = PROC / "soh_window_robustness_limits.csv"
 PARTIAL = PROC / "experiments" / "soh_partial_transfer.csv"
-README = REPO / "README.md"
+RESULTS = REPO / "docs" / "RESULTS.md"
 
 TOL = 0.01
 
@@ -211,7 +211,7 @@ def test_perturbation_is_seeded_and_deterministic():
 def test_readme_reports_the_section(summary):
     """The generated region must carry the section and the limit level."""
 
-    text = README.read_text()
+    text = RESULTS.read_text()
     band = summary[summary["condition"] == "window_3.8_3.6"].iloc[0]
 
     assert "Noise and shorter-window robustness" in text

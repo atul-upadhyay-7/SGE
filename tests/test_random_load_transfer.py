@@ -15,8 +15,8 @@ exactly the same discharges. These tests pin that claim four ways:
   * each reported score reproduces from a fresh run;
   * the model beats the window formula on every cell, which is what
     makes the exclusion "comparability, not failure";
-  * the README caveat — B0039 is the one cell whose R² is below a
-    constant mean — stays true.
+  * the docs/RESULTS.md caveat — B0039 is the one cell whose R² is
+    below a constant mean — stays true.
 """
 
 import json
@@ -34,7 +34,7 @@ CSV = PROC / "soh_random_load_transfer.csv"
 AUDIT = PROC / "cell_audit.csv"
 CHECK = PROC / "random_load_rul_check.csv"
 MODEL_JSON = REPO / "models" / "soh_window_all.json"
-README = REPO / "README.md"
+RESULTS = REPO / "docs" / "RESULTS.md"
 
 CELLS = {"B0039", "B0042", "B0043", "B0044"}
 TOL = 0.01
@@ -128,8 +128,8 @@ def test_the_model_beats_the_window_formula_on_every_cell(cells):
 
 
 def test_b0039_is_the_one_cell_without_fade_tracking(cells):
-    """The README's caveat: three of the four track the fade (R² above
-    zero) and B0039 is the exception."""
+    """The docs/RESULTS.md caveat: three of the four track the fade (R²
+    above zero) and B0039 is the exception."""
 
     flat = cells[cells["model_r2"] <= 0.0]
 
@@ -141,7 +141,7 @@ def test_readme_reports_the_transfer_result(frame):
     """The generated region must carry the section and the mean model
     error, so the table cannot be dropped from the report silently."""
 
-    text = README.read_text()
+    text = RESULTS.read_text()
     mean = frame[frame["cell_id"] == "MEAN"].iloc[0]
 
     assert "Random-load transfer" in text

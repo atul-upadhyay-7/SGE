@@ -238,5 +238,5 @@ def test_b0053_is_reported_as_one_cell_with_a_plot(transfer):
     assert B0053_PLOT.exists(), "the B0053 plot was not committed"
     assert B0053_PLOT.stat().st_size > 0
 
-    readme = (REPO / "README.md").read_text(encoding="utf-8")
-    assert "docs/soh_partial_B0053.png" in readme
+    readme = (REPO / "docs" / "RESULTS.md").read_text(encoding="utf-8")
+    assert "soh_partial_B0053.png" in readme

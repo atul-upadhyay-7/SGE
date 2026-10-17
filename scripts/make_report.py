@@ -2,10 +2,12 @@
 """
 make_report.py
 --------------
-Build the numbers that appear in README.md and CHANGES.md from the
-measured CSVs. Nothing here is typed by hand: every value is read
-from a CSV under data/processed/, and every number written into a
-marked region is a {{id}} placeholder rendered from that value.
+Build the numbers that appear in README.md, CHANGES.md and the
+generated regions of docs/RESULTS.md, docs/SETUP.md and
+docs/MODEL_CARD.md from the measured CSVs. Nothing here is typed by
+hand: every value is read from a CSV under data/processed/, and every
+number written into a marked region is a {{id}} placeholder rendered
+from that value.
 
 A marked region looks like:
 
@@ -15,7 +17,8 @@ A marked region looks like:
 
 The script writes, all from the CSVs:
 
-  * the rendered regions back into README.md and CHANGES.md;
+  * the rendered regions back into their documents (README.md,
+    CHANGES.md, docs/RESULTS.md, docs/SETUP.md, docs/MODEL_CARD.md);
   * data/processed/report_numbers.json — the machine-readable
     record {"<placeholder_id>": value} that check_numbers.py
     re-renders the regions from, with the placeholder templates
@@ -50,6 +53,9 @@ import features  # noqa: E402
 SRC_FEATURES = ROOT / "src" / "features.py"
 
 README = ROOT / "README.md"
+RESULTS = ROOT / "docs" / "RESULTS.md"
+SETUP = ROOT / "docs" / "SETUP.md"
+MODEL_CARD = ROOT / "docs" / "MODEL_CARD.md"
 CHANGES = ROOT / "CHANGES.md"
 SUMMARY = PROC / "report_summary.csv"
 NUMBERS = PROC / "report_numbers.json"
@@ -173,6 +179,27 @@ def region(name, template):
     _templates[name] = template
 
     return rendered
+
+
+def write_regions(path, regions):
+    """
+    Replace each named region in `path` with its rendered body.
+
+    The generated regions are spread across several documents now:
+    README.md keeps the scope contract and the results-at-a-glance
+    table, docs/RESULTS.md carries the long result tables,
+    docs/SETUP.md carries the pack-monitoring table,
+    docs/MODEL_CARD.md carries the model card, and CHANGES.md keeps
+    the closing performance comparison. Each file says where its
+    regions live by carrying the marker pair.
+    """
+
+    text = path.read_text()
+
+    for name, body in regions.items():
+        text = replace_region(text, name, body)
+
+    path.write_text(text)
 
 
 def model_mean(frame, model, column="MAE"):
@@ -495,7 +522,7 @@ def build_partial_transfer(partial):
     lines.append("#### B0053: one cell, and an R² that says the shape is not learnt\n")
     lines.append(
         "![Predicted versus true SOH for B0053 over discharge index]"
-        "(docs/soh_partial_B0053.png)\n"
+        "(soh_partial_B0053.png)\n"
     )
     lines.append(
         "B0053 is reported as the single cell it is, plotted predicted "
@@ -2002,6 +2029,230 @@ def build_final(soh_res, soh_nested, soh_base, soh_null, partial_transfer, rul):
     return "\n".join(lines)
 
 
+def build_model_card(partial_transfer, rul, clean, wr_summary, wr_limits,
+                     random_transfer):
+    """
+    docs/MODEL_CARD.md: what the shipped model takes, how well it
+    scores on cells it never saw, which conditions were exercised,
+    which were not, and when it refuses to answer.
+
+    Inputs and units are read from src/features.py, the accuracy
+    numbers from the result CSVs, and the tested noise/window levels
+    from the robustness summary, so the card cannot state a number
+    the pipeline did not measure.
+    """
+
+    lines = []
+
+    lines.append("## What it predicts")
+    lines.append("")
+    lines.append(
+        "Three things from measurements a battery management system can "
+        "actually take. A **partial-window SOH** (percent) from the first "
+        "stage of a discharge — the "
+        f"{ph('mc_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
+        f"{ph('mc_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V window, "
+        "read before the discharge finishes. An **indicative remaining life** "
+        "in sequential discharges, reported as a range, not a point. And the "
+        "**window formula** it is scored against, the best a BMS can compute "
+        "from the window alone."
+    )
+
+    lines.append("")
+    lines.append("## Inputs and units")
+    lines.append("")
+    lines.append(
+        "The raw quantities measured inside the trained window, from "
+        "`src/features.py` (`WINDOW_FEATURES` plus the one normalisation "
+        "input)."
+    )
+    lines.append("")
+    lines.append("| Input | Unit | Meaning |")
+    lines.append("|---|---|---|")
+
+    meaning = {
+        "vw_time_s": "seconds spent inside the window",
+        "vw_capacity_ah": "charge delivered inside the window",
+        "vw_voltage_mean": "mean cell voltage inside the window",
+        "vw_dqdv_peak_v": "voltage of the dQ/dV peak inside the window",
+        "vw_dqdv_peak_height": "height of the dQ/dV peak",
+        "current_mean": "mean current over the discharge; the one "
+                         "non-window input the cell-relative normalisation "
+                         "needs",
+    }
+    for name in features.WINDOW_FEATURES + features.WINDOW_NORMALIZATION_INPUTS:
+        lines.append(
+            f"| `{name}` | {features.WINDOW_UNITS[name]} | {meaning[name]} |"
+        )
+
+    lines.append("")
+    lines.append("## Model inputs")
+    lines.append("")
+    lines.append(
+        "The estimator takes the raw window made relative to the cell's own "
+        f"opening median of the first "
+        f"{ph('mc_reference_window', features.WINDOW_REFERENCE_WINDOW, 'd')} "
+        "discharges, so the model reads a level, not an absolute capacity:"
+    )
+    lines.append("")
+    for name in features.WINDOW_MODEL_FEATURES:
+        lines.append(f"- `{name}`")
+
+    lines.append("")
+    lines.append("## Trained on")
+    lines.append("")
+    lines.append(
+        "Only the nine constant-current NASA cells the audit keeps — G1 "
+        "(B0005, B0006, B0007, B0018), G3 (B0029–B0032) and G9 (B0053). "
+        "Target is `soh` (percent). The random-load cells are scored but "
+        "never trained on."
+    )
+
+    lines.append("")
+    lines.append("## Held-out accuracy")
+    lines.append("")
+    lines.append(
+        "The partial-window SOH model is scored by leave-one-cell-out inside "
+        "G1 and G3, then trained on G1+G3 and tested on the single G9 cell. "
+        "**MAE is in percentage points of SOH, on a cell the model never "
+        "saw.**"
+    )
+    lines.append("")
+    lines.append("| Held-out cell | Protocol | Cell-relative XGBoost MAE (%) |")
+    lines.append("|---|---|---|")
+
+    protocols = [
+        ("leave-one-cell-out: G1", "leave-one-cell-out: G1", "g1"),
+        ("leave-one-cell-out: G3", "leave-one-cell-out: G3", "g3"),
+        ("train G1+G3, test B0053", "train G1+G3, test B0053", "b0053"),
+    ]
+    for key, display, tag in protocols:
+        block = partial_transfer[partial_transfer["protocol"] == key]
+        for cell in sorted(block["test_cell"].unique()):
+            row = block[block["test_cell"] == cell]
+            mae = float(row.loc[row["model"] == "XGBoost", "mae_pct"].iloc[0])
+            pid = f"mc_{tag}_{str(cell).lower()}_xgb"
+            record("model card", "held-out SOH", str(cell),
+                   "cell-relative XGBoost MAE", mae, "%",
+                   REQUIRED["partial_transfer"])
+            lines.append(
+                f"| {cell} | {display} | {ph(pid, mae, '.2f')} |"
+            )
+
+    lines.append("")
+    lines.append(
+        "Indicative RUL, from the reference-trajectory matcher scored "
+        "leave-one-cell-out over the four G1 cells. **MAE is in sequential "
+        "discharges.**"
+    )
+    lines.append("")
+    lines.append("| Held-out cell | Trajectory matcher MAE (discharges) |")
+    lines.append("|---|---|")
+    for _, row in rul.sort_values("test_cell").iterrows():
+        cell = str(row["test_cell"]).lower()
+        mae = float(row["trajectory_mae"])
+        pid = f"mc_rul_{cell}_traj"
+        record("model card", "held-out RUL", row["test_cell"],
+               "trajectory MAE", mae, "discharges",
+               REQUIRED["rul_trajectory"])
+        lines.append(f"| {row['test_cell']} | {ph(pid, mae, '.1f')} |")
+
+    lines.append("")
+    lines.append("## Conditions tested")
+    lines.append("")
+    lines.append(
+        f"- Constant-current discharges at the three kept operating "
+        f"conditions: G1 {ph('mc_g1_temp', int(_cc_cond(clean, 'G1', 'nominal_temperature_c')), 'd')} °C / "
+        f"{ph('mc_g1_amp', int(_cc_cond(clean, 'G1', 'nominal_current_a')), 'd')} A, "
+        f"G3 {ph('mc_g3_temp', int(_cc_cond(clean, 'G3', 'nominal_temperature_c')), 'd')} °C / "
+        f"{ph('mc_g3_amp', int(_cc_cond(clean, 'G3', 'nominal_current_a')), 'd')} A, "
+        f"G9 {ph('mc_g9_temp', int(_cc_cond(clean, 'G9', 'nominal_temperature_c')), 'd')} °C / "
+        f"{ph('mc_g9_amp', int(_cc_cond(clean, 'G9', 'nominal_current_a')), 'd')} A."
+    )
+    lines.append(
+        f"- The {ph('mc_random_n', int(len(random_transfer[random_transfer['cell_id'] != 'MEAN'])), 'd')} "
+        "random-load cells the audit keeps (B0039, B0042–B0044), scored with "
+        "the shipped model but never trained on."
+    )
+    largest_mv = float(wr_limits["largest_voltage_noise_mv"].iloc[0])
+    largest_pct = float(wr_limits["largest_current_noise_pct"].iloc[0])
+    lines.append(
+        f"- Sensor noise added to a held-out cell's inputs: Gaussian voltage "
+        f"noise up to {ph('mc_largest_mv', largest_mv, '.0f')} mV and Gaussian "
+        f"current noise up to {ph('mc_largest_pct', largest_pct, '.0f')}% of "
+        "each sample's current."
+    )
+    narrow = wr_summary[wr_summary["kind"] == "window"].sort_values(
+        "window_high_v", ascending=False
+    )
+    narrow_bands = " and ".join(
+        f"{ph(f'mc_narrow_{index}_hi', float(row['window_high_v']), '.1f')}–"
+        f"{ph(f'mc_narrow_{index}_lo', float(row['window_low_v']), '.1f')} V"
+        for index, (_, row) in enumerate(narrow.iterrows())
+    )
+    lines.append(
+        f"- The trained window and two narrower windows: "
+        f"{ph('mc_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
+        f"{ph('mc_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V "
+        f"(trained), {narrow_bands} (tested at inference)."
+    )
+
+    lines.append("")
+    lines.append("## Conditions NOT tested")
+    lines.append("")
+    lines.append(
+        "- Real packs: no field data, no customer cell, no manufacturer "
+        "reference and no hardware sign-off."
+    )
+    lines.append(
+        "- Temperatures and currents outside the three tested conditions and "
+        "the trained current band, which is "
+        f"{ph('mc_current_low', features.WINDOW_TRAIN_CURRENT_LOW_A, '.1f')}–"
+        f"{ph('mc_current_high', features.WINDOW_TRAIN_CURRENT_HIGH_A, '.1f')} A."
+    )
+    lines.append(
+        "- Duty cycles with rapid, continuous load changes beyond the "
+        "random-load cells above; only one current level per condition is "
+        "trained on."
+    )
+    lines.append(
+        "- Multi-cell pack interactions (imbalance, thermal coupling); the "
+        "live pack monitor is exercised on injected synthetic faults."
+    )
+    lines.append(
+        "- The ESP32 firmware on real hardware, and an external email or "
+        "pager endpoint — the alert delivery target is a local mock receiver."
+    )
+
+    lines.append("")
+    lines.append("## Refusal rules")
+    lines.append("")
+    lines.append(
+        "The estimator returns no number, rather than a guess, when:"
+    )
+    lines.append("")
+    lines.append(
+        f"- a window is measured outside the trained "
+        f"{ph('mc_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
+        f"{ph('mc_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V band "
+        "(`features.WindowRangeError`);"
+    )
+    lines.append(
+        f"- fewer than "
+        f"{ph('mc_min_discharges', features.WINDOW_MIN_REFERENCE_DISCHARGES, 'd')} "
+        "opening discharges are available for the cell-relative baseline "
+        "(`InsufficientReferenceError`);"
+    )
+    lines.append(
+        f"- the discharge current sits far outside the trained "
+        f"{ph('mc_current_low', features.WINDOW_TRAIN_CURRENT_LOW_A, '.1f')}–"
+        f"{ph('mc_current_high', features.WINDOW_TRAIN_CURRENT_HIGH_A, '.1f')} A "
+        "band, where the model has no training data."
+    )
+
+    return "\n".join(lines)
+
+
 def main():
     frames = {key: load(key) for key in REQUIRED}
 
@@ -2040,23 +2291,31 @@ def main():
     dataset = region("dataset", build_dataset(audit))
     pack = region("pack", build_pack(frames["pack_detection"], frames["pack_false_alarms"]))
     bms = region("bms_contract", build_bms_contract())
-    final = region("final", build_final(
+    final_body = build_final(
         frames["soh_results"], frames["soh_nested"], frames["soh_baselines"],
         frames["soh_null"], frames["partial_transfer"], frames["rul_trajectory"],
+    )
+    final = region("final", final_body)
+    glance = region("results_glance", final_body)
+    card = region("model_card", build_model_card(
+        frames["partial_transfer"],
+        frames["rul_trajectory"],
+        frames["clean"],
+        frames["window_robustness_summary"],
+        frames["window_robustness_limits"],
+        frames["random_load_transfer"],
     ))
 
-    readme = README.read_text()
-    readme = replace_region(readme, "results", results)
-    readme = replace_region(readme, "rul", rul)
-    readme = replace_region(readme, "degradation", degradation)
-    readme = replace_region(readme, "dataset", dataset)
-    readme = replace_region(readme, "pack", pack)
-    readme = replace_region(readme, "bms_contract", bms)
-    README.write_text(readme)
-
-    changes = CHANGES.read_text()
-    changes = replace_region(changes, "final", final)
-    CHANGES.write_text(changes)
+    write_regions(README, {"bms_contract": bms, "results_glance": glance})
+    write_regions(RESULTS, {
+        "results": results,
+        "rul": rul,
+        "degradation": degradation,
+        "dataset": dataset,
+    })
+    write_regions(SETUP, {"pack": pack})
+    write_regions(MODEL_CARD, {"model_card": card})
+    write_regions(CHANGES, {"final": final})
 
     pd.DataFrame(_rows).to_csv(SUMMARY, index=False)
 
@@ -2065,7 +2324,8 @@ def main():
 
     print(
         f"wrote {NUMBERS.relative_to(ROOT)} and {SUMMARY.relative_to(ROOT)}, "
-        f"and updated README.md, CHANGES.md"
+        f"and updated README.md, docs/RESULTS.md, docs/SETUP.md, "
+        f"docs/MODEL_CARD.md and CHANGES.md"
     )
 
 

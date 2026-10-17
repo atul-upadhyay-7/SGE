@@ -18,7 +18,7 @@ check:
   * the two claims the paragraph makes hold: the fleet-lifetime
     average beats both methods on every G6 cell, and the matcher beats
     the average on three of four G1 cells across groups;
-  * the README carries the generated decision paragraph.
+  * docs/RESULTS.md carries the generated decision paragraph.
 """
 
 import sys
@@ -34,7 +34,7 @@ sys.path.insert(0, str(REPO / "src"))
 import rul_trajectory as RT  # noqa: E402
 
 PROC = REPO / "data" / "processed"
-README = REPO / "README.md"
+RESULTS = REPO / "docs" / "RESULTS.md"
 
 BANDS = PROC / "rul_prediction_bands.csv"
 CLEAN = PROC / "nasa_ml_dataset_clean.csv"
@@ -160,7 +160,7 @@ def test_matcher_beats_the_average_on_three_of_four_g1_cells():
 
 
 def test_readme_states_the_range_decision():
-    text = README.read_text()
+    text = RESULTS.read_text()
 
     assert "One decision: RUL ships as a range" in text
     assert "indicative range" in text

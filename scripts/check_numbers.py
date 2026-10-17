@@ -2,9 +2,9 @@
 """
 check_numbers.py
 ----------------
-Fail if a number in the generated regions of README.md or
-CHANGES.md is not exactly what data/processed/report_numbers.json
-renders.
+Fail if a number in the generated regions of README.md,
+CHANGES.md, docs/RESULTS.md, docs/SETUP.md or docs/MODEL_CARD.md is
+not exactly what data/processed/report_numbers.json renders.
 
 make_report.py writes that JSON: every number in a marked region is
 a {{id}} placeholder rendered from the JSON's {"<id>": value}
@@ -43,7 +43,15 @@ from report_render import (
 
 ROOT = Path(__file__).resolve().parent.parent
 
-DOCS = [ROOT / "README.md", ROOT / "CHANGES.md"]
+DOC_NAMES = [
+    "README.md",
+    "CHANGES.md",
+    "docs/RESULTS.md",
+    "docs/SETUP.md",
+    "docs/MODEL_CARD.md",
+]
+
+DOCS = [ROOT / name for name in DOC_NAMES]
 
 REGION = re.compile(
     r"<!-- make_report:([a-z_]+) -->(.*?)<!-- make_report:\1:end -->",
@@ -60,8 +68,8 @@ def fail(messages):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Check the numbers in the marked README/CHANGES regions "
-                    "against data/processed/report_numbers.json."
+        description="Check the numbers in the marked README, CHANGES and docs "
+                    "regions against data/processed/report_numbers.json."
     )
     parser.add_argument(
         "--root",
@@ -72,7 +80,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     root = args.root.resolve() if args.root else ROOT
-    docs = [root / "README.md", root / "CHANGES.md"]
+    docs = [root / name for name in DOC_NAMES]
     numbers_json = root / "data" / "processed" / "report_numbers.json"
 
     if not numbers_json.exists():

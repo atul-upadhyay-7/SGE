@@ -9,9 +9,10 @@ The checker is loaded and invoked in its own module (not through
 is not the interpreter running the tests, and shelling out to it
 would silently run something else and pass vacuously.
 
-The failure tests copy README.md, CHANGES.md and
-data/processed/report_numbers.json into a temporary checkout and run
-the checker with --root, so the real documents are never modified.
+The failure tests copy README.md, CHANGES.md, the three docs
+documents and data/processed/report_numbers.json into a temporary
+checkout and run the checker with --root, so the real documents are
+never modified.
 """
 
 import importlib.util
@@ -53,12 +54,15 @@ def run_check(capsys, root=None):
 
 
 def make_root(tmp_path):
-    """A minimal checkout: the two documents and the numbers JSON."""
+    """A minimal checkout: the documents and the numbers JSON."""
 
     root = tmp_path / "checkout"
     (root / "data" / "processed").mkdir(parents=True)
+    (root / "docs").mkdir(parents=True)
     shutil.copy(REPO / "README.md", root / "README.md")
     shutil.copy(REPO / "CHANGES.md", root / "CHANGES.md")
+    for name in ("RESULTS.md", "SETUP.md", "MODEL_CARD.md"):
+        shutil.copy(REPO / "docs" / name, root / "docs" / name)
     shutil.copy(
         REPO / "data" / "processed" / "report_numbers.json",
         root / "data" / "processed" / "report_numbers.json",
@@ -94,8 +98,8 @@ def test_committed_documents_pass(capsys):
 
 def test_edited_number_fails(capsys, tmp_path):
     root = make_root(tmp_path)
-    readme = root / "README.md"
-    text = readme.read_text()
+    results_doc = root / "docs" / "RESULTS.md"
+    text = results_doc.read_text()
 
     edited = {}
 
@@ -105,7 +109,7 @@ def test_edited_number_fails(capsys, tmp_path):
         edited["token"] = match.group()
         return inner[: match.start()] + bump(match.group()) + inner[match.end():]
 
-    readme.write_text(edit_region(text, "results", bump_first_number))
+    results_doc.write_text(edit_region(text, "results", bump_first_number))
 
     code, out = run_check(capsys, root)
 
@@ -115,15 +119,15 @@ def test_edited_number_fails(capsys, tmp_path):
 
 def test_random_fake_number_fails(capsys, tmp_path):
     root = make_root(tmp_path)
-    readme = root / "README.md"
-    text = readme.read_text()
+    results_doc = root / "docs" / "RESULTS.md"
+    text = results_doc.read_text()
 
     rng = random.Random(20261016)
     fake = f"{rng.uniform(1000, 9999):.4f}"
     while fake in text:
         fake = f"{rng.uniform(1000, 9999):.4f}"
 
-    readme.write_text(
+    results_doc.write_text(
         edit_region(text, "results", lambda inner: inner + f"\n| fake metric | {fake} |\n")
     )
 
@@ -142,15 +146,15 @@ def test_number_typed_into_template_fails(capsys, tmp_path):
     """
 
     root = make_root(tmp_path)
-    readme = root / "README.md"
+    results_doc = root / "docs" / "RESULTS.md"
     numbers_json = root / "data" / "processed" / "report_numbers.json"
     data = json.loads(numbers_json.read_text())
 
     fake = "7311.8008"
     snippet = f"\n| typed by hand | {fake}"
 
-    readme.write_text(
-        edit_region(readme.read_text(), "results",
+    results_doc.write_text(
+        edit_region(results_doc.read_text(), "results",
                     lambda inner: inner.rstrip("\n") + snippet + "\n")
     )
 

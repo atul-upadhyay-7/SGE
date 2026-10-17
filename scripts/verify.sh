@@ -5,9 +5,10 @@
 # Clones the committed repository into a temporary directory (it does
 # NOT copy the working tree, so only committed state is verified),
 # downloads and checksums the NASA dataset, runs the pipeline, runs
-# the test suite, checks that every number in README.md / CHANGES.md
-# is a placeholder rendered from data/processed/report_numbers.json,
-# and checks that those documents are in sync with the generator.
+# the test suite, checks that every number in README.md, CHANGES.md,
+# docs/RESULTS.md, docs/SETUP.md and docs/MODEL_CARD.md is a
+# placeholder rendered from data/processed/report_numbers.json, and
+# checks that those documents are in sync with the generator.
 #
 # Any failing step exits non-zero.
 #
@@ -77,16 +78,17 @@ echo ">>> running the backend partial-window estimator tests"
 )
 
 echo
-echo ">>> checking numbers in README.md / CHANGES.md"
+echo ">>> checking numbers in README.md, CHANGES.md and docs/"
 "$PYTHON" scripts/check_numbers.py
 
 echo
 echo ">>> checking generated documents are in sync"
-if git diff --quiet -- README.md CHANGES.md data/processed/report_numbers.json; then
-    echo "    README.md, CHANGES.md and report_numbers.json match the generator output"
+DOCS=(README.md CHANGES.md docs/RESULTS.md docs/SETUP.md docs/MODEL_CARD.md)
+if git diff --quiet -- "${DOCS[@]}" data/processed/report_numbers.json; then
+    echo "    ${DOCS[*]} and report_numbers.json match the generator output"
 else
     echo "    ERROR: committed documents differ from generated output:"
-    git --no-pager diff --stat -- README.md CHANGES.md data/processed/report_numbers.json
+    git --no-pager diff --stat -- "${DOCS[@]}" data/processed/report_numbers.json
     exit 1
 fi
 

@@ -19,10 +19,11 @@ str(value) when the placeholder carries no spec. Keys starting with
 "_" are reserved for structure (currently only "_templates", which
 holds each region's placeholder template) and are never numbers.
 
-check_numbers.py re-renders each marked region of README.md /
-CHANGES.md from the JSON and fails on any difference, and fails
-when a region contains a number that no placeholder produced, so a
-number can only reach the documents through this rendering.
+check_numbers.py re-renders each marked region of README.md,
+CHANGES.md and the docs/ documents from the JSON and fails on any
+difference, and fails when a region contains a number that no
+placeholder produced, so a number can only reach the documents
+through this rendering.
 """
 
 import re

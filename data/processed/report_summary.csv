@@ -429,3 +429,16 @@ bms_contract,partial-window model,reference baseline,min_reference_discharges,3.
 bms_contract,partial-window model,reference baseline,reference_discharges,5.0,discharges,src/features.py
 bms_contract,partial-window model,trained band,train_current_low,2.0,A,src/features.py
 bms_contract,partial-window model,trained band,train_current_high,4.0,A,src/features.py
+model card,held-out SOH,B0005,cell-relative XGBoost MAE,1.0562372899,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0006,cell-relative XGBoost MAE,3.3141604965,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0007,cell-relative XGBoost MAE,0.875956311,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0018,cell-relative XGBoost MAE,0.885635919,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0029,cell-relative XGBoost MAE,0.6871550949,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0030,cell-relative XGBoost MAE,1.2878904358,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0031,cell-relative XGBoost MAE,0.6501590657,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0032,cell-relative XGBoost MAE,1.6424626144,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out SOH,B0053,cell-relative XGBoost MAE,2.9871276212,%,data/processed/experiments/soh_partial_transfer.csv
+model card,held-out RUL,B0005,trajectory MAE,7.1145833333,discharges,data/processed/rul_trajectory_results.csv
+model card,held-out RUL,B0006,trajectory MAE,51.06,discharges,data/processed/rul_trajectory_results.csv
+model card,held-out RUL,B0007,trajectory MAE,17.4736842105,discharges,data/processed/rul_trajectory_results.csv
+model card,held-out RUL,B0018,trajectory MAE,6.4776119403,discharges,data/processed/rul_trajectory_results.csv

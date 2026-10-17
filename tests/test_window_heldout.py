@@ -30,7 +30,7 @@ EXPERIMENT_CSV = PROC / "experiments" / "soh_partial_transfer.csv"
 
 MODEL_DIR = ROOT / "models"
 
-README = ROOT / "README.md"
+RESULTS = ROOT / "docs" / "RESULTS.md"
 
 TOL = 0.01
 
@@ -129,11 +129,11 @@ def test_deployable_model_is_in_sample_on_b0005():
 
 def test_readme_does_not_quote_the_in_sample_error():
     """
-    The README reports the held-out number only. It must not quote the
-    in-sample B0005 error as if it were accuracy.
+    docs/RESULTS.md reports the held-out number only. It must not quote
+    the in-sample B0005 error as if it were accuracy.
     """
 
-    text = README.read_text()
+    text = RESULTS.read_text()
 
     token = f"{_in_sample_mae():.2f}"
 
