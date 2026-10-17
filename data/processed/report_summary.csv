@@ -178,6 +178,59 @@ RUL,random-load check,B0038-B0044,cells checked,7.0,cells,data/processed/random_
 RUL,random-load check,B0038-B0044,retirement threshold,80.0,percent SOH,data/processed/random_load_rul_check.csv
 RUL,random-load check,B0038-B0044,cells reaching 80%,5.0,cells,data/processed/random_load_rul_check.csv
 RUL,random-load check,B0038-B0044,cells reaching 80% and kept,4.0,cells,data/processed/random_load_rul_check.csv
+RUL,cross-group labels,B0039,EOL discharge,34.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0039,discharges,35.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0042,EOL discharge,60.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0042,discharges,65.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0043,EOL discharge,60.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0043,discharges,65.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0044,EOL discharge,57.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0044,discharges,65.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group cg_a,held-out B0042,trajectory MAE,8.6530612245,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0042,extrapolation MAE,24.6318599238,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0042,fleet-lifetime baseline MAE,1.0,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0043,trajectory MAE,4.2857142857,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0043,extrapolation MAE,5.9127449557,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0043,fleet-lifetime baseline MAE,1.0,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0044,trajectory MAE,3.1739130435,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0044,extrapolation MAE,9.5156583694,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,held-out B0044,fleet-lifetime baseline MAE,3.0,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,mean,trajectory MAE,5.370896184566667,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,mean,extrapolation MAE,13.353421082966667,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,mean,fleet-lifetime baseline MAE,1.6666666666666667,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,verdict,cells where trajectory beats baseline,0.0,cells,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,verdict,cells where extrapolation beats baseline,0.0,cells,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_b,held-out B0042,trajectory MAE,22.9183673469,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0042,extrapolation MAE,24.6318599238,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0042,fleet-lifetime baseline MAE,32.5,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0043,trajectory MAE,20.8163265306,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0043,extrapolation MAE,5.9127449557,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0043,fleet-lifetime baseline MAE,32.5,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0044,trajectory MAE,17.9565217391,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0044,extrapolation MAE,9.5156583694,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,held-out B0044,fleet-lifetime baseline MAE,35.5,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,mean,trajectory MAE,20.56373853886667,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,mean,extrapolation MAE,13.353421082966667,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,mean,fleet-lifetime baseline MAE,33.5,discharges,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,verdict,cells where trajectory beats baseline,3.0,cells,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,verdict,cells where extrapolation beats baseline,3.0,cells,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_c,held-out B0005,trajectory MAE,15.3229166667,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0005,extrapolation MAE,76.9078718407,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0005,fleet-lifetime baseline MAE,35.7395833333,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0006,trajectory MAE,4.56,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0006,extrapolation MAE,8.0213240822,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0006,fleet-lifetime baseline MAE,1.0,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0007,trajectory MAE,28.350877193,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0007,extrapolation MAE,90.8298079966,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0007,fleet-lifetime baseline MAE,46.7543859649,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0018,trajectory MAE,7.4925373134,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0018,extrapolation MAE,8.1961396247,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,held-out B0018,fleet-lifetime baseline MAE,15.7164179104,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,mean,trajectory MAE,13.931582793275,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,mean,extrapolation MAE,45.98878588605,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,mean,fleet-lifetime baseline MAE,24.80259680215,discharges,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,verdict,cells where trajectory beats baseline,3.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,verdict,cells where extrapolation beats baseline,1.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
 degradation,slope,B0005,fade,0.2139387007,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,early fade,0.0579203844,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,EOL discharge,107.0,discharges,data/processed/cell_audit.csv

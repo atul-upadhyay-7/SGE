@@ -97,6 +97,12 @@ The B0005 fixture the backend was pinned to was produced by the deployable model
 
 ---
 
+## Step 21 — RUL for the random-load cells, kept separate from G1
+
+The random-load check had already found four cells outside G1 that reach retirement — B0039 (G5) and B0042, B0043, B0044 (G6) — but they were only counted, never used. New `src/rul_cross_group.py` builds their RUL labels with the same rule as G1 (the first valid discharge below 80% of the cell's first-five-median capacity) into `data/processed/rul_random_load_labels.csv`, then runs three experiments, each in its own table: (a) leave-one-cell-out inside G6, (b) the matcher trained on G1 and tested on each G6 cell, and (c) trained on G6 and tested on each G1 cell. Every table reports both methods (reference-trajectory matching and fade-rate extrapolation) and the fleet-lifetime baseline for every held-out cell. The matcher is driven by the held-out cell's own measured SOH rather than the cycle-level SOH model, because that model is defined on constant-current features and is not valid across these loads; the extrapolation reads only the held-out cell's own opening discharges, so its number is identical in all three protocols. On (a) neither method beats the baseline — the three G6 cells retire within a couple of discharges of each other, so the baseline is a very strong guess — and the report says so in one line. On (b) both methods beat the baseline on every G6 cell; on (c) the matcher beats it on the mean and on three of the four G1 cells while the extrapolation beats it on one. The stage is wired into `run_pipeline.py` after `rul_trajectory`, and new `tests/test_rul_cross_group.py` checks the labels against the independent random-load check, the reference counts and finiteness of every protocol, the (a)/(b)/(c) verdicts, the protocol-independence of the extrapolation, and that the numbers reproduce from a fresh evaluation.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

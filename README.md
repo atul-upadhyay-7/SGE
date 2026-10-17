@@ -207,6 +207,55 @@ A 10th-to-90th band should cover four discharges in five, and this one misses by
 #### More cells that reach 80%? Yes, in the random-load groups
 
 RUL needs a cell that actually reaches the retirement threshold, so the groups the model leaves out were checked against the same SOH rule rather than assumed dead. The NASA random-load groups G5 (B0038-B0040) and G6 (B0041-B0044) were run through it: 7 cells checked, 5 reach 80%, and 4 of those also pass the same ceiling/rise keep filter (B0039, B0042, B0043, B0044). So the claim that only the four G1 cells reach 80% is false in general: four more cells do. They are still not added to the model, because their load and temperature change across the record, so their features are not comparable at a single operating condition — the reason they were left out is comparability, not ageing. B0041 reaches 80% too but is excluded, because the very-low-capacity runs the dataset's own notes flag corrupt its early reference capacity, so its SOH never has a trustworthy baseline.
+
+#### RUL on the random-load cells, kept separate from G1
+
+The four random-load cells that reach retirement are labelled by the same rule as G1 — the first valid discharge below 80% of the cell's first-five-median capacity. B0039 is the only usable G5 cell, so it has no in-group siblings and is labelled but not scored; the three G6 cells (B0042, B0043, B0044) are scored three ways. Both methods and the fleet-lifetime baseline are reported for every held-out cell.
+
+| Cell | Group | EOL discharge | Discharges |
+|---|---|---|---|
+| B0039 | G5 | 34 | 35 |
+| B0042 | G6 | 60 | 65 |
+| B0043 | G6 | 60 | 65 |
+| B0044 | G6 | 57 | 65 |
+
+The matcher is driven by the held-out cell's own measured SOH, which a full-discharge BMS observes, because the cycle-level SOH model is defined on constant-current features and is not valid across these loads; the fade-rate extrapolation reads only the held-out cell's own opening 20 measured discharges, so its number is the same in every protocol.
+
+**(a) leave-one-cell-out inside G6**
+
+| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | Fleet-lifetime baseline MAE |
+|---|---|---|---|
+| B0042 | 8.7 | 24.6 | 1.0 |
+| B0043 | 4.3 | 5.9 | 1.0 |
+| B0044 | 3.2 | 9.5 | 3.0 |
+| **Mean** | 5.4 | 13.4 | 1.7 |
+
+Neither method beats the fleet-lifetime baseline on this group: across the 3 held-out cells the baseline is at or below both methods.
+
+**(b) train the matcher on G1, test on each G6 cell**
+
+| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | Fleet-lifetime baseline MAE |
+|---|---|---|---|
+| B0042 | 22.9 | 24.6 | 32.5 |
+| B0043 | 20.8 | 5.9 | 32.5 |
+| B0044 | 18.0 | 9.5 | 35.5 |
+| **Mean** | 20.6 | 13.4 | 33.5 |
+
+The matcher beats the baseline on 3 of 3 cells and the fade-rate extrapolation on 3 of 3.
+
+**(c) train the matcher on G6, test on each G1 cell**
+
+| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | Fleet-lifetime baseline MAE |
+|---|---|---|---|
+| B0005 | 15.3 | 76.9 | 35.7 |
+| B0006 | 4.6 | 8.0 | 1.0 |
+| B0007 | 28.4 | 90.8 | 46.8 |
+| B0018 | 7.5 | 8.2 | 15.7 |
+| **Mean** | 13.9 | 46.0 | 24.8 |
+
+The matcher beats the baseline on 3 of 4 cells and the fade-rate extrapolation on 1 of 4.
+
+Only protocol (b) mixes the groups, and it is the one where both methods clear the baseline on every G6 cell: a G6 cell is watched by G1 references that sit at a different load, but the two G6 cells left in (a) retire at almost the same discharge, so there the baseline is simply a very good guess.
 <!-- make_report:rul:end -->
 
 > **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.

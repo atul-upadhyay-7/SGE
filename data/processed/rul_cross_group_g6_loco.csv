@@ -1,0 +1,4 @@
+protocol,test_cell,n_reference_cells,eol_discharge,n_points,trajectory_mae,extrapolation_mae,fleet_lifetime_baseline_mae
+leave-one-cell-out: G6,B0042,2,60,49,8.6530612245,24.6318599238,1.0
+leave-one-cell-out: G6,B0043,2,60,49,4.2857142857,5.9127449557,1.0
+leave-one-cell-out: G6,B0044,2,57,46,3.1739130435,9.5156583694,3.0

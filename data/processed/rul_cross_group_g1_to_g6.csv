@@ -1,0 +1,4 @@
+protocol,test_cell,n_reference_cells,eol_discharge,n_points,trajectory_mae,extrapolation_mae,fleet_lifetime_baseline_mae
+"train G1, test G6",B0042,4,60,49,22.9183673469,24.6318599238,32.5
+"train G1, test G6",B0043,4,60,49,20.8163265306,5.9127449557,32.5
+"train G1, test G6",B0044,4,57,46,17.9565217391,9.5156583694,35.5

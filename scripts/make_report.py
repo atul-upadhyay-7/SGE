@@ -56,6 +56,10 @@ REQUIRED = {
     "rul_disagreement": PROC / "rul_method_disagreement.csv",
     "rul_band": PROC / "rul_band_calibration.csv",
     "random_load": PROC / "random_load_rul_check.csv",
+    "rul_random_labels": PROC / "rul_random_load_labels.csv",
+    "rul_g6_loco": PROC / "rul_cross_group_g6_loco.csv",
+    "rul_g1_to_g6": PROC / "rul_cross_group_g1_to_g6.csv",
+    "rul_g6_to_g1": PROC / "rul_cross_group_g6_to_g1.csv",
     "full_discharge": EXP / "soh_full_discharge.csv",
     "partial_discharge": EXP / "soh_partial_discharge.csv",
     "partial_transfer": EXP / "soh_partial_transfer.csv",
@@ -755,7 +759,97 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
     return "\n".join(lines)
 
 
-def build_rul(rul, comparison, disagreement, band, random_load):
+def _rul_cross_table(lines, frame, tag, source):
+    """One cross-group RUL table: both methods plus the baseline."""
+
+    lines.append(
+        "| Held-out cell | Trajectory MAE | Early-fade extrapolation MAE | "
+        "Fleet-lifetime baseline MAE |"
+    )
+    lines.append("|---|---|---|---|")
+
+    traj, extrap, base = [], [], []
+
+    for _, row in frame.sort_values("test_cell").iterrows():
+
+        cell = str(row["test_cell"]).lower()
+        t = float(row["trajectory_mae"])
+        e = float(row["extrapolation_mae"])
+        b = float(row["fleet_lifetime_baseline_mae"])
+        traj.append(t)
+        extrap.append(e)
+        base.append(b)
+
+        record("RUL", f"cross-group {tag}", f"held-out {row['test_cell']}",
+               "trajectory MAE", t, "discharges", source)
+        record("RUL", f"cross-group {tag}", f"held-out {row['test_cell']}",
+               "extrapolation MAE", e, "discharges", source)
+        record("RUL", f"cross-group {tag}", f"held-out {row['test_cell']}",
+               "fleet-lifetime baseline MAE", b, "discharges", source)
+
+        lines.append(
+            f"| {row['test_cell']} | "
+            f"{ph(tag + '_' + cell + '_traj', t, '.1f')} | "
+            f"{ph(tag + '_' + cell + '_extrap', e, '.1f')} | "
+            f"{ph(tag + '_' + cell + '_base', b, '.1f')} |"
+        )
+
+    mt, me, mb = mean(traj), mean(extrap), mean(base)
+
+    for metric, value in (
+        ("trajectory MAE", mt),
+        ("extrapolation MAE", me),
+        ("fleet-lifetime baseline MAE", mb),
+    ):
+        record("RUL", f"cross-group {tag}", "mean", metric, value,
+               "discharges", source)
+
+    lines.append(
+        f"| **Mean** | {ph(tag + '_mean_traj', mt, '.1f')} | "
+        f"{ph(tag + '_mean_extrap', me, '.1f')} | "
+        f"{ph(tag + '_mean_base', mb, '.1f')} |"
+    )
+
+
+def _rul_cross_verdict(lines, frame, tag, source):
+    """State, in one line, whether either method beats the baseline."""
+
+    traj = frame["trajectory_mae"].to_numpy(dtype=float)
+    extrap = frame["extrapolation_mae"].to_numpy(dtype=float)
+    base = frame["fleet_lifetime_baseline_mae"].to_numpy(dtype=float)
+
+    n = len(frame)
+    n_traj = int((traj < base).sum())
+    n_extrap = int((extrap < base).sum())
+
+    record("RUL", f"cross-group {tag}", "verdict",
+           "cells where trajectory beats baseline", n_traj, "cells", source)
+    record("RUL", f"cross-group {tag}", "verdict",
+           "cells where extrapolation beats baseline", n_extrap, "cells",
+           source)
+
+    if n_traj == 0 and n_extrap == 0:
+
+        lines.append(
+            "Neither method beats the fleet-lifetime baseline on this group: "
+            f"across the {ph(tag + '_n_cells', n, 'd')} held-out cells the "
+            "baseline is at or below both methods."
+        )
+
+        return
+
+    lines.append(
+        "The matcher beats the baseline on "
+        f"{ph(tag + '_traj_beat', n_traj, 'd')} of "
+        f"{ph(tag + '_n_cells', n, 'd')} cells and the fade-rate "
+        "extrapolation on "
+        f"{ph(tag + '_extrap_beat', n_extrap, 'd')} of "
+        f"{ph(tag + '_n_cells', n, 'd')}."
+    )
+
+
+def build_rul(rul, comparison, disagreement, band, random_load,
+              labels, g6_loco, g1_to_g6, g6_to_g1):
     lines = []
     lines.append(
         "> **Indicative, not a forecast.** Every remaining-life number here "
@@ -966,6 +1060,75 @@ def build_rul(rul, comparison, disagreement, band, random_load):
         "flag corrupt its early reference capacity, so its SOH never has a "
         "trustworthy baseline."
     )
+
+    lines.append("")
+    lines.append("#### RUL on the random-load cells, kept separate from G1")
+    lines.append("")
+    lines.append(
+        "The four random-load cells that reach retirement are "
+        "labelled by the same rule as G1 — the first valid discharge below "
+        f"{ph('cg_threshold', threshold, 'd')}% of the cell's first-five-median "
+        "capacity. B0039 is the only usable G5 cell, so it has no in-group "
+        "siblings and is labelled but not scored; the three G6 cells "
+        "(B0042, B0043, B0044) are scored three ways. Both methods and the "
+        "fleet-lifetime baseline are reported for every held-out cell."
+    )
+    lines.append("")
+    lines.append("| Cell | Group | EOL discharge | Discharges |")
+    lines.append("|---|---|---|---|")
+
+    for _, row in labels.sort_values("cell_id").iterrows():
+
+        cell = str(row["cell_id"]).lower()
+
+        record("RUL", "cross-group labels", row["cell_id"],
+               "EOL discharge", row["eol_discharge"], "discharges",
+               REQUIRED["rul_random_labels"])
+        record("RUL", "cross-group labels", row["cell_id"],
+               "discharges", row["discharges"], "discharges",
+               REQUIRED["rul_random_labels"])
+
+        lines.append(
+            f"| {row['cell_id']} | {row['group']} | "
+            f"{ph('cgl_' + cell + '_eol', int(row['eol_discharge']), 'd')} | "
+            f"{ph('cgl_' + cell + '_n', int(row['discharges']), 'd')} |"
+        )
+
+    lines.append("")
+    lines.append(
+        "The matcher is driven by the held-out cell's own measured SOH, which "
+        "a full-discharge BMS observes, because the cycle-level SOH model is "
+        "defined on constant-current features and is not valid across these "
+        "loads; the fade-rate extrapolation reads only the held-out cell's own "
+        f"opening {ph('cg_window', int(comparison['window'].iloc[0]), 'd')} "
+        "measured discharges, so its number is the same in every protocol."
+    )
+    lines.append("")
+
+    for label, frame, tag, source in (
+        ("(a) leave-one-cell-out inside G6",
+         g6_loco, "cg_a", REQUIRED["rul_g6_loco"]),
+        ("(b) train the matcher on G1, test on each G6 cell",
+         g1_to_g6, "cg_b", REQUIRED["rul_g1_to_g6"]),
+        ("(c) train the matcher on G6, test on each G1 cell",
+         g6_to_g1, "cg_c", REQUIRED["rul_g6_to_g1"]),
+    ):
+
+        lines.append(f"**{label}**")
+        lines.append("")
+        _rul_cross_table(lines, frame, tag, source)
+        lines.append("")
+        _rul_cross_verdict(lines, frame, tag, source)
+        lines.append("")
+
+    lines.append(
+        "Only protocol (b) mixes the groups, and it is the one where both "
+        "methods clear the baseline on every G6 cell: a G6 cell is watched by "
+        "G1 references that sit at a different load, but the two G6 cells "
+        "left in (a) retire at almost the same discharge, so there the "
+        "baseline is simply a very good guess."
+    )
+
     return "\n".join(lines)
 
 
@@ -1223,6 +1386,10 @@ def main():
             frames["rul_disagreement"],
             frames["rul_band"],
             frames["random_load"],
+            frames["rul_random_labels"],
+            frames["rul_g6_loco"],
+            frames["rul_g1_to_g6"],
+            frames["rul_g6_to_g1"],
         ),
     )
     degradation = region(

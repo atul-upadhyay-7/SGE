@@ -67,6 +67,7 @@ STAGES = [
     ("train_soh", [sys.executable, "src/train_soh.py"]),
     ("train_rul", [sys.executable, "src/train_rul.py"]),
     ("rul_trajectory", [sys.executable, "src/rul_trajectory.py"]),
+    ("rul_cross_group", [sys.executable, "src/rul_cross_group.py"]),
     ("run_experiments", [sys.executable, "src/run_experiments.py"]),
     ("pack_evaluate", [sys.executable, "src/pack/evaluate.py"]),
     ("anomaly", [sys.executable, "src/anomaly.py"]),
