@@ -1,0 +1,244 @@
+condition,kind,voltage_noise_mv,current_noise_pct,window_high_v,window_low_v,window_span_v,protocol,test_cell,n_cycles,model,mae_pct,r2
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,ElasticNet,1.3375185502,0.9797323531
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,XGBoost,1.0562372899,0.9832155371
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,window_formula,8.9086171211,-0.1948068725
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,ElasticNet,1.3086613322,0.978557234
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,XGBoost,1.1254239219,0.9832361334
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,window_formula,9.3702922814,-0.3058060302
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,ElasticNet,1.5907423254,0.9542413891
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,XGBoost,1.2226988209,0.9784595734
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,window_formula,9.9592529154,-0.4397922837
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,ElasticNet,1.5231748578,0.9614972408
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,XGBoost,1.7659750305,0.9540818217
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,window_formula,11.2227236063,-0.7490088718
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,ElasticNet,1.3385776413,0.9796985379
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,XGBoost,1.0705634971,0.9827802919
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,window_formula,8.9145182083,-0.1953447216
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,ElasticNet,1.3369902809,0.9797122971
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,XGBoost,1.0621008045,0.9827884609
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,window_formula,8.8548224402,-0.1814538757
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,ElasticNet,1.3339895632,0.9797988519
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,XGBoost,1.0715541725,0.9827860283
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0005,168,window_formula,8.9067472314,-0.1899460806
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0005,168,ElasticNet,5.3437290454,0.6726150534
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0005,168,XGBoost,6.6563652217,0.4507410806
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0005,168,window_formula,11.7807663623,-0.8847049795
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0005,168,ElasticNet,11.2296389047,-0.3980589723
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0005,168,XGBoost,9.0725071469,-0.067776675
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0005,168,window_formula,11.7659012249,-0.6333831984
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,ElasticNet,2.509251734,0.944651414
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,XGBoost,3.3141604965,0.8628196669
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,window_formula,18.8171254149,-2.1588745617
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,ElasticNet,2.5564795297,0.9423766235
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,XGBoost,3.2553618588,0.8641669333
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,window_formula,19.0385574081,-2.2245188582
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,ElasticNet,2.6090120148,0.938888785
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,XGBoost,3.3076582857,0.8613491783
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,window_formula,19.9255336394,-2.4253899406
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,ElasticNet,2.9298312883,0.9270343877
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,XGBoost,3.8017778937,0.8415723907
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,window_formula,22.0936415873,-3.0248370075
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,ElasticNet,2.5096215956,0.9446410847
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,XGBoost,3.3156052223,0.8627681541
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,window_formula,18.8176684071,-2.1586269118
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,ElasticNet,2.5107451062,0.9448111674
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,XGBoost,3.3141653234,0.8629786606
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,window_formula,18.7528866485,-2.1425356327
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,ElasticNet,2.5189299591,0.9441265852
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,XGBoost,3.305805832,0.8627391853
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0006,168,window_formula,18.9533166799,-2.1915263747
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0006,168,ElasticNet,5.5255593166,0.7965485144
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0006,168,XGBoost,5.9110255193,0.6853883095
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0006,168,window_formula,20.8796646129,-2.6515457383
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0006,168,ElasticNet,8.6393728616,0.447084808
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0006,168,XGBoost,5.8657663463,0.6644346447
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0006,168,window_formula,19.0738057041,-1.9097680594
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,ElasticNet,1.166959152,0.9777931302
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,XGBoost,0.875956311,0.9861413192
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,window_formula,6.2902412246,0.1161252619
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,ElasticNet,1.1779454524,0.9749586817
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,XGBoost,0.5440959019,0.9932527335
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,window_formula,6.703749399,0.0017358469
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,ElasticNet,1.3173997307,0.943452267
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,XGBoost,0.8791662603,0.981739205
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,window_formula,6.9240121745,-0.0360872792
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,ElasticNet,1.2336691113,0.9621757646
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,XGBoost,1.234442962,0.9596122745
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,window_formula,8.4571778907,-0.529693509
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,ElasticNet,1.1683462118,0.9777507304
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,XGBoost,0.8975455102,0.9856236369
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,window_formula,6.2677006667,0.1233812349
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,ElasticNet,1.1722434736,0.9776524214
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,XGBoost,0.9224107145,0.9848630113
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,window_formula,6.2440684519,0.1334643864
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,ElasticNet,1.1688200576,0.9776613492
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,XGBoost,0.8905975483,0.9853669566
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0007,168,window_formula,6.2842165009,0.1218192764
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0007,168,ElasticNet,5.4477240831,0.5557793158
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0007,168,XGBoost,3.6310290603,0.8099627362
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0007,168,window_formula,9.2255984223,-0.7854093218
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0007,168,ElasticNet,11.6092113103,-0.993302151
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0007,168,XGBoost,5.884745075,0.4878501815
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0007,168,window_formula,10.4800928072,-0.9579814728
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,ElasticNet,1.7011952981,0.9499931028
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,XGBoost,0.885635919,0.9843179061
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,window_formula,9.3169917126,-0.8670604003
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,ElasticNet,2.1717015887,0.9024753224
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,XGBoost,0.8172072833,0.9839484502
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,window_formula,9.7333954517,-1.0162848302
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,ElasticNet,1.3351001064,0.9623929128
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,XGBoost,1.2799703897,0.965259329
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,window_formula,10.2253238097,-1.1659560616
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,ElasticNet,1.8636678732,0.9132015655
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,XGBoost,2.282482161,0.8928261315
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,window_formula,10.9989522415,-1.4467087924
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,ElasticNet,1.7046255096,0.949793903
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,XGBoost,0.8929714519,0.9839549692
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,window_formula,9.2967712416,-0.8620061789
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,ElasticNet,1.7141727732,0.9493665925
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,XGBoost,0.8991458886,0.983718806
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,window_formula,9.2241710125,-0.8369708991
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,ElasticNet,1.7120575641,0.9493331654
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,XGBoost,0.8764658192,0.9842560084
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G1,B0018,132,window_formula,9.2571121041,-0.8465497275
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0018,132,ElasticNet,3.0415141396,0.7893126378
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0018,132,XGBoost,8.6394301259,-0.1495903341
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G1,B0018,132,window_formula,10.7717988431,-1.316936336
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0018,132,ElasticNet,8.101134175,-0.142909716
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0018,132,XGBoost,10.28823979,-0.8639895118
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G1,B0018,132,window_formula,10.8196099036,-1.1202738979
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,ElasticNet,0.7427763082,0.9252790322
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,XGBoost,0.6871550949,0.9459178831
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,window_formula,1.9443874838,0.4433711146
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,ElasticNet,3.0539184262,-0.0460186328
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,XGBoost,1.5523102077,0.6840500875
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,window_formula,3.7374837222,-0.4927388202
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,ElasticNet,7.0773205153,-14.1162689959
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,XGBoost,2.6001093067,0.0879425657
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,window_formula,3.3289895725,-0.3391496357
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,ElasticNet,4.7200965015,-2.6578030811
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,XGBoost,2.7254032993,0.0493616954
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,window_formula,4.4160107896,-1.1614123288
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,ElasticNet,0.7640696948,0.9229599954
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,XGBoost,0.7096811215,0.9433656085
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,window_formula,2.0253210301,0.4092158057
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,ElasticNet,0.7659349836,0.9208098075
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,XGBoost,0.7022067342,0.9448068384
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,window_formula,1.9923522301,0.4224804254
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,ElasticNet,0.6911233021,0.9368921728
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,XGBoost,0.6836343543,0.9447877002
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0029,40,window_formula,1.9618719122,0.4006623966
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0029,40,ElasticNet,1.2600260875,0.8263959702
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0029,40,XGBoost,0.8720662053,0.9031043635
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0029,40,window_formula,2.3129216961,-0.1266015694
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0029,40,ElasticNet,4.7636738634,-1.2980514696
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0029,40,XGBoost,2.6437838309,0.2247107954
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0029,40,window_formula,2.414521078,-1.6261103917
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,ElasticNet,1.4311018233,0.7881095053
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,XGBoost,1.2878904358,0.7799475823
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,window_formula,1.1136894257,0.7624713998
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,ElasticNet,12.9251710957,-132.936023312
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,XGBoost,1.2988351478,0.7735985144
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,window_formula,2.4369110572,0.1770015601
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,ElasticNet,10.2807050428,-20.3163814525
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,XGBoost,3.4283366447,-0.4440276384
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,window_formula,4.3481827202,-1.2606616992
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,ElasticNet,5.2086049077,-8.2309833189
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,XGBoost,2.7966323692,-0.0368942216
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,window_formula,4.1429405417,-1.4014987311
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,ElasticNet,1.428335352,0.7888476905
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,XGBoost,1.2581352914,0.7875939949
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,window_formula,1.1090362949,0.7630066253
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,ElasticNet,1.4370297625,0.7896255593
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,XGBoost,1.3236717504,0.7836076197
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,window_formula,1.1457441842,0.7397774951
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,ElasticNet,1.3548018635,0.8014976999
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,XGBoost,1.2066777677,0.824336247
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0030,40,window_formula,1.2043824883,0.7354540655
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0030,40,ElasticNet,1.8092180676,0.6386694106
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0030,40,XGBoost,1.4622416413,0.7409443751
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0030,40,window_formula,1.6121212236,-0.0137907911
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0030,40,ElasticNet,4.7106496668,-1.4810891535
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0030,40,XGBoost,3.3928340976,-0.2494804427
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0030,40,window_formula,3.2190750746,-1.9595646918
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,0.801518504,0.8494841439
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,0.6501590657,0.900071211
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,1.0586779437,0.3475238512
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,3.3451378199,-12.6342418908
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,1.1129192025,0.6522029774
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,1.5580702513,0.302202093
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,6.5900194826,-19.5429448663
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,3.0026285126,-0.9949819774
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,7.3918178614,-9.8714336616
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,40.0004370965,-4418.2596608921
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,2.8595615276,-1.0948325025
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,4.4552440587,-4.1871525333
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,0.8099599721,0.8466160088
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,0.6470506882,0.9019030311
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,1.0696126176,0.3418180551
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,0.8069075308,0.8485535515
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,0.6713253434,0.8891776063
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,1.0613226864,0.338989478
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,0.7900893078,0.8475476486
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,0.671649953,0.8840847765
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,1.1674536785,0.2864902852
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0031,40,ElasticNet,1.1834013132,0.6058988498
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0031,40,XGBoost,1.1370361087,0.6643446573
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0031,40,window_formula,1.7138513891,-1.9210499716
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0031,40,ElasticNet,5.3334282678,-4.8133971921
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0031,40,XGBoost,3.2598606602,-1.3422426076
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0031,40,window_formula,4.665186176,-7.1829682515
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,ElasticNet,4.1511352335,-0.3909601948
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,XGBoost,1.6424626144,0.7197090562
+clean,clean,0.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,window_formula,4.3992487976,-1.3277817474
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,ElasticNet,4.7307703375,-0.8807960141
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,XGBoost,1.9503754457,0.5828371377
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,window_formula,5.0976390107,-1.8486097264
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,ElasticNet,3.3217030912,-0.3531551218
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,XGBoost,2.0716975224,0.5741582617
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,window_formula,3.4479195336,-0.9933246323
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,ElasticNet,5.3461517158,-1.8161991244
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,XGBoost,2.0552709204,0.4672253695
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,window_formula,4.8019540059,-1.7796568687
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,ElasticNet,4.139362162,-0.383811732
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,XGBoost,1.5924832138,0.7291031494
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,window_formula,4.3724563411,-1.3120640059
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,ElasticNet,4.044534955,-0.3224255025
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,XGBoost,1.5400814047,0.7503257931
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,window_formula,4.105019496,-1.0962514278
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,ElasticNet,4.0869678331,-0.351740319
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,XGBoost,1.5252772125,0.7473491249
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,40,window_formula,4.2565972704,-1.214501126
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0032,40,ElasticNet,6.8207433493,-3.1932773109
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0032,40,XGBoost,1.3346312631,0.7998067636
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,leave-one-cell-out: G3,B0032,40,window_formula,4.313046468,-3.0509115238
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0032,40,ElasticNet,8.2660076218,-6.1832555344
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0032,40,XGBoost,2.1031890796,0.5196343862
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,leave-one-cell-out: G3,B0032,40,window_formula,4.2437901507,-5.4253455948
+clean,clean,0.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,ElasticNet,3.4237845829,-1.1745775091
+clean,clean,0.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,XGBoost,2.9871276212,-0.8610080826
+clean,clean,0.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,window_formula,10.1483838651,-11.5430721885
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,ElasticNet,4.5881899784,-2.0197773528
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,XGBoost,4.2400367604,-1.905339347
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,window_formula,12.5936371196,-16.1596344796
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,ElasticNet,3.0549842232,-0.7362173626
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,XGBoost,2.9222088745,-0.8313961902
+voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,window_formula,8.6355185262,-9.7986355319
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,ElasticNet,5.1091767313,-2.3126665355
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,XGBoost,5.2350085144,-2.2964074177
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,window_formula,8.4704098388,-8.9826579353
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,ElasticNet,3.3894375523,-1.1592972342
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,XGBoost,2.9707218407,-0.845616523
+current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,window_formula,10.0321102224,-11.3515688882
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,ElasticNet,3.4216705181,-1.1745072382
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,XGBoost,2.933405309,-0.8384003908
+current_noise_2pct,current,0.0,2.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,window_formula,10.1475544049,-11.5293240182
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,ElasticNet,3.5088990868,-1.2172149328
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,XGBoost,3.0189198432,-0.8960193156
+current_noise_5pct,current,0.0,5.0,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,55,window_formula,10.4269644482,-12.0753614549
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,"train G1+G3, test B0053",B0053,55,ElasticNet,3.3165229177,-1.7585218899
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,"train G1+G3, test B0053",B0053,55,XGBoost,3.4369895807,-1.787097612
+window_3.9_3.5,window,0.0,0.0,3.9,3.5,0.4,"train G1+G3, test B0053",B0053,55,window_formula,8.5435818525,-11.6517706877
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,"train G1+G3, test B0053",B0053,55,ElasticNet,3.1898839044,-1.7945874412
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,"train G1+G3, test B0053",B0053,55,XGBoost,3.5630402194,-1.9918536191
+window_3.8_3.6,window,0.0,0.0,3.8,3.6,0.2,"train G1+G3, test B0053",B0053,55,window_formula,6.225075893,-9.5683103322

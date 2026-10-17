@@ -12,6 +12,7 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 | **9 of 19 cells kept** | The audit keeps nine cells (G1×4, G3×4, G9×1); ten are excluded for a raised SOH ceiling or a capacity that rises across the record. The re-reference check shows the exclusion is not a reference artifact. |
 | **RUL is indicative, and not only on G1** | Remaining-life labels need a cell that reaches 80% SOH. The four G1 cells do, so each is scored leave-one-cell-out over the other three trajectories, but four random-load cells (B0039, B0042, B0043, B0044) also reach 80% and are kept out of the model because their load and temperature change across the record. Two RUL methods disagree by 63.8 discharges on the mean, so every RUL number is reported as indicative, not a forecast. |
 | **The window model transfers to the random-load cells it never saw** | The shipped partial-window SOH model is trained only on the nine constant-current cells, yet it beats the window formula on all four random-load cells the audit keeps, so their exclusion is a comparability choice, not a transfer failure (see *Random-load transfer* under Key Results). The caveat is B0039: its R² is below zero, so there the model reads the level, not the fade shape. |
+| **Robust to sensor noise, not to a different window** | With Gaussian noise added to the held-out cell's inputs, the pooled held-out MAE stays under 3% up to 20 mV of voltage noise and 5% of current noise. A shorter window does not: 3.9–3.5 V and 3.8–3.6 V both push the pooled MAE above 3%, because the model is trained on the 4.0–3.4 V feature distribution (see *Noise and shorter-window robustness* under Key Results). |
 | **Alerts** | Grafana evaluates the rules itself through a Prometheus exporter and they fire on the injected fault; firing alerts are delivered to a provisioned local webhook contact point (`alert-sink` in the compose stack), so the notification path is exercised end to end. No external email/pager endpoint is configured. |
 | **Model versus formula** | A full discharge is Coulomb counting (a formula, no model). The partial window is the only place a model is scored against the window formula; the full-feature SOH benchmark is offline and is not the online estimator. |
 
@@ -137,6 +138,35 @@ The random-load cells the audit keeps — B0039 from G5 and B0042–B0044 from G
 | **Mean** | — | 230 | 8.07 | -3.149 | 2.31 | 0.615 |
 
 The model does not fail on these cells. It beats the window formula on 4 of 4, with mean MAE 2.31% against the formula's 8.07%, and it tracks the fade (R² above zero) on 3 of 4. The exception is B0039 (G5): its R² is -0.093, below a constant mean, so there the model reads the level, not the fade shape — the same caveat B0053 carries above. The exclusion is therefore a comparability choice, not a transfer failure.
+
+
+#### Noise and shorter-window robustness (held-out cells)
+
+The partial-window model is trained on the clean 4.0-3.4 V window; here the *held-out* cell's inputs are perturbed while its training siblings stay clean, so this measures inference-time robustness. Each level is scored by leave-one-cell-out within G1 and G3 and by training on G1+G3 and testing B0053, then pooled over all nine held-out cells. A pooled MAE under 3% is treated as still working.
+
+| Perturbation | Voltage noise (mV) | Current noise (%) | Window (V) | Held-out XGBoost MAE (%) | ElasticNet MAE (%) | window formula MAE (%) |
+|---|---|---|---|---|---|---|
+| Clean baseline | — | — | 4.0–3.4 | 1.57 | 1.81 | 9.22 |
+| Voltage noise | 5 mV | — | 4.0–3.4 | 1.65 | 2.76 | 9.86 |
+| Voltage noise | 10 mV | — | 4.0–3.4 | 1.98 | 2.78 | 10.28 |
+| Voltage noise | 20 mV | — | 4.0–3.4 | 2.53 | 4.34 | 11.34 |
+| Current noise | — | 1% | 4.0–3.4 | 1.57 | 1.81 | 9.21 |
+| Current noise | — | 2% | 4.0–3.4 | 1.57 | 1.81 | 9.16 |
+| Current noise | — | 5% | 4.0–3.4 | 1.56 | 1.81 | 9.25 |
+| Shorter window | — | — | 3.9–3.5 | 4.99 | 4.43 | 10.96 |
+| Shorter window | — | — | 3.8–3.6 | 6.47 | 8.76 | 10.92 |
+
+**Held-out XGBoost MAE (%) by protocol**
+
+| Protocol | Clean | 3.9–3.5 V | 3.8–3.6 V |
+|---|---|---|---|
+| G1 leave-one-cell-out | 1.57 | 6.07 | 7.64 |
+| G3 leave-one-cell-out | 1.07 | 1.20 | 2.85 |
+| G1+G3 → B0053 | 2.99 | 3.44 | 3.56 |
+
+**Verdict.** The model tolerates sensor noise: pooled held-out MAE stays under 3% up to the largest voltage noise tried, 20 mV, and the largest current noise tried, 5%. Current noise barely moves the features at all — the window capacity is an integral of the current, so zero-mean multiplicative noise averages out, and the window voltage features do not see the current. Voltage noise does move them, mostly through the dQ/dV peak height, but even at 20 mV the pooled MAE is 2.53%.
+
+It does **not** survive a shorter window. Both narrower bands push the pooled held-out MAE above the budget — 4.99% over 3.9–3.5 V and 6.47% over 3.8–3.6 V — so the smallest window whose pooled MAE stays under the budget is the trained band itself, 4.0–3.4 V (span 0.60 V). The cost lands on G1: its leave-one-cell-out MAE rises from the clean value to well above the budget on both bands, while G3 and B0053 stay near it. This is a mismatch test, not a verdict on shorter windows in general — the model is trained on the 4.0–3.4 V feature distribution, so a different band at inference moves its inputs off what it learnt. A model trained on a narrower band is a separate experiment.
 
 
 #### Reference-window sensitivity (partial-discharge)
@@ -1175,6 +1205,19 @@ amount of tuning removes them.
 8. **One cycle-latency contract.** SOH is emitted once per
    completed discharge, not per sample, because several features
    are only defined at cycle end.
+
+9. **The window model is robust to sensor noise, not to a
+   different window.** Adding Gaussian noise to a held-out cell's
+   voltage and current barely moves the pooled held-out MAE: it
+   stays under 3% up to 20 mV of voltage noise and 5% of current
+   noise. Feeding a narrower band the model was not trained on is
+   different — 3.9–3.5 V and 3.8–3.6 V both push the pooled MAE
+   above 3%, almost entirely through G1, because the model learnt
+   the 4.0–3.4 V feature distribution and a different band moves
+   its inputs off it (the noise-and-window robustness table under
+   *Key Results*). This is a mismatch between training and
+   inference, not evidence that a model trained on a shorter
+   window would fail; that is a separate experiment.
 
 Accuracy is stated as measured, per cell and per held-out condition,
 in the tables above; it is not a production accuracy claim.

@@ -81,6 +81,42 @@ SOH,random-load transfer,mean,cell-relative XGBoost R2,0.6152853903,,data/proces
 SOH,random-load transfer,mean,window formula MAE,8.0672492105,%,data/processed/soh_random_load_transfer.csv
 SOH,random-load transfer,verdict,cells where the model beats the formula,4.0,cells,data/processed/soh_random_load_transfer.csv
 SOH,random-load transfer,verdict,cells where the model R2 is positive,3.0,cells,data/processed/soh_random_load_transfer.csv
+SOH,window robustness,clean,Held-out XGBoost MAE,1.5667334163,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,clean,ElasticNet MAE,1.8099104012,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,clean,window formula MAE,9.2166033331,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_5mv,Held-out XGBoost MAE,1.6510353773,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_5mv,ElasticNet MAE,2.7596397961,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_5mv,window formula MAE,9.8584947706,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_10mv,Held-out XGBoost MAE,1.9771896412,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_10mv,ElasticNet MAE,2.7754749183,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_10mv,window formula MAE,10.2811408177,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_20mv,Held-out XGBoost MAE,2.5258011129,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_20mv,ElasticNet MAE,4.3400492733,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_20mv,window formula MAE,11.3376444783,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_1pct,Held-out XGBoost MAE,1.5713512762,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_1pct,ElasticNet MAE,1.8094927794,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_1pct,window formula MAE,9.2056145486,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_2pct,Held-out XGBoost MAE,1.5742581294,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_2pct,ElasticNet MAE,1.8096303436,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_2pct,window formula MAE,9.1597911123,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_5pct,Held-out XGBoost MAE,1.5631498471,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_5pct,ElasticNet MAE,1.8091099764,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,current_noise_5pct,window formula MAE,9.2541400301,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,window_3.9_3.5,Held-out XGBoost MAE,4.9859139118,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,window_3.9_3.5,ElasticNet MAE,4.4278287549,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,window_3.9_3.5,window formula MAE,10.9597003749,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,window_3.8_3.6,Held-out XGBoost MAE,6.472701164,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,window_3.8_3.6,ElasticNet MAE,8.7615572027,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,window_3.8_3.6,window formula MAE,10.921265495,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,leave-one-cell-out: G1,XGBoost MAE (clean),1.569640612690566,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,leave-one-cell-out: G1,XGBoost MAE (window_3.9_3.5),6.0719171434547174,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,leave-one-cell-out: G1,XGBoost MAE (window_3.8_3.6),7.635715049901886,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,leave-one-cell-out: G3,XGBoost MAE (clean),1.0669168027000002,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,leave-one-cell-out: G3,XGBoost MAE (window_3.9_3.5),1.2014938046,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,leave-one-cell-out: G3,XGBoost MAE (window_3.8_3.6),2.8499169170750003,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,"train G1+G3, test B0053",XGBoost MAE (clean),2.9871276212,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,"train G1+G3, test B0053",XGBoost MAE (window_3.9_3.5),3.4369895807,%,data/processed/soh_window_robustness.csv
+SOH,window robustness,"train G1+G3, test B0053",XGBoost MAE (window_3.8_3.6),3.5630402194,%,data/processed/soh_window_robustness.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",window formula MAE,15.1573446147,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",ElasticNet MAE,1.4610524838,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",XGBoost MAE,1.8207054538,%,data/processed/experiments/soh_partial_reference_window.csv

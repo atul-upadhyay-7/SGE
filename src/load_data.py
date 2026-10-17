@@ -160,13 +160,30 @@ VOLTAGE_WINDOW_HIGH = WINDOW_VOLTAGE_HIGH
 VOLTAGE_WINDOW_LOW = WINDOW_VOLTAGE_LOW
 
 
-def _voltage_window_features(voltage, current, time):
+def _voltage_window_features(
+    voltage,
+    current,
+    time,
+    window_high=None,
+    window_low=None,
+):
     """
     Extract features from the voltage window [HIGH → LOW].
+
+    The band defaults to the model's trained 4.0-3.4 V window
+    (VOLTAGE_WINDOW_HIGH/LOW). A caller may pass a different
+    `window_high`/`window_low` to extract the same features over a
+    narrower band, which the robustness check uses; the model itself is
+    only ever trained and scored on the default band.
 
     Returns a dict of window features, or a dict of NaNs if the
     cycle does not fully traverse the window.
     """
+
+    if window_high is None:
+        window_high = VOLTAGE_WINDOW_HIGH
+    if window_low is None:
+        window_low = VOLTAGE_WINDOW_LOW
 
     nan_result = {
         "vw_time_s": np.nan,
@@ -177,14 +194,14 @@ def _voltage_window_features(voltage, current, time):
     }
 
     # Find the first sample at or below HIGH
-    below_high = np.where(voltage <= VOLTAGE_WINDOW_HIGH)[0]
+    below_high = np.where(voltage <= window_high)[0]
     if len(below_high) == 0:
         return nan_result
 
     # Find the first sample at or below LOW after entering the window
     start_idx = below_high[0]
     below_low = np.where(
-        voltage[start_idx:] <= VOLTAGE_WINDOW_LOW
+        voltage[start_idx:] <= window_low
     )[0]
 
     if len(below_low) == 0:
@@ -245,7 +262,9 @@ def build_cycle_features(
     capacity=np.nan,
     ambient_temperature=np.nan,
     cell_id="UNKNOWN",
-    cycle_number=0
+    cycle_number=0,
+    window_high=None,
+    window_low=None,
 ):
     """
     Build the per-cycle feature row from one cycle's
@@ -319,7 +338,13 @@ def build_cycle_features(
         resistance_proxy = np.nan
 
     # Voltage-window features (partial-discharge features)
-    vw = _voltage_window_features(voltage, current, time)
+    vw = _voltage_window_features(
+        voltage,
+        current,
+        time,
+        window_high=window_high,
+        window_low=window_low,
+    )
 
     row = {
 
@@ -393,7 +418,19 @@ def build_cycle_features(
     return row
 
 
-def parse_battery_file(mat_path):
+def iter_discharge_traces(mat_path):
+    """
+    Yield one dict per discharge cycle in a .mat file, holding the raw
+    per-sample arrays before any feature is computed.
+
+    Keys: cell_id, cycle_number, voltage, current, temperature, time,
+    capacity, ambient_temperature.
+
+    This is the single reader for the NASA .mat files. parse_battery_file
+    builds its feature rows from it, and the robustness check perturbs
+    these traces and re-runs the extractor over them, so both paths see
+    the same cycles in the same order.
+    """
 
     mat_path = Path(mat_path)
 
@@ -433,8 +470,6 @@ def parse_battery_file(mat_path):
         )
 
     cycles = np.atleast_1d(cycles)
-
-    rows = []
 
     for cycle_number, cycle in enumerate(cycles, start=1):
 
@@ -515,16 +550,38 @@ def parse_battery_file(mat_path):
         else:
             ambient_temperature = np.nan
 
+        yield {
+            "cell_id": cell_id,
+            "cycle_number": cycle_number,
+            "voltage": voltage,
+            "current": current,
+            "temperature": temperature,
+            "time": time,
+            "capacity": capacity,
+            "ambient_temperature": ambient_temperature,
+        }
+
+
+def parse_battery_file(mat_path):
+
+    mat_path = Path(mat_path)
+
+    cell_id = mat_path.stem.upper()
+
+    rows = []
+
+    for trace in iter_discharge_traces(mat_path):
+
         # Remove invalid values
         row = build_cycle_features(
-            voltage=voltage,
-            current=current,
-            temperature=temperature,
-            time=time,
-            capacity=capacity,
-            ambient_temperature=ambient_temperature,
-            cell_id=cell_id,
-            cycle_number=cycle_number
+            voltage=trace["voltage"],
+            current=trace["current"],
+            temperature=trace["temperature"],
+            time=trace["time"],
+            capacity=trace["capacity"],
+            ambient_temperature=trace["ambient_temperature"],
+            cell_id=trace["cell_id"],
+            cycle_number=trace["cycle_number"]
         )
 
         if row is None:

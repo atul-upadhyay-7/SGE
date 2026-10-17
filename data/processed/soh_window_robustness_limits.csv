@@ -1,0 +1,2 @@
+mae_limit_pct,baseline_xgb_mae_pct,smallest_window_span_v,smallest_window_high_v,smallest_window_low_v,smallest_window_condition,largest_voltage_noise_mv,largest_voltage_condition,largest_current_noise_pct,largest_current_condition
+3.0,1.5667334163,0.6,4.0,3.4,clean,20.0,voltage_noise_20mv,5.0,current_noise_5pct

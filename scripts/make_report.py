@@ -68,6 +68,9 @@ REQUIRED = {
     "rul_band": PROC / "rul_band_calibration.csv",
     "random_load": PROC / "random_load_rul_check.csv",
     "random_load_transfer": PROC / "soh_random_load_transfer.csv",
+    "window_robustness": PROC / "soh_window_robustness.csv",
+    "window_robustness_summary": PROC / "soh_window_robustness_summary.csv",
+    "window_robustness_limits": PROC / "soh_window_robustness_limits.csv",
     "rul_random_labels": PROC / "rul_random_load_labels.csv",
     "rul_g6_loco": PROC / "rul_cross_group_g6_loco.csv",
     "rul_g1_to_g6": PROC / "rul_cross_group_g1_to_g6.csv",
@@ -708,9 +711,188 @@ def build_random_load_transfer(frame):
     return "\n".join(lines)
 
 
+def _wr_tag(condition):
+    """A placeholder-safe id for a condition label (dots become underscores)."""
+
+    return "wr_" + "".join(
+        ch if ch.isalnum() else "_" for ch in str(condition)
+    )
+
+
+def build_window_robustness(detail, summary, limits):
+    """
+    Sensor-noise and shorter-window robustness of the partial-window
+    model and the window formula, scored on held-out cells only.
+    """
+
+    lines = []
+
+    limit = float(limits["mae_limit_pct"].iloc[0])
+
+    lines.append(
+        "#### Noise and shorter-window robustness (held-out cells)\n"
+    )
+    lines.append(
+        f"The partial-window model is trained on the clean "
+        f"{ph('wr_band_high', float(limits['smallest_window_high_v'].iloc[0]), '.1f')}-"
+        f"{ph('wr_band_low', float(limits['smallest_window_low_v'].iloc[0]), '.1f')} V "
+        "window; here the *held-out* cell's inputs are perturbed while its "
+        "training siblings stay clean, so this measures inference-time "
+        "robustness. Each level is scored by leave-one-cell-out within G1 "
+        "and G3 and by training on G1+G3 and testing B0053, then pooled "
+        f"over all nine held-out cells. A pooled MAE under "
+        f"{ph('wr_limit', limit, '.0f')}% is treated as still working.\n"
+    )
+    lines.append(
+        "| Perturbation | Voltage noise (mV) | Current noise (%) | "
+        "Window (V) | Held-out XGBoost MAE (%) | ElasticNet MAE (%) | "
+        "window formula MAE (%) |"
+    )
+    lines.append("|---|---|---|---|---|---|---|")
+
+    display = {
+        "clean": "Clean baseline",
+        "voltage": "Voltage noise",
+        "current": "Current noise",
+        "window": "Shorter window",
+    }
+
+    for _, row in summary.iterrows():
+
+        tag = _wr_tag(row["condition"])
+        kind = str(row["kind"])
+
+        voltage_cell = (
+            f"{ph(tag + '_mv', float(row['voltage_noise_mv']), '.0f')} mV"
+            if kind == "voltage" else "—"
+        )
+        current_cell = (
+            f"{ph(tag + '_pct', float(row['current_noise_pct']), '.0f')}%"
+            if kind == "current" else "—"
+        )
+        window_cell = (
+            f"{ph(tag + '_hi', float(row['window_high_v']), '.1f')}–"
+            f"{ph(tag + '_lo', float(row['window_low_v']), '.1f')}"
+        )
+
+        for metric, key in (
+            ("Held-out XGBoost MAE", "xgb_mae_pct"),
+            ("ElasticNet MAE", "elasticnet_mae_pct"),
+            ("window formula MAE", "window_formula_mae_pct"),
+        ):
+            record("SOH", "window robustness", row["condition"],
+                   metric, row[key], "%", REQUIRED["window_robustness_summary"])
+
+        lines.append(
+            f"| {display.get(kind, kind)} | {voltage_cell} | "
+            f"{current_cell} | {window_cell} | "
+            f"{ph(tag + '_xgb', float(row['xgb_mae_pct']), '.2f')} | "
+            f"{ph(tag + '_en', float(row['elasticnet_mae_pct']), '.2f')} | "
+            f"{ph(tag + '_formula', float(row['window_formula_mae_pct']), '.2f')} |"
+        )
+
+    # Where the cost of a narrower window lands: the pooled XGBoost MAE
+    # by protocol, clean against the two shorter bands.
+    lines.append("")
+    lines.append("**Held-out XGBoost MAE (%) by protocol**\n")
+    lines.append("| Protocol | Clean | 3.9–3.5 V | 3.8–3.6 V |")
+    lines.append("|---|---|---|---|")
+
+    protocol_rows = [
+        ("leave-one-cell-out: G1", "G1 leave-one-cell-out", "g1"),
+        ("leave-one-cell-out: G3", "G3 leave-one-cell-out", "g3"),
+        ("train G1+G3, test B0053", "G1+G3 → B0053", "b0053"),
+    ]
+    band_columns = [
+        ("clean", "clean"),
+        ("window_3.9_3.5", "band_39"),
+        ("window_3.8_3.6", "band_38"),
+    ]
+
+    for protocol, label, ptag in protocol_rows:
+
+        cells = []
+
+        for condition, tag in band_columns:
+
+            block = detail[
+                (detail["condition"] == condition)
+                & (detail["protocol"] == protocol)
+                & (detail["model"] == "XGBoost")
+            ]
+
+            if block.empty:
+                cells.append("—")
+                continue
+
+            weights = block["n_cycles"].to_numpy(dtype=float)
+            pooled = float(
+                (block["mae_pct"].to_numpy(dtype=float) * weights).sum()
+                / weights.sum()
+            )
+
+            pid = f"wr_proto_{tag}_{ptag}"
+            record("SOH", "window robustness", protocol,
+                   f"XGBoost MAE ({condition})", pooled, "%",
+                   REQUIRED["window_robustness"])
+
+            cells.append(ph(pid, pooled, ".2f"))
+
+        lines.append(f"| {label} | " + " | ".join(cells) + " |")
+
+    # The two answers this phase asks for.
+    smallest_span = limits["smallest_window_span_v"].iloc[0]
+    largest_mv = limits["largest_voltage_noise_mv"].iloc[0]
+    largest_pct = limits["largest_current_noise_pct"].iloc[0]
+
+    narrow_xgb = {
+        str(r["condition"]): float(r["xgb_mae_pct"])
+        for _, r in summary[summary["kind"] == "window"].iterrows()
+    }
+
+    lines.append("")
+    lines.append(
+        "**Verdict.** The model tolerates sensor noise: pooled held-out MAE "
+        f"stays under {ph('wr_limit', limit, '.0f')}% up to the largest "
+        f"voltage noise tried, {ph('wr_largest_mv', float(largest_mv), '.0f')} mV, "
+        "and the largest current noise tried, "
+        f"{ph('wr_largest_pct', float(largest_pct), '.0f')}%. Current noise "
+        "barely moves the features at all — the window capacity is an "
+        "integral of the current, so zero-mean multiplicative noise averages "
+        "out, and the window voltage features do not see the current. "
+        "Voltage noise does move them, mostly through the dQ/dV peak height, "
+        "but even at "
+        f"{ph('wr_largest_mv', float(largest_mv), '.0f')} mV the pooled MAE is "
+        f"{ph('wr_voltage_noise_20mv_xgb', float(summary.loc[summary['condition'] == 'voltage_noise_20mv', 'xgb_mae_pct'].iloc[0]), '.2f')}%.\n"
+    )
+
+    lines.append(
+        "It does **not** survive a shorter window. Both narrower bands push "
+        "the pooled held-out MAE above the budget — "
+        f"{ph('wr_window_3_9_3_5_xgb', narrow_xgb.get('window_3.9_3.5', float('nan')), '.2f')}% "
+        "over 3.9–3.5 V and "
+        f"{ph('wr_window_3_8_3_6_xgb', narrow_xgb.get('window_3.8_3.6', float('nan')), '.2f')}% "
+        "over 3.8–3.6 V — so the smallest window whose pooled MAE stays "
+        "under the budget is the trained band itself, "
+        f"{ph('wr_small_hi', float(limits['smallest_window_high_v'].iloc[0]), '.1f')}–"
+        f"{ph('wr_small_lo', float(limits['smallest_window_low_v'].iloc[0]), '.1f')} V "
+        f"(span {ph('wr_small_span', float(smallest_span), '.2f')} V). "
+        "The cost lands on G1: its leave-one-cell-out MAE rises from the "
+        "clean value to well above the budget on both bands, while G3 and "
+        "B0053 stay near it. This is a mismatch test, not a verdict on "
+        "shorter windows in general — the model is trained on the 4.0–3.4 V "
+        "feature distribution, so a different band at inference moves its "
+        "inputs off what it learnt. A model trained on a narrower band is a "
+        "separate experiment.\n"
+    )
+
+    return "\n".join(lines)
+
+
 def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
                   full, partial, partial_transfer, partial_window,
-                  ablation, logo, cross, random_transfer):
+                  ablation, logo, cross, random_transfer,
+                  wr_detail, wr_summary, wr_limits):
     lines = []
 
     # Cross-condition transfer opens Key Results: the model that
@@ -724,6 +906,9 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
     lines.append("")
 
     lines.append(build_random_load_transfer(random_transfer))
+    lines.append("")
+
+    lines.append(build_window_robustness(wr_detail, wr_summary, wr_limits))
     lines.append("")
 
     lines.append(build_reference_window(partial_window))
@@ -1739,6 +1924,8 @@ def main():
         frames["partial_discharge"], frames["partial_transfer"],
         frames["partial_window"], frames["ablation"], frames["logo"],
         frames["cross_condition"], frames["random_load_transfer"],
+        frames["window_robustness"], frames["window_robustness_summary"],
+        frames["window_robustness_limits"],
     ))
     rul = region(
         "rul",
