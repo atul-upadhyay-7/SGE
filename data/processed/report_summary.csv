@@ -288,6 +288,15 @@ RUL,cross-group cg_c,mean,extrapolation MAE,45.98878588605,discharges,data/proce
 RUL,cross-group cg_c,mean,fleet-lifetime baseline MAE,24.80259680215,discharges,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,verdict,cells where trajectory beats baseline,3.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,verdict,cells where extrapolation beats baseline,1.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,shipped range,leave-one-cell-out: G6,fleet-lifetime average MAE low,1.0,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,shipped range,leave-one-cell-out: G6,fleet-lifetime average MAE high,3.0,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,shipped range,leave-one-cell-out: G6,trajectory MAE low,3.1739130435,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,shipped range,leave-one-cell-out: G6,trajectory MAE high,8.6530612245,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,shipped range,leave-one-cell-out: G6,early-fade extrapolation MAE low,5.9127449557,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,shipped range,leave-one-cell-out: G6,early-fade extrapolation MAE high,24.6318599238,discharges,data/processed/rul_cross_group_g6_loco.csv
+RUL,shipped range,"train G6, test G1",cells where trajectory beats the average,3.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,shipped range,"train G6, test G1",held-out cells,4.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,shipped range,held-out G1 cells,mean indicative-range width,91.19567250937851,discharges,data/processed/rul_prediction_bands.csv
 RUL,fade-rate window sweep,B0005,MAE at window 20,76.9078718407,discharges,data/processed/rul_extrapolation_window_sweep.csv
 RUL,fade-rate window sweep,B0005,MAE at window 30,301.0054981146,discharges,data/processed/rul_extrapolation_window_sweep.csv
 RUL,fade-rate window sweep,B0005,MAE at window 40,242.5522676436,discharges,data/processed/rul_extrapolation_window_sweep.csv

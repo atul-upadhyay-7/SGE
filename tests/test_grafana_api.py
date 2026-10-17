@@ -98,10 +98,11 @@ def test_pragmatic_row_provides_declared_types():
 def test_discharges_left_is_database_backed_not_a_constant():
     """
     The stat tile used to hardcode 16.0 with a fabricated +-20%
-    range. It must now read rul_prediction_bands: the point value is
-    the mean of each cell's latest prediction and the range is the
-    mean of each cell's own reference spread, so p10 < value < p90
-    and neither equals the old constants.
+    range. It must now read rul_prediction_bands and report the
+    shipped indicative range (the min-to-max of the trajectory
+    matcher, the early-fade extrapolation and the fleet-lifetime
+    average) for each cell's latest discharge, so it is two real
+    database values and neither equals the old constants.
     """
 
     if not DATABASE.exists():
@@ -112,22 +113,23 @@ def test_discharges_left_is_database_backed_not_a_constant():
 
     assert frame["rows"], "expected a data row"
 
-    value, rangetext = frame["rows"][0]
+    lo, hi = frame["rows"][0]
 
-    assert isinstance(value, (int, float))
+    assert isinstance(lo, (int, float))
+    assert isinstance(hi, (int, float))
 
-    lo, _, hi = rangetext.partition("–")
-    lo, hi = float(lo.strip()), float(hi.strip().split()[0])
+    assert lo <= hi
 
-    assert lo <= value <= hi
-    assert (value, lo, hi) != (16.0, 12.8, 19.2)
+    assert (lo, hi) != (16.0, 12.8)
 
 
-def test_rul_prediction_bands_are_ordered_and_from_database():
+def test_rul_range_is_the_three_method_envelope():
     """
-    The percentiles must be stored, not ratios of the point estimate
-    (predicted*0.8 / *1.2 was wrong because the true reference spread
-    is not a fixed percentage). p10 <= predicted <= p90 every row.
+    The shipped RUL is a range, not a point: Indicative Range Low /
+    High are the min and max of the trajectory matcher, the early-fade
+    extrapolation and the fleet-lifetime average, all stored in
+    rul_prediction_bands. Every method must sit inside the range, and
+    no single method column is presented as the answer.
     """
 
     if not DATABASE.exists():
@@ -138,21 +140,28 @@ def test_rul_prediction_bands_are_ordered_and_from_database():
 
     names = [c["text"] for c in frame["columns"]]
 
-    assert names[3:6] == [
-        "Predicted Discharges", "Reference Spread Low", "Reference Spread High",
+    assert names[3:8] == [
+        "Indicative Range Low",
+        "Indicative Range High",
+        "Trajectory Matcher",
+        "Early-fade Extrapolation",
+        "Lifetime Average",
     ]
 
-    assert "Early-fade Extrapolation" in names
-
-    predicted = names.index("Predicted Discharges")
-    p10 = names.index("Reference Spread Low")
-    p90 = names.index("Reference Spread High")
+    low = names.index("Indicative Range Low")
+    high = names.index("Indicative Range High")
 
     assert frame["rows"]
 
     for row in frame["rows"]:
 
-        assert row[p10] <= row[predicted] <= row[p90]
+        for method in (
+            names.index("Trajectory Matcher"),
+            names.index("Early-fade Extrapolation"),
+            names.index("Lifetime Average"),
+        ):
+
+            assert row[low] <= row[method] <= row[high]
 
 
 def test_cell_variable_chains_to_group_in_search():

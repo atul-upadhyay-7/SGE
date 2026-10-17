@@ -403,14 +403,14 @@ def handle_timeseries(target, scoped_vars=None):
             })
 
     elif target == "rul_range_by_cycle":
-        # The RUL band is the per-reference spread computed by
-        # src/rul_trajectory.py under leave-one-cell-out and stored in
-        # rul_prediction_bands: the 10th/90th percentiles of the
-        # per-reference remaining-life estimates, not a calibrated
-        # interval. There is no band without that table, so only the
-        # point estimate is drawn then. The actual-RUL series is a
-        # separate, observed quantity (cycles to 80% SOH) and comes
-        # from rul_predictions_all.
+        # The shipped RUL is an indicative range, not a point: the
+        # min-to-max of the trajectory matcher, the early-fade
+        # extrapolation and the fleet-lifetime average at that
+        # discharge (rul_prediction_bands.rul_low / rul_high). The
+        # three methods are drawn inside the range so the reader sees
+        # what sets its edges. The actual-RUL series is a separate,
+        # observed quantity (cycles to 80% SOH) and comes from
+        # rul_predictions_all.
         has_bands = object_exists(conn, "rul_prediction_bands")
         has_preds = object_exists(conn, "rul_predictions_all")
         has_extrap = object_exists(conn, "rul_extrapolation_bands")
@@ -432,21 +432,30 @@ def handle_timeseries(target, scoped_vars=None):
                     })
             if has_bands:
                 rows = conn.execute(
-                    "SELECT cycle, predicted_rul, rul_p10, rul_p90 "
+                    "SELECT cycle, predicted_rul, rul_low, rul_high, "
+                    "extrapolated_rul, lifetime_average_rul "
                     "FROM rul_prediction_bands WHERE cell_id = ? ORDER BY cycle",
                     (cell,)
                 ).fetchall()
                 series.append({
-                    "target": f"RUL Reference Spread Low — {cell}",
-                    "datapoints": [[r["rul_p10"], cycle_to_ms(r["cycle"])] for r in rows],
+                    "target": f"RUL Indicative Range Low — {cell}",
+                    "datapoints": [[r["rul_low"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
                 series.append({
-                    "target": f"Predicted RUL (indicative) — {cell}",
+                    "target": f"RUL Indicative Range High — {cell}",
+                    "datapoints": [[r["rul_high"], cycle_to_ms(r["cycle"])] for r in rows],
+                })
+                series.append({
+                    "target": f"Trajectory Matcher — {cell}",
                     "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
                 series.append({
-                    "target": f"RUL Reference Spread High — {cell}",
-                    "datapoints": [[r["rul_p90"], cycle_to_ms(r["cycle"])] for r in rows],
+                    "target": f"Early-fade Extrapolation — {cell}",
+                    "datapoints": [[r["extrapolated_rul"], cycle_to_ms(r["cycle"])] for r in rows],
+                })
+                series.append({
+                    "target": f"Lifetime Average — {cell}",
+                    "datapoints": [[r["lifetime_average_rul"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
             elif has_preds:
                 rows = conn.execute(
@@ -459,10 +468,10 @@ def handle_timeseries(target, scoped_vars=None):
                     "datapoints": [[r["predicted_rul"], cycle_to_ms(r["cycle"])] for r in rows],
                 })
 
-            # The second RUL method, drawn beside the trajectory
-            # estimate on the same discharges so the two are read
-            # together rather than as a single answer.
-            if has_extrap:
+            # Fallback only when rul_prediction_bands is absent: the
+            # second method on its own, so a checkout without the
+            # range still shows both methods rather than one.
+            if not has_bands and has_extrap:
                 rows = conn.execute(
                     "SELECT cycle, extrapolated_rul "
                     "FROM rul_extrapolation_bands WHERE cell_id = ? ORDER BY cycle",
@@ -644,12 +653,15 @@ def handle_table(target, scoped_vars=None):
             return error_table(
                 "No RUL prediction bands; run src/rul_trajectory.py."
             )
-        # Latest predicted remaining life per cell, and the mean of
-        # each cell's own reference-spread interval at that cycle.
+        # RUL ships as a range, not a point estimate: this is the
+        # mean of each cell's latest indicative range, the
+        # min-to-max of the trajectory matcher, the early-fade
+        # extrapolation and the fleet-lifetime average at that
+        # discharge (rul_prediction_bands.rul_low / rul_high).
         row = conn.execute(
-            "SELECT AVG(predicted_rul), AVG(rul_p10), AVG(rul_p90) "
+            "SELECT AVG(rul_low), AVG(rul_high) "
             "FROM ("
-            "  SELECT predicted_rul, rul_p10, rul_p90 "
+            "  SELECT rul_low, rul_high "
             "  FROM rul_prediction_bands b "
             "  WHERE cycle = ("
             "    SELECT MAX(cycle) FROM rul_prediction_bands c "
@@ -660,14 +672,14 @@ def handle_table(target, scoped_vars=None):
         conn.close()
         if row is None or row[0] is None:
             return error_table("RUL prediction bands table is empty.")
-        val, lo, hi = row[0], row[1], row[2]
+        lo, hi = row[0], row[1]
         return {
             "type": "table",
             "columns": [
-                {"text": "Est. Discharges Left (indicative)", "type": "number"},
-                {"text": "Reference Spread Range", "type": "string"},
+                {"text": "Range Low (discharges)", "type": "number"},
+                {"text": "Range High (discharges)", "type": "number"},
             ],
-            "rows": [[round(val, 1), f"{round(lo, 1)} – {round(hi, 1)} discharges"]],
+            "rows": [[round(lo, 1), round(hi, 1)]],
         }
 
     elif table_name == "stat_held_out_error":
@@ -708,7 +720,6 @@ def handle_table(target, scoped_vars=None):
     elif table_name == "rul_range":
         has_bands = object_exists(conn, "rul_prediction_bands")
         has_preds = object_exists(conn, "rul_predictions_all")
-        has_extrap = object_exists(conn, "rul_extrapolation_bands")
         if not has_bands and not has_preds:
             conn.close()
             return error_table(
@@ -716,76 +727,71 @@ def handle_table(target, scoped_vars=None):
                 "src/rul_trajectory.py."
             )
 
-        # The extrapolation column is the second RUL method, shown
-        # beside the trajectory estimate so no single method is
-        # presented as the answer. NULL when the table is absent.
-        def extrap(alias):
-            if not has_extrap:
-                return "NULL AS extrapolated"
-            return (
-                "(SELECT ROUND(e.extrapolated_rul, 1) "
-                "FROM rul_extrapolation_bands e "
-                f"WHERE e.cell_id = {alias}.cell_id "
-                f"AND e.cycle = {alias}.cycle) AS extrapolated"
-            )
-
-        # Join the real leave-one-cell-out band (rul_prediction_bands)
-        # with the observed actual RUL (rul_predictions_all) on
-        # (cell_id, cycle). Percentiles are stored, never derived from
-        # the point estimate.
-        scope_table = "rul_prediction_bands" if has_bands else "rul_predictions_all"
-        scope_sql, scope_params = scope_filter(conn, scope_table, scoped_vars)
-        where_sql = ""
-        if scope_sql:
-            where_sql = (
-                " WHERE b." + scope_sql if (has_bands and has_preds)
-                else " WHERE " + scope_sql
-            )
-        if has_bands and has_preds:
-            rows = conn.execute(
-                "SELECT b.cell_id, b.cycle, "
-                "ROUND(p.rul_cycles_80, 1) AS actual, "
-                "ROUND(b.predicted_rul, 1) AS predicted, "
-                "ROUND(b.rul_p10, 1) AS p10, "
-                "ROUND(b.rul_p90, 1) AS p90, "
-                + extrap("b") +
-                " FROM rul_prediction_bands b "
-                "LEFT JOIN rul_predictions_all p "
-                "  ON p.cell_id = b.cell_id AND p.cycle = b.cycle"
-                + where_sql +
-                " ORDER BY b.cell_id, b.cycle",
-                scope_params,
-            ).fetchall()
-        elif has_bands:
-            rows = conn.execute(
-                "SELECT cell_id, cycle, NULL AS actual, "
-                "ROUND(predicted_rul, 1) AS predicted, "
-                "ROUND(rul_p10, 1) AS p10, "
-                "ROUND(rul_p90, 1) AS p90, "
-                + extrap("rul_prediction_bands") +
-                " FROM rul_prediction_bands" + where_sql +
-                " ORDER BY cell_id, cycle",
-                scope_params,
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT cell_id, cycle, ROUND(rul_cycles_80, 1) AS actual, "
-                "ROUND(predicted_rul, 1) AS predicted, "
-                "NULL AS p10, NULL AS p90, "
-                + extrap("rul_predictions_all") +
-                " FROM rul_predictions_all" + where_sql +
-                " ORDER BY cell_id, cycle",
-                scope_params,
-            ).fetchall()
+        # The shipped RUL is the indicative range in
+        # rul_prediction_bands: rul_low/rul_high are the min and max of
+        # the trajectory matcher, the early-fade extrapolation and the
+        # fleet-lifetime average on that discharge, all stored by
+        # src/rul_trajectory.py. The three method columns are shown
+        # beside it so the range is read with what sets it. No single
+        # method is presented as the answer.
         columns = [
             {"text": "Cell", "type": "string"},
             {"text": "Discharge", "type": "number"},
             {"text": "Actual Discharges", "type": "number"},
-            {"text": "Predicted Discharges", "type": "number"},
-            {"text": "Reference Spread Low", "type": "number"},
-            {"text": "Reference Spread High", "type": "number"},
+            {"text": "Indicative Range Low", "type": "number"},
+            {"text": "Indicative Range High", "type": "number"},
+            {"text": "Trajectory Matcher", "type": "number"},
             {"text": "Early-fade Extrapolation", "type": "number"},
+            {"text": "Lifetime Average", "type": "number"},
         ]
+
+        if has_bands:
+            scope_sql, scope_params = scope_filter(
+                conn, "rul_prediction_bands", scoped_vars
+            )
+            if has_preds:
+                where = f" WHERE b.{scope_sql}" if scope_sql else ""
+                sql = (
+                    "SELECT b.cell_id, b.cycle, "
+                    "ROUND(p.rul_cycles_80, 1) AS actual, "
+                    "ROUND(b.rul_low, 1), ROUND(b.rul_high, 1), "
+                    "ROUND(b.predicted_rul, 1), "
+                    "ROUND(b.extrapolated_rul, 1), "
+                    "ROUND(b.lifetime_average_rul, 1) "
+                    "FROM rul_prediction_bands b "
+                    "LEFT JOIN rul_predictions_all p "
+                    "  ON p.cell_id = b.cell_id AND p.cycle = b.cycle"
+                    + where
+                    + " ORDER BY b.cell_id, b.cycle"
+                )
+            else:
+                where = f" WHERE {scope_sql}" if scope_sql else ""
+                sql = (
+                    "SELECT cell_id, cycle, NULL AS actual, "
+                    "ROUND(rul_low, 1), ROUND(rul_high, 1), "
+                    "ROUND(predicted_rul, 1), "
+                    "ROUND(extrapolated_rul, 1), "
+                    "ROUND(lifetime_average_rul, 1) "
+                    "FROM rul_prediction_bands" + where
+                    + " ORDER BY cell_id, cycle"
+                )
+            rows = conn.execute(sql, scope_params).fetchall()
+        else:
+            # Pairs of predictions. Never the shipped output (the band
+            # table is a pipeline stage), but it is what the panel can
+            # read on a checkout that has only run train_rul.py.
+            scope_sql, scope_params = scope_filter(
+                conn, "rul_predictions_all", scoped_vars
+            )
+            where_sql = f" WHERE {scope_sql}" if scope_sql else ""
+            rows = conn.execute(
+                "SELECT cell_id, cycle, ROUND(rul_cycles_80, 1) AS actual, "
+                "NULL, NULL, ROUND(predicted_rul, 1), NULL, NULL "
+                "FROM rul_predictions_all" + where_sql +
+                " ORDER BY cell_id, cycle",
+                scope_params,
+            ).fetchall()
+
         rows_data = [list(r) for r in rows]
         conn.close()
         return {"type": "table", "columns": columns, "rows": rows_data}

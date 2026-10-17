@@ -139,6 +139,12 @@ The partial-window SOH model had never been tested against the sensor noise or t
 
 ---
 
+## Step 28 — RUL ships as a range, not a point estimate
+
+Neither remaining-life method wins everywhere, so the project stopped presenting one. Inside G6 (leave-one-cell-out, references drawn from the cell's own group) the fleet-lifetime average is the best estimate on all three cells — MAE 1.0 to 3.0 discharges — against the trajectory matcher's 3.2 to 8.7 and the early-fade extrapolation's 5.9 to 24.6. Across groups (train G6, test G1) the matcher beats the fleet-lifetime average on three of the four G1 cells; the exception is B0006, which fades faster than any reference trajectory. `src/rul_trajectory.py` now writes that envelope into `data/processed/rul_prediction_bands.csv`: `lifetime_average_rul` and `extrapolated_rul` join the trajectory `predicted_rul` (the median over references), and `rul_low`/`rul_high` are their minimum and maximum on each discharge (mean width 91.2 discharges on the held-out G1 cells). The dashboard stopped shipping a single number: the stat tile reports the latest per-cell range, and the RUL table and time-series panels show the range with the three methods inside it, all read from those columns. `scripts/make_report.py` renders the decision paragraph into the RUL region from the cross-group and band CSVs — every number placeholdered, so it cannot drift — and `tests/test_rul_range.py` pins the envelope (low == min, high == max, each method inside), the fresh recomputation, the two cross-group claims and the paragraph. No third method was added, and the reference-spread percentiles are still stored and reported in the report; only the dashboard's headline changed.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

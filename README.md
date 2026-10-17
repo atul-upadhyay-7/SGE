@@ -339,6 +339,10 @@ The matcher beats the baseline on 3 of 4 cells and the fade-rate extrapolation o
 
 Only protocol (b) mixes the groups, and it is the one where both methods clear the baseline on every G6 cell: a G6 cell is watched by G1 references that sit at a different load, but the two G6 cells left in (a) retire at almost the same discharge, so there the baseline is simply a very good guess.
 
+#### One decision: RUL ships as a range, not a point estimate
+
+Neither method wins everywhere. Leave-one-cell-out inside G6, the fleet-lifetime average is the best estimate on all 3 cells — MAE 1.0–3.0 discharges — against the matcher's 3.2–8.7 and the early-fade extrapolation's 5.9–24.6. Trained on G6 and tested across groups on each G1 cell, the matcher beats the fleet-lifetime average on 3 of 4 cells; B0006 is the exception, because it fades faster than any reference trajectory. Since the winner depends on the cell and the reference group, no single method is shipped: every discharge carries an indicative range, the minimum to the maximum of the matcher, the early-fade extrapolation and the fleet-lifetime average at that discharge (mean width 91.2 discharges on the held-out G1 cells).
+
 #### Does a longer fade-rate window help?
 
 The fade-rate extrapolation is a single straight line through a cell's first 20 measured discharges, so its answer is fixed entirely by that window's slope. Refitting it at 30 and 40 discharges and re-scoring all 8 labelled cells gives the table below.

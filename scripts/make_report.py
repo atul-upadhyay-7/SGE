@@ -66,6 +66,7 @@ REQUIRED = {
     "rul_comparison": PROC / "rul_method_comparison.csv",
     "rul_disagreement": PROC / "rul_method_disagreement.csv",
     "rul_band": PROC / "rul_band_calibration.csv",
+    "rul_prediction_bands": PROC / "rul_prediction_bands.csv",
     "random_load": PROC / "random_load_rul_check.csv",
     "random_load_transfer": PROC / "soh_random_load_transfer.csv",
     "window_robustness": PROC / "soh_window_robustness.csv",
@@ -1228,8 +1229,94 @@ def _rul_window_table(lines, sweep, source):
         )
 
 
+def _rul_decision(g6_loco, g6_to_g1, prediction_bands):
+    """
+    The one decision the RUL section makes.
+
+    Which method is best depends on the cell and the reference group:
+    inside G6 the fleet-lifetime average beats both methods on every
+    cell, while across groups the matcher beats the average on three
+    of four G1 cells. So RUL is not shipped as one method — every
+    discharge carries the minimum-to-maximum range of the matcher, the
+    early-fade extrapolation and the fleet-lifetime average. Every
+    number below is read from the cross-group tables and the shipped
+    per-discharge band.
+    """
+
+    base = g6_loco["fleet_lifetime_baseline_mae"]
+    traj = g6_loco["trajectory_mae"]
+    extrap = g6_loco["extrapolation_mae"]
+
+    n_g6 = int(len(g6_loco))
+    n_g1 = int(len(g6_to_g1))
+    n_beat = int(
+        (
+            g6_to_g1["trajectory_mae"]
+            < g6_to_g1["fleet_lifetime_baseline_mae"]
+        ).sum()
+    )
+
+    width = float(
+        (prediction_bands["rul_high"] - prediction_bands["rul_low"]).mean()
+    )
+
+    for label, series in (
+        ("fleet-lifetime average", base),
+        ("trajectory", traj),
+        ("early-fade extrapolation", extrap),
+    ):
+        record("RUL", "shipped range", "leave-one-cell-out: G6",
+               f"{label} MAE low", float(series.min()), "discharges",
+               REQUIRED["rul_g6_loco"])
+        record("RUL", "shipped range", "leave-one-cell-out: G6",
+               f"{label} MAE high", float(series.max()), "discharges",
+               REQUIRED["rul_g6_loco"])
+
+    record("RUL", "shipped range", "train G6, test G1",
+           "cells where trajectory beats the average", n_beat, "cells",
+           REQUIRED["rul_g6_to_g1"])
+    record("RUL", "shipped range", "train G6, test G1", "held-out cells",
+           n_g1, "cells", REQUIRED["rul_g6_to_g1"])
+    record("RUL", "shipped range", "held-out G1 cells",
+           "mean indicative-range width", width, "discharges",
+           REQUIRED["rul_prediction_bands"])
+
+    lines = []
+    lines.append(
+        "#### One decision: RUL ships as a range, not a point estimate"
+    )
+    lines.append("")
+    lines.append(
+        "Neither method wins everywhere. Leave-one-cell-out inside G6, the "
+        f"fleet-lifetime average is the best estimate on all "
+        f"{ph('ruld_g6_n', n_g6, 'd')} cells — MAE "
+        f"{ph('ruld_g6_base_lo', float(base.min()), '.1f')}–"
+        f"{ph('ruld_g6_base_hi', float(base.max()), '.1f')} discharges — "
+        "against the matcher's "
+        f"{ph('ruld_g6_traj_lo', float(traj.min()), '.1f')}–"
+        f"{ph('ruld_g6_traj_hi', float(traj.max()), '.1f')} and the "
+        "early-fade extrapolation's "
+        f"{ph('ruld_g6_extrap_lo', float(extrap.min()), '.1f')}–"
+        f"{ph('ruld_g6_extrap_hi', float(extrap.max()), '.1f')}. Trained on "
+        "G6 and tested across groups on each G1 cell, the matcher beats the "
+        "fleet-lifetime average on "
+        f"{ph('ruld_g1_traj_beat', n_beat, 'd')} of "
+        f"{ph('ruld_g1_n', n_g1, 'd')} cells; B0006 is the exception, "
+        "because it fades faster than any reference trajectory. Since the "
+        "winner depends on the cell and the reference group, no single "
+        "method is shipped: every discharge carries an indicative range, "
+        "the minimum to the maximum of the matcher, the early-fade "
+        "extrapolation and the fleet-lifetime average at that discharge "
+        "(mean width "
+        f"{ph('ruld_range_width', width, '.1f')} discharges on the held-out "
+        "G1 cells)."
+    )
+    return "\n".join(lines)
+
+
 def build_rul(rul, comparison, disagreement, band, random_load,
-              labels, g6_loco, g1_to_g6, g6_to_g1, window_sweep):
+              labels, g6_loco, g1_to_g6, g6_to_g1, window_sweep,
+              prediction_bands):
     lines = []
     lines.append(
         "> **Indicative, not a forecast.** Every remaining-life number here "
@@ -1529,6 +1616,9 @@ def build_rul(rul, comparison, disagreement, band, random_load,
         "left in (a) retire at almost the same discharge, so there the "
         "baseline is simply a very good guess."
     )
+
+    lines.append("")
+    lines.append(_rul_decision(g6_loco, g6_to_g1, prediction_bands))
 
     windows = sorted(int(w) for w in window_sweep["window"].unique())
     w_lo, w_hi = windows[0], windows[-1]
@@ -1940,6 +2030,7 @@ def main():
             frames["rul_g1_to_g6"],
             frames["rul_g6_to_g1"],
             frames["rul_window_sweep"],
+            frames["rul_prediction_bands"],
         ),
     )
     degradation = region(

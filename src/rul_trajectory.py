@@ -321,15 +321,39 @@ def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):
     return pd.DataFrame(out)
 
 
-def prediction_bands(df, preds, cells=None, threshold=THRESHOLD, start=10):
+def prediction_bands(
+    df,
+    preds,
+    cells=None,
+    threshold=THRESHOLD,
+    start=10,
+    window=EXTRAP_WINDOW,
+):
     """
-    Per-cycle RUL point estimate with the reference spread.
+    Per-cycle RUL point estimate, the reference spread, and the
+    three-method indicative range.
 
     For each held-out cell the reference set is the OTHER cells, so
     the spread that ends up on the dashboard is produced by exactly
     the leave-one-cell-out protocol the reported MAE is measured
     under. It is a reference spread, not a calibrated interval.
-    Columns: cell_id, cycle, predicted_rul, rul_p10, rul_p90.
+
+    Three estimates are carried on the same discharge:
+
+      * the trajectory matcher point estimate (`predicted_rul`, the
+        median over references, identical to TrajectoryRul.remaining);
+      * the fleet-lifetime average, `median(reference lifetime) - k`,
+        the baseline the cross-group tables also score;
+      * the early-fade extrapolation, `_implied_eol(...) - k`.
+
+    `rul_low`/`rul_high` are the minimum and maximum of those three:
+    the shipped RUL is this range, never a single method, because
+    which one wins depends on the cell and the reference group (the
+    fleet-lifetime average wins every G6 cell, the matcher wins three
+    of four G1 cells across groups).
+
+    Columns: cell_id, cycle, predicted_rul, rul_p10, rul_p90,
+    lifetime_average_rul, extrapolated_rul, rul_low, rul_high.
     """
 
     cells = sorted(cells) if cells is not None else sorted(df["cell_id"].unique())
@@ -357,6 +381,23 @@ def prediction_bands(df, preds, cells=None, threshold=THRESHOLD, start=10):
         cycles = frame["cycle"].to_numpy()
         pred = frame["predicted_soh"].to_numpy(dtype=float)
 
+        # The fleet-lifetime baseline and the fade-rate extrapolation
+        # are the other two methods scored in the cross-group tables.
+        # They read the held-out cell's measured discharges, which
+        # start at discharge 0 here, so index k is the same discharge
+        # position the trajectory estimate is read at.
+        lifetimes = [r["eol"] for r in est.refs.values()]
+        median_lifetime = (
+            float(np.median(lifetimes)) if lifetimes else None
+        )
+
+        measured = (
+            df[df["cell_id"] == t]
+            .sort_values("cycle")["soh"]
+            .to_numpy(dtype=float)
+        )
+        implied = _implied_eol(measured, threshold, window)
+
         for k in range(len(pred)):
 
             if k + 1 < start:
@@ -371,6 +412,21 @@ def prediction_bands(df, preds, cells=None, threshold=THRESHOLD, start=10):
 
             p10, p50, p90 = interval
 
+            baseline = (
+                None
+                if median_lifetime is None
+                else max(median_lifetime - k, 0.0)
+            )
+            extrapolated = (
+                None if implied is None else max(implied - k, 0.0)
+            )
+
+            candidates = [
+                value
+                for value in (p50, baseline, extrapolated)
+                if value is not None
+            ]
+
             out.append(
                 {
                     "cell_id": t,
@@ -378,6 +434,14 @@ def prediction_bands(df, preds, cells=None, threshold=THRESHOLD, start=10):
                     "predicted_rul": p50,
                     "rul_p10": p10,
                     "rul_p90": p90,
+                    "lifetime_average_rul": (
+                        np.nan if baseline is None else baseline
+                    ),
+                    "extrapolated_rul": (
+                        np.nan if extrapolated is None else extrapolated
+                    ),
+                    "rul_low": float(min(candidates)),
+                    "rul_high": float(max(candidates)),
                 }
             )
 

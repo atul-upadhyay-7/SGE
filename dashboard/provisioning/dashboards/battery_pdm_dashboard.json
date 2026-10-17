@@ -104,7 +104,7 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Discharges Left (RUL, Indicative)",
+      "title": "RUL Indicative Range (Discharges)",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -310,8 +310,8 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "RUL Predicted vs Actual & Reference Spread (Indicative)",
-      "description": "RUL is indicative, not a forecast. Trajectory matching with the 10th/90th percentile reference spread (per-reference-cell estimates, not a calibrated interval), beside the early-fade extrapolation on the same held-out discharges. The two methods disagree by an entire lifetime on the late-knee cells, so no single estimate is presented as the answer. Counted in discharges.",
+      "title": "RUL Indicative Range & Methods (Indicative)",
+      "description": "RUL ships as a range, not a point: the outer low/high is the min-to-max of the trajectory matcher, the early-fade extrapolation and the fleet-lifetime average at each held-out discharge, with the three methods drawn inside it. There is no calibrated interval and no per-cell winner, and the methods disagree by an entire lifetime on the late-knee cells, so no single estimate is presented as the answer. Counted in discharges.",
       "gridPos": {
         "x": 12,
         "y": 15,
@@ -356,8 +356,8 @@
     {
       "id": 11,
       "type": "table",
-      "title": "RUL Predictions & Reference Spread (Indicative)",
-      "description": "Per-discharge RUL targets, the trajectory estimate, its 10th/90th percentile reference spread, and the second method (early-fade extrapolation) so both are read together. Indicative, not a forecast.",
+      "title": "RUL Indicative Range per Discharge",
+      "description": "Per-discharge RUL: the observed cycles to 80% SOH beside the shipped indicative range (low/high = the min-to-max of the trajectory matcher, the early-fade extrapolation and the fleet-lifetime average) and the three methods themselves. Indicative, not a forecast.",
       "gridPos": {
         "x": 12,
         "y": 23,
