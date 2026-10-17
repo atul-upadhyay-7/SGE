@@ -1088,6 +1088,7 @@ def build_rul(rul, comparison, disagreement, band, random_load,
     usable = int((random_load["reaches_80"] & random_load["keep"]).sum())
     total = int(len(random_load))
     threshold = int(random_load["threshold"].iloc[0])
+    b41 = random_load.set_index("cell_id").loc["B0041"]
     record("RUL", "random-load check", "B0038-B0044", "cells checked",
            total, "cells", REQUIRED["random_load"])
     record("RUL", "random-load check", "B0038-B0044",
@@ -1116,9 +1117,25 @@ def build_rul(rul, comparison, disagreement, band, random_load,
         "and temperature change across the record, so their features are not "
         "comparable at a single operating condition — the reason they were "
         "left out is comparability, not ageing. B0041 reaches 80% too but is "
-        "excluded, because the very-low-capacity runs the dataset's own notes "
-        "flag corrupt its early reference capacity, so its SOH never has a "
-        "trustworthy baseline."
+        "excluded, and its reference shows why: its opening "
+        f"{ph('rl_b41_n', 10, 'd')} recorded discharges carry a median "
+        f"{ph('rl_b41_early_cap', float(b41['early_capacity_median_ah']), '.3f')} Ah "
+        "at a mean "
+        f"{ph('rl_b41_early_cur', float(b41['early_current_mean_abs_a']), '.2f')} A "
+        "— about a quarter of the group's own load — with the terminal voltage "
+        "falling by only "
+        f"{ph('rl_b41_drop', float(b41['early_voltage_drop_v']), '.3f')} V, "
+        "against "
+        f"{ph('rl_b41_later', float(b41['later_median_capacity_ah']), '.2f')} Ah "
+        "once the cell discharges normally later in life. Those opening runs "
+        "are a measurement failure, not a low-capacity cell, but they are the "
+        "majority of the record, so the rule that keeps only discharges above "
+        "half the cell's median normalises against them and keeps them; the "
+        "resulting "
+        f"{ph('rl_b41_ref', float(b41['reference_capacity_ah']), '.3f')} Ah "
+        "reference is an artifact, its SOH rises above the ceiling and the "
+        "cell is excluded — which is why no cell the pipeline trusts has a "
+        "reference under half the median of its later valid discharges."
     )
 
     lines.append("")

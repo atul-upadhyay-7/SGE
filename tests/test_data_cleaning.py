@@ -1,5 +1,12 @@
 from pathlib import Path
+import sys
+
 import pandas as pd
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "src"))
+
+from data_cleaning import REFERENCE_RULE, reference_capacity  # noqa: E402
 
 
 AUDIT = Path("data/processed/cell_audit.csv")
@@ -64,6 +71,45 @@ def test_saved_soh_matches_audit_soh():
             continue
         assert not sub.empty
         assert abs(sub["soh"].max() - row["soh_max"]) < 1e-6
+
+
+def test_reference_capacity_is_not_a_measurement_artifact():
+    """
+    A kept cell's reference (median of its first five valid discharges)
+    must not sit under half the median of its later valid discharges.
+    If it does, the reference was set by a corrupt opening block rather
+    than a real beginning-of-life capacity, and every SOH value for
+    that cell would be scaled by a bad number. B0041 is exactly this
+    case (its opening runs are a measurement failure) and is why it is
+    excluded rather than kept.
+    """
+
+    audit = pd.read_csv(AUDIT)
+    clean = pd.read_csv(CLEAN)
+
+    checked = 0
+
+    for _, row in audit[audit["keep"].astype(bool)].iterrows():
+
+        cap = (
+            clean[clean["cell_id"] == row["cell_id"]]
+            .sort_values("cycle")["capacity_ah"]
+            .astype(float)
+            .reset_index(drop=True)
+        )
+        assert len(cap) >= 5, f"{row['cell_id']}: too few rows"
+
+        reference = reference_capacity(cap, REFERENCE_RULE)
+        later = cap.iloc[len(cap) // 2:]
+
+        assert reference >= 0.5 * later.median(), (
+            f"{row['cell_id']}: reference {reference:.4f} Ah is under half the "
+            f"median of its later valid discharges ({later.median():.4f} Ah); "
+            "the reference is a measurement artifact, not a real capacity"
+        )
+        checked += 1
+
+    assert checked >= 8, "expected the kept cells to be checked"
 
 
 def test_no_excluded_cell_appears_downstream():

@@ -109,6 +109,12 @@ The report now explains the disagreement instead of only counting it. The fade-r
 
 ---
 
+## Step 23 — B0041's 0.056 Ah reference is a measured artifact, and the rule is left alone
+
+B0041 was excluded from every model but the report only said its "very-low-capacity runs corrupt its early reference capacity". The actual record was printed to settle why. Its first ten discharge runs carry 0.0556, 0.0557, 0.0558, 0.0561, 0.0565, 0.0441, 0.0568, 0.0569, 0.0444, 0.0446 Ah against mean currents of −0.254, −0.293, −0.259, −0.261, −0.393, −0.260, −0.264, −0.267, −0.270, −0.226 A, with the terminal voltage falling only from about 4.19 V to 4.14 V over a ~1000 s run. Ambient is the group's own 4 °C, so it is not a different condition; the load is about a quarter of the group's 1 A schedule and the cell barely discharges, so the ~0.056 Ah is a measurement failure in the opening runs, not a low-capacity cell. From cycle 104 the same cell records 1.0–1.2 Ah at ~0.7–0.85 A with the voltage dropping to ~3.5 V, which is a real G6 discharge. The reason the production rule cannot drop the bad runs is structural: it treats a discharge as invalid when it is below half the cell's median, and for B0041 the bad runs are 42 of 67 rows, so the median it normalises against (0.048 Ah) is itself the artifact and nothing is filtered. The reference is then the median of the first five of those rows, 0.056 Ah. `src/random_load.py` now records, per cell, the opening-run capacity/current/voltage-drop summary, the median capacity of the later half of the valid record, and a `reference_is_artifact` flag that is true when the reference is under half that later median; the README's random-load paragraph now states the numbers instead of asserting corruption. The rule was **not** changed: B0041 is already excluded (its SOH rises and clears the 105% ceiling), every kept cell's reference is sound, and rewriting the shared validity normaliser would retrain the model for no change in any reported decision. The regression guard is enforced by tests instead: `tests/test_data_cleaning.py` fails if any kept cell's reference is under half the median of its later valid discharges, `tests/test_random_load.py` fails if any kept random-load cell trips the same guard, and a dedicated test pins B0041 as the excluded cell that does trip it (artifact reference, opening current under half an amp, opening voltage drop under half a volt).
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

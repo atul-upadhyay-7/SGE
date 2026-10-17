@@ -24,6 +24,15 @@ from the constant-current SOH/RUL set for that reason — not because
 they fail to age. This stage only answers the count, and reports it
 rather than assuming it.
 
+One cell, B0041, reaches the threshold but is excluded: its opening
+discharges are a measurement failure (about a quarter of the group's
+current, almost no voltage drop, ~0.056 Ah), and because those runs
+are the majority of its record the 50%-of-median validity filter
+cannot remove them. The check records each cell's opening-run and
+later-life capacity so the report can say this with numbers, and
+flags a reference as an artifact when it is under half the median of
+the cell's later valid discharges.
+
 Output: data/processed/random_load_rul_check.csv
 """
 
@@ -54,6 +63,47 @@ RANDOM_LOAD_GROUPS = {
     "G6": ["B0041", "B0042", "B0043", "B0044"],
 }
 
+# The reference reads the opening five discharges; the artifact guard
+# compares it to the cell's later life. The later half of the valid
+# record is used rather than "everything after the first five" because
+# a corrupt opening block can itself be the majority of the record
+# (B0041), which would leave the guard's own yardstick corrupted.
+EARLY_WINDOW = 10
+LATER_MEDIAN_FRACTION = 0.5
+
+
+def _reference_diagnostics(g_clean, reference):
+    """
+    Opening-run and later-life capacity checks for one cell.
+
+    Returns the opening-run capacity/current/voltage-drop summary,
+    the median capacity of the later half of the valid record, and
+    whether the reference is implausibly low against that later
+    level — the signature of an opening measurement failure.
+    """
+
+    head = g_clean.head(EARLY_WINDOW)
+    cap_clean = g_clean["capacity_ah"].astype(float).to_numpy()
+    later = cap_clean[len(cap_clean) // 2:]
+    later_median = float(np.median(later)) if len(later) else np.nan
+
+    artifact = bool(
+        np.isfinite(reference)
+        and np.isfinite(later_median)
+        and later_median > 0
+        and reference < LATER_MEDIAN_FRACTION * later_median
+    )
+
+    return {
+        "early_capacity_median_ah": float(head["capacity_ah"].median()),
+        "early_current_mean_abs_a": float(head["current_mean"].abs().mean()),
+        "early_voltage_drop_v": float(
+            (head["voltage_start"] - head["voltage_end"]).mean()
+        ),
+        "later_median_capacity_ah": later_median,
+        "reference_is_artifact": artifact,
+    }
+
 
 def audit_cell(raw_dir, cell_id, group):
     """One row: does this cell reach 80% under the production rule?"""
@@ -80,6 +130,11 @@ def audit_cell(raw_dir, cell_id, group):
             "keep": False,
             "reason": "no valid discharges",
             "eol_discharge": np.nan,
+            "early_capacity_median_ah": np.nan,
+            "early_current_mean_abs_a": np.nan,
+            "early_voltage_drop_v": np.nan,
+            "later_median_capacity_ah": np.nan,
+            "reference_is_artifact": False,
         }
 
     reference = reference_capacity(g_clean["capacity_ah"], REFERENCE_RULE)
@@ -94,7 +149,7 @@ def audit_cell(raw_dir, cell_id, group):
     reaches = bool(below.any())
     reason = exclusion_reason(soh)
 
-    return {
+    row = {
         "cell_id": cell_id,
         "group": group,
         "discharges": int(len(g_clean)),
@@ -108,6 +163,10 @@ def audit_cell(raw_dir, cell_id, group):
             float(int(np.argmax(below)) + 1) if reaches else np.nan
         ),
     }
+
+    row.update(_reference_diagnostics(g_clean, reference))
+
+    return row
 
 
 def audit_random_load(raw_dir=None):
