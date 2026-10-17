@@ -1,12 +1,12 @@
 # BMS Backend
 
 FastAPI service that ingests ESP32/BMS telemetry over MQTT, persists raw
-measurements in PostgreSQL, and (from Phase 4) serves State-of-Health
-predictions from the existing trained model. Built alongside the repo's
-offline ML pipeline, and it reuses the same cycle/feature code in later
-phases.
+measurements in PostgreSQL, aggregates discharge cycles, and serves
+State-of-Health predictions from the existing trained partial-window model.
+Built alongside the repo's offline ML pipeline, and it reuses that pipeline's
+own cycle/feature code (no private copy) so training and serving cannot drift.
 
-## Status: Phases 1–2 complete
+## Status: Phases 1–4 complete
 
 **Phase 1 — Foundation**
 
@@ -36,8 +36,44 @@ phases.
 - Simulated ESP32 publisher: `scripts/simulate_publisher.py`.
 - Ingestion counters: `GET /api/v1/health/ingestion`.
 
-Not yet implemented (later phases): historical query APIs, cycle
-aggregation, SoH inference.
+**Phase 3 — Historical queries**
+
+- `GET /api/v1/devices/{device_id}/telemetry` — time-bounded history with
+  keyset pagination. Query params: `from`, `to` (inclusive ISO timestamps,
+  assumed UTC when naive), `order` (`asc`/`desc`, default `desc`), `limit`
+  (1–1000, default 100), `cursor` (opaque; echo back `next_cursor`).
+  Keyset on `(measured_at, id)` keeps pages stable while new samples arrive,
+  unlike OFFSET.
+- `GET /api/v1/devices/{device_id}/telemetry/latest` — newest sample.
+- `GET /api/v1/devices/{device_id}/telemetry/summary` — sample count,
+  coverage (`first`/`last_measured_at`), device status/`last_seen_at`, and
+  rejections grouped by reason (data-quality overview).
+- Unknown device → `404`; bad cursor or `from > to` → `400`.
+
+**Phase 4 — Cycle aggregation and SoH inference**
+
+- `POST /api/v1/devices/{device_id}/cycles/aggregate` — replays the device's
+  stored telemetry through the offline streaming cycle tracker
+  (`src/streaming/cycle_tracker.py`), upserts the completed discharge cycles,
+  and refreshes this device's SoH predictions (FR-06, FR-07). Idempotent:
+  cycles are keyed on `(device_id, cycle_number)` and predictions are
+  replaced, so re-running never double-counts. The per-sample cell used for a
+  multi-cell pack is the *weakest* cell (lowest voltage).
+- SoH comes from the partial-window model only (`models/soh_window_all`),
+  through `app/ml/estimator.py`. The estimator and trainer share one feature
+  definition (`src/features.py`); a cell with fewer than
+  `WINDOW_MIN_REFERENCE_DISCHARGES` opening discharges is refused rather than
+  guessed (reported as `refused` in the response).
+- `GET /api/v1/devices/{device_id}/cycles` — aggregated cycles, ascending.
+- `GET /api/v1/devices/{device_id}/soh` — stored predictions, oldest first.
+- `GET /api/v1/devices/{device_id}/soh/latest` — newest prediction (`404`
+  before the device has been aggregated).
+- Model provenance: the served artifact is registered in `model_registry`,
+  versioned by the SHA-256 of the `.ubj`, and every prediction records its
+  `model_version` and `feature_schema_version`.
+- CLI equivalent: `python backend/scripts/aggregate_cycles.py --all`
+  (or `--device-id <id>`).
+- Unknown device → `404` on every endpoint.
 
 ## Run with Docker (recommended)
 
@@ -52,6 +88,8 @@ docker compose up --build bms-api            # migrates on boot, then serves
 - Postgres is published on host port **5433** (not 5432, to avoid colliding
   with a Postgres already installed on the host). The `bms-api` container
   reaches it internally at `postgres:5432`.
+- The image copies the shared ML code (`src/`) and the model artifacts
+  (`models/`) to `/app`, matching the paths the estimator resolves at runtime.
 
 ## Run locally (host Python)
 
@@ -79,7 +117,16 @@ python backend/scripts/simulate_publisher.py --device-id BMS_001 --cell-count 3
 
 # 3. watch counters: stored / duplicates / rejected / dropped
 curl http://localhost:8000/api/v1/health/ingestion
+
+# 4. aggregate the discharges seen so far and read back the SoH
+curl -X POST http://localhost:8000/api/v1/devices/BMS_001/cycles/aggregate
+curl http://localhost:8000/api/v1/devices/BMS_001/soh/latest
 ```
+
+The simulator publishes at ~1 Hz and the tracker needs at least a couple of
+minutes of a real discharge to close a cycle, so a short smoke run produces
+cycles=0 (expected). Use recorded telemetry, or `--device-id` with a longer
+run, to see SoH predictions.
 
 On Windows the simulator forces the selector event loop, which paho/aiomqtt
 require. Re-running it with the same `--device-id` reuses message IDs,

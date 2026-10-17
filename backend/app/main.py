@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import devices, health, telemetry
+from app.api import cycles, devices, health, telemetry
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import SessionLocal, engine
@@ -82,3 +82,4 @@ app = FastAPI(
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(devices.router, prefix=settings.api_prefix)
 app.include_router(telemetry.router, prefix=settings.api_prefix)
+app.include_router(cycles.router, prefix=settings.api_prefix)
