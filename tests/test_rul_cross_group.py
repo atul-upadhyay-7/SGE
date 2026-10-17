@@ -36,6 +36,8 @@ RANDOM_CHECK = PROC / "random_load_rul_check.csv"
 G6_LOCO = PROC / "rul_cross_group_g6_loco.csv"
 G1_TO_G6 = PROC / "rul_cross_group_g1_to_g6.csv"
 G6_TO_G1 = PROC / "rul_cross_group_g6_to_g1.csv"
+SWEEP = PROC / "rul_extrapolation_window_sweep.csv"
+METHOD_COMPARISON = PROC / "rul_method_comparison.csv"
 
 G1 = ("B0005", "B0006", "B0007", "B0018")
 G6 = ("B0042", "B0043", "B0044")
@@ -65,6 +67,11 @@ def protocols():
         "g1_to_g6": _load(G1_TO_G6),
         "g6_to_g1": _load(G6_TO_G1),
     }
+
+
+@pytest.fixture(scope="module")
+def sweep():
+    return _load(SWEEP)
 
 
 def test_labels_reach_the_four_usable_random_load_cells(labels):
@@ -163,11 +170,15 @@ def test_extrapolation_is_the_same_in_every_protocol():
         assert a.loc[cell] == pytest.approx(b.loc[cell], abs=1e-9)
 
 
-def _rerun():
+def _dataset():
     raw = RG.resolve_raw_dir()
     if not Path(raw).exists():
         pytest.skip("raw NASA files not present")
-    dataset = RG.rul_dataset(RG.CLEAN, raw)
+    return RG.rul_dataset(RG.CLEAN, raw)
+
+
+def _rerun():
+    dataset = _dataset()
     return {
         "g6_loco": RG.cross_group_evaluate(
             dataset, RG.G6_CELLS, RG.G6_CELLS,
@@ -200,3 +211,58 @@ def test_numbers_reproduce(protocols):
             assert got[column].round(6).to_dict() == (
                 want[column].round(6).to_dict()
             ), f"{key}.{column} does not reproduce"
+
+
+def test_window_sweep_covers_every_labelled_cell(sweep):
+    assert set(sweep["window"]) == set(RG.SWEEP_WINDOWS)
+    assert set(sweep["cell_id"]) == set(RG.SWEEP_CELLS)
+    assert len(sweep) == len(RG.SWEEP_CELLS) * len(RG.SWEEP_WINDOWS)
+    over = sweep[sweep["window"] > sweep["discharges"]]
+    assert set(over["cell_id"]) == {"B0039"}
+    assert np.isfinite(sweep["mae"]).all()
+
+
+def test_window_sweep_default_column_matches_the_scored_method(sweep):
+    """The 20-discharge column is the extrapolation the report already
+    scores, so it must equal those committed numbers exactly."""
+
+    w20 = (
+        sweep[sweep["window"] == RG.EXTRAP_WINDOW]
+        .set_index("cell_id")["mae"]
+    )
+    g1 = _load(METHOD_COMPARISON).set_index("test_cell")["extrapolation_mae"]
+
+    for cell in G6:
+        wanted = float(
+            _load(G1_TO_G6)
+            .set_index("test_cell")["extrapolation_mae"]
+            .loc[cell]
+        )
+        assert w20.loc[cell] == pytest.approx(wanted, abs=1e-6)
+
+    for cell in G1:
+        assert w20.loc[cell] == pytest.approx(float(g1.loc[cell]), abs=1e-6)
+
+
+def test_longer_window_does_not_help_on_held_out_cells(sweep):
+    """This is the report's decision: the mean falls, but only because
+    one flat-early cell stops being an outlier; the median does not
+    fall and more than half the cells get worse."""
+
+    lo = sweep[sweep["window"] == RG.SWEEP_WINDOWS[0]].set_index("cell_id")
+    hi = sweep[sweep["window"] == RG.SWEEP_WINDOWS[-1]].set_index("cell_id")
+
+    assert lo["mae"].mean() > hi["mae"].mean()
+    assert hi["mae"].median() >= lo["mae"].median()
+
+    worse = int((hi["mae"] > lo["mae"]).sum())
+    assert worse > len(RG.SWEEP_CELLS) / 2
+
+
+def test_window_sweep_reproduces(sweep):
+    fresh = RG.window_sweep(_dataset())
+
+    got = fresh.set_index(["cell_id", "window"])["mae"].round(6)
+    want = sweep.set_index(["cell_id", "window"])["mae"].round(6)
+
+    assert got.to_dict() == want.to_dict()

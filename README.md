@@ -256,6 +256,29 @@ The matcher beats the baseline on 3 of 3 cells and the fade-rate extrapolation o
 The matcher beats the baseline on 3 of 4 cells and the fade-rate extrapolation on 1 of 4.
 
 Only protocol (b) mixes the groups, and it is the one where both methods clear the baseline on every G6 cell: a G6 cell is watched by G1 references that sit at a different load, but the two G6 cells left in (a) retire at almost the same discharge, so there the baseline is simply a very good guess.
+
+#### Does a longer fade-rate window help?
+
+The fade-rate extrapolation is a single straight line through a cell's first 20 measured discharges, so its answer is fixed entirely by that window's slope. Refitting it at 30 and 40 discharges and re-scoring all 8 labelled cells gives the table below.
+
+| Cell | 20-discharge fit | 30-discharge fit | 40-discharge fit |
+|---|---|---|---|
+| B0005 | 76.9 | 301.0 | 242.6 |
+| B0006 | 8.0 | 13.9 | 11.5 |
+| B0007 | 90.8 | 316.8 | 179.7 |
+| B0018 | 8.2 | 7.6 | 10.4 |
+| B0039 | 691.7 | 103.0 | 25.1 |
+| B0042 | 24.6 | 38.3 | 31.9 |
+| B0043 | 5.9 | 3.2 | 2.8 |
+| B0044 | 9.5 | 4.1 | 2.7 |
+| **Mean** | 114.5 | 98.5 | 63.3 |
+| **Median** | 17.1 | 26.1 | 18.3 |
+
+As an average the longer window looks better — mean MAE falls from 114.5 to 63.3 discharges — but that average is one cell. B0039 barely fades over its first discharges and then knees late, so its line at the default window lands 691 discharges past its real end of life; by 40 discharges the fit finally sees the knee and its error drops to 25.1. Everywhere else the longer window hurts: the median does not fall (17.1 to 18.3) and 5 of the 8 cells get worse, the two flat-opening G1 cells collapsing as the line flattens further — B0005 from 76.9 to 242.6 and B0007 from 90.8 to 179.7. The longer window is therefore not kept; the default stays at 20 discharges.
+
+The figure shows what fails. B0005 and B0007 fade all but flatly over those 20 discharges, so the fitted line is far too shallow: it reaches 80% at discharge 183 for B0005 and 215 for B0007, while the cells actually retire at 107 and 125. The trajectory matcher never extrapolates that opening slope — it reads the cell's current level against reference curves — so it lands far closer on the same cells (B0005 7.1 against 76.9, B0007 17.5 against 90.8). The reverse holds on B0006, which fades from the first discharge and faster than any reference: there the matcher is the one that fails and the extrapolation is accurate.
+
+![Measured SOH against discharge index for B0005 and B0007, with the fit window marked and the extrapolated line extended to the retirement threshold](docs/rul_extrapolation_B0005_B0007.png)
 <!-- make_report:rul:end -->
 
 > **Unit:** All RUL targets and predictions are measured in **sequential discharges** (`discharge_index`), not raw interleaved cycle numbers.

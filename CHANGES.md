@@ -103,6 +103,12 @@ The random-load check had already found four cells outside G1 that reach retirem
 
 ---
 
+## Step 22 — Why the two RUL methods disagree, and whether a longer window helps
+
+The report now explains the disagreement instead of only counting it. The fade-rate extrapolation fits one straight line through a cell's first 20 measured discharges, so its answer is set by that window's slope alone. For B0005 and B0007 the opening 20 discharges barely decline, so the fitted line is too shallow: it reaches 80% at discharge 183 (B0005) and 215 (B0007) while the cells actually retire at 107 and 125 — it misses the late knee and over-predicts remaining life by 76 and 90 discharges. New `docs/make_rul_extrapolation_plot.py` draws both cells (measured SOH, the marked fit window, the extrapolated line, the true and implied end of life) into `docs/rul_extrapolation_B0005_B0007.png`, and the README states plainly what fails: a flat early fade makes the line miss the knee. The trajectory matcher never extrapolates that early slope — it reads the current level against reference curves — which is why it lands far closer on the same cells (7.1 and 17.5), and why the reverse holds on B0006, which fades from the start and defeats the matcher while the extrapolation is accurate. The second half of the step tests one more simple idea: `window_sweep()` in the same module refits the line at 20, 30 and 40 discharges and re-scores all eight labelled cells into `data/processed/rul_extrapolation_window_sweep.csv`, and the README adds the error-versus-window table in the `rul` region. The 20-discharge column reproduces the committed `extrapolation_mae` exactly, so the sweep is comparable to the tables above. The longer window is not kept: the mean falls (114.5 to 63.3 discharges) but only because the one flat-early cell (B0039, 691.7 to 25.1) stops being an outlier; the median does not fall (17.1 to 18.3) and five of the eight cells get worse, B0005 and B0007 roughly tripling (76.9 to 242.6 and 90.8 to 179.7), because a longer shallow window flattens the line further. The default window therefore stays at 20, and `tests/test_rul_cross_group.py` now also checks the sweep covers all eight cells at three windows, that its 20-discharge column equals the scored extrapolation for both G1 and G6, that the longer window does not lower the held-out median or help most cells, and that the sweep reproduces.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

@@ -231,6 +231,36 @@ RUL,cross-group cg_c,mean,extrapolation MAE,45.98878588605,discharges,data/proce
 RUL,cross-group cg_c,mean,fleet-lifetime baseline MAE,24.80259680215,discharges,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,verdict,cells where trajectory beats baseline,3.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,verdict,cells where extrapolation beats baseline,1.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,fade-rate window sweep,B0005,MAE at window 20,76.9078718407,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0005,MAE at window 30,301.0054981146,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0005,MAE at window 40,242.5522676436,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0006,MAE at window 20,8.0213240822,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0006,MAE at window 30,13.9039681134,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0006,MAE at window 40,11.5230593725,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0007,MAE at window 20,90.8298079966,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0007,MAE at window 30,316.8295538111,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0007,MAE at window 40,179.689754879,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0018,MAE at window 20,8.1961396247,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0018,MAE at window 30,7.5748902422,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0018,MAE at window 40,10.4135906669,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0039,MAE at window 20,691.6689914531,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0039,MAE at window 30,102.9686832805,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0039,MAE at window 40,25.110421151,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0042,MAE at window 20,24.6318599238,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0042,MAE at window 30,38.2649702183,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0042,MAE at window 40,31.9470651134,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0043,MAE at window 20,5.9127449557,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0043,MAE at window 30,3.1574536277,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0043,MAE at window 40,2.8165252603,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0044,MAE at window 20,9.5156583694,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0044,MAE at window 30,4.0586645854,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,B0044,MAE at window 40,2.7356586323,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,Mean,MAE at window 20,114.46054978077501,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,Mean,MAE at window 30,98.47046024915001,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,Mean,MAE at window 40,63.348542839874995,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,Median,MAE at window 20,17.0737591466,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,Median,MAE at window 30,26.08446916585,discharges,data/processed/rul_extrapolation_window_sweep.csv
+RUL,fade-rate window sweep,Median,MAE at window 40,18.31674026175,discharges,data/processed/rul_extrapolation_window_sweep.csv
 degradation,slope,B0005,fade,0.2139387007,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,early fade,0.0579203844,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,EOL discharge,107.0,discharges,data/processed/cell_audit.csv

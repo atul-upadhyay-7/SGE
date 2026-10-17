@@ -51,11 +51,27 @@ extrapolation reads only the held-out cell's own opening discharges,
 so its number is the same in every protocol; only the matcher and the
 baseline move with the training group.
 
+Does a longer fade-rate window help?
+------------------------------------
+The extrapolation is one straight line through the cell's first
+EXTRAP_WINDOW measured discharges, so its answer is set entirely by
+that window's slope. A cell whose fade starts late (B0005, B0007,
+B0039) is almost flat over the opening discharges, so the line is too
+shallow, crosses 80% far past the true knee and over-predicts the
+remaining life; a cell that fades from the start (B0006) is bracketed
+well. window_sweep() refits the line at 20, 30 and 40 discharges and
+re-scores all eight labelled cells, and the report keeps the longer
+window only if it lowers the held-out error. It does not: the mean
+falls, but only because one flat-early cell (B0039) stops being an
+outlier, while the median does not fall and five of the eight cells
+get worse, B0005 and B0007 by a factor of two or more.
+
 Outputs
     data/processed/rul_random_load_labels.csv
     data/processed/rul_cross_group_g6_loco.csv
     data/processed/rul_cross_group_g1_to_g6.csv
     data/processed/rul_cross_group_g6_to_g1.csv
+    data/processed/rul_extrapolation_window_sweep.csv
 """
 
 import sys
@@ -90,6 +106,7 @@ LABELS_OUT = PROC / "rul_random_load_labels.csv"
 G6_LOCO_OUT = PROC / "rul_cross_group_g6_loco.csv"
 G1_TO_G6_OUT = PROC / "rul_cross_group_g1_to_g6.csv"
 G6_TO_G1_OUT = PROC / "rul_cross_group_g6_to_g1.csv"
+SWEEP_OUT = PROC / "rul_extrapolation_window_sweep.csv"
 
 # The G1 cells that carry the SOH/RUL model, and the random-load
 # cells that actually retire and pass the keep filter.
@@ -110,6 +127,11 @@ LABEL_CELLS = {
 # section so the two are comparable; the extrapolation fits the first
 # EXTRAP_WINDOW values, so the first scored discharge is that far in.
 START = 10
+
+# The fade-rate window sweep: the report compares the default window
+# against two longer ones on the same eight labelled cells.
+SWEEP_WINDOWS = (20, 30, 40)
+SWEEP_CELLS = G1_CELLS + list(LABEL_CELLS)
 
 
 def _series(raw_dir, cell, group):
@@ -198,13 +220,11 @@ def rul_dataset(clean_path=CLEAN, raw_dir=None):
 
     for cell, group in LABEL_CELLS.items():
 
-        if group == "G6":
-
-            parts.append(
-                _series(raw_dir, cell, group)[
-                    ["cell_id", "group", "cycle", "soh"]
-                ]
-            )
+        parts.append(
+            _series(raw_dir, cell, group)[
+                ["cell_id", "group", "cycle", "soh"]
+            ]
+        )
 
     return pd.concat(parts, ignore_index=True)
 
@@ -299,6 +319,74 @@ def cross_group_evaluate(
     return pd.DataFrame(rows).sort_values("test_cell").reset_index(drop=True)
 
 
+def window_sweep(
+    dataset,
+    cells=SWEEP_CELLS,
+    windows=SWEEP_WINDOWS,
+    start=START,
+):
+    """
+    Re-score the fade-rate extrapolation as its fit window grows.
+
+    For each cell the straight line is refitted through the first
+    `window` measured discharges and its implied end of life is scored
+    over the same discharges as the cross-group tables, so the
+    `window=20` column reproduces `extrapolation_mae` exactly. The
+    implied end of life is reported too, because it is the number the
+    error is measuring: |implied - true| for a line that crosses the
+    threshold after the true end of life.
+    """
+
+    rows = []
+
+    for cell in cells:
+
+        frame = dataset[dataset["cell_id"] == cell].sort_values("cycle")
+
+        if frame.empty:
+
+            continue
+
+        soh = frame["soh"].to_numpy(dtype=float)
+        eol = _eol_index(soh)
+
+        if eol is None:
+
+            continue
+
+        for window in windows:
+
+            implied = _implied_eol(soh, EOL_SOH_THRESHOLD, window)
+
+            if implied is None:
+
+                mae = np.nan
+
+            else:
+
+                errs = [
+                    abs(max(implied - k, 0.0) - (eol - k))
+                    for k in range(start, eol)
+                ]
+
+                mae = float(np.mean(errs))
+
+            rows.append(
+                {
+                    "cell_id": cell,
+                    "group": frame["group"].iloc[0],
+                    "discharges": int(len(soh)),
+                    "eol_discharge": eol + 1,
+                    "window": int(window),
+                    "implied_eol": float(implied) if implied is not None
+                    else np.nan,
+                    "mae": mae,
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
 def _verdict(frame):
     """Whether either method beats the baseline on a group."""
 
@@ -340,15 +428,19 @@ def main():
         dataset, G6_CELLS, G1_CELLS, "train G6, test G1",
     )
 
+    sweep = window_sweep(dataset)
+
     labels_out = rounded(labels)
     g6_loco_out = rounded(g6_loco)
     g1_to_g6_out = rounded(g1_to_g6)
     g6_to_g1_out = rounded(g6_to_g1)
+    sweep_out = rounded(sweep)
 
     labels_out.to_csv(LABELS_OUT, index=False)
     g6_loco_out.to_csv(G6_LOCO_OUT, index=False)
     g1_to_g6_out.to_csv(G1_TO_G6_OUT, index=False)
     g6_to_g1_out.to_csv(G6_TO_G1_OUT, index=False)
+    sweep_out.to_csv(SWEEP_OUT, index=False)
 
     print("=== RUL labels, random-load cells ===")
     print(labels_out.to_string(index=False))
@@ -381,10 +473,14 @@ def main():
                 f" of {len(frame)} cells."
             )
 
+    print(f"\n=== fade-rate window sweep (MAE vs window) ===")
+    print(sweep_out.to_string(index=False))
+
     print(f"\nwrote {LABELS_OUT.relative_to(ROOT)}")
     print(f"wrote {G6_LOCO_OUT.relative_to(ROOT)}")
     print(f"wrote {G1_TO_G6_OUT.relative_to(ROOT)}")
     print(f"wrote {G6_TO_G1_OUT.relative_to(ROOT)}")
+    print(f"wrote {SWEEP_OUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

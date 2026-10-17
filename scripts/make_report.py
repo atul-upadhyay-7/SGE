@@ -60,6 +60,7 @@ REQUIRED = {
     "rul_g6_loco": PROC / "rul_cross_group_g6_loco.csv",
     "rul_g1_to_g6": PROC / "rul_cross_group_g1_to_g6.csv",
     "rul_g6_to_g1": PROC / "rul_cross_group_g6_to_g1.csv",
+    "rul_window_sweep": PROC / "rul_extrapolation_window_sweep.csv",
     "full_discharge": EXP / "soh_full_discharge.csv",
     "partial_discharge": EXP / "soh_partial_discharge.csv",
     "partial_transfer": EXP / "soh_partial_transfer.csv",
@@ -848,8 +849,67 @@ def _rul_cross_verdict(lines, frame, tag, source):
     )
 
 
+def _rul_window_table(lines, sweep, source):
+    """MAE of the fade-rate extrapolation as its fit window grows."""
+
+    windows = sorted(int(w) for w in sweep["window"].unique())
+
+    by_window = {
+        w: sweep[sweep["window"] == w].set_index("cell_id")
+        for w in windows
+    }
+
+    lines.append(
+        "| Cell | "
+        + " | ".join(f"{ph('cgw_w' + str(w), w, 'd')}-discharge fit"
+                     for w in windows)
+        + " |"
+    )
+    lines.append("|" + "---|" * (len(windows) + 1))
+
+    for cell in sorted(sweep["cell_id"].unique()):
+
+        cell_id = str(cell)
+        values = [float(by_window[w].loc[cell_id, "mae"]) for w in windows]
+
+        for w, value in zip(windows, values):
+
+            record("RUL", "fade-rate window sweep", cell_id,
+                   f"MAE at window {w}", value, "discharges", source)
+
+        lines.append(
+            f"| {cell_id} | "
+            + " | ".join(
+                ph(f"cgw_{cell_id.lower()}_w{w}", value, ".1f")
+                for w, value in zip(windows, values)
+            )
+            + " |"
+        )
+
+    for label, func in (
+        ("Mean", lambda s: float(pd.Series(s).mean())),
+        ("Median", lambda s: float(pd.Series(s).median())),
+    ):
+
+        values = [float(func(by_window[w]["mae"])) for w in windows]
+
+        for w, value in zip(windows, values):
+
+            record("RUL", "fade-rate window sweep", label,
+                   f"MAE at window {w}", value, "discharges", source)
+
+        lines.append(
+            f"| **{label}** | "
+            + " | ".join(
+                ph(f"cgw_{label.lower()}_w{w}", value, ".1f")
+                for w, value in zip(windows, values)
+            )
+            + " |"
+        )
+
+
 def build_rul(rul, comparison, disagreement, band, random_load,
-              labels, g6_loco, g1_to_g6, g6_to_g1):
+              labels, g6_loco, g1_to_g6, g6_to_g1, window_sweep):
     lines = []
     lines.append(
         "> **Indicative, not a forecast.** Every remaining-life number here "
@@ -1129,6 +1189,97 @@ def build_rul(rul, comparison, disagreement, band, random_load,
         "baseline is simply a very good guess."
     )
 
+    windows = sorted(int(w) for w in window_sweep["window"].unique())
+    w_lo, w_hi = windows[0], windows[-1]
+
+    by_window = {
+        w: window_sweep[window_sweep["window"] == w].set_index("cell_id")
+        for w in windows
+    }
+    mae_lo = by_window[w_lo]["mae"]
+    mae_hi = by_window[w_hi]["mae"]
+    n_cells = int(len(mae_lo))
+    n_worse = int((mae_hi > mae_lo).sum())
+    med_lo = float(mae_lo.median())
+    med_hi = float(mae_hi.median())
+
+    extrap20 = comparison.set_index("test_cell")["extrapolation_mae"]
+    traj = comparison.set_index("test_cell")["trajectory_mae"]
+
+    b0039 = by_window[w_lo].loc["B0039"]
+    b0039_hi = by_window[w_hi].loc["B0039"]
+    b05 = by_window[w_lo].loc["B0005"]
+    b07 = by_window[w_lo].loc["B0007"]
+
+    lines.append("")
+    lines.append("#### Does a longer fade-rate window help?")
+    lines.append("")
+    lines.append(
+        "The fade-rate extrapolation is a single straight line through a "
+        f"cell's first {ph('cgw_w' + str(w_lo), w_lo, 'd')} measured "
+        "discharges, so its answer is fixed entirely by that window's slope. "
+        f"Refitting it at {ph('cgw_w' + str(windows[1]), windows[1], 'd')} "
+        f"and {ph('cgw_w' + str(w_hi), w_hi, 'd')} discharges and re-scoring "
+        f"all {ph('cgw_n_cells', n_cells, 'd')} labelled cells gives the table "
+        "below."
+    )
+    lines.append("")
+    _rul_window_table(lines, window_sweep, REQUIRED["rul_window_sweep"])
+    lines.append("")
+    lines.append(
+        "As an average the longer window looks better — mean MAE falls from "
+        f"{ph('cgw_mean_w' + str(w_lo), float(mae_lo.mean()), '.1f')} to "
+        f"{ph('cgw_mean_w' + str(w_hi), float(mae_hi.mean()), '.1f')} "
+        "discharges — but that average is one cell. B0039 barely fades over "
+        "its first discharges and then knees late, so its line at the default "
+        f"window lands {ph('cgw_b0039_over', float(b0039['implied_eol'] - b0039['eol_discharge']), '.0f')} "
+        "discharges past its real end of life; by "
+        f"{ph('cgw_w' + str(w_hi), w_hi, 'd')} discharges the fit finally sees "
+        f"the knee and its error drops to "
+        f"{ph('cgw_b0039_w' + str(w_hi), float(b0039_hi['mae']), '.1f')}. "
+        "Everywhere else the longer window hurts: the median does not fall "
+        f"({ph('cgw_med_w' + str(w_lo), med_lo, '.1f')} to "
+        f"{ph('cgw_med_w' + str(w_hi), med_hi, '.1f')}) and "
+        f"{ph('cgw_n_worse', n_worse, 'd')} of the "
+        f"{ph('cgw_n_cells', n_cells, 'd')} cells get worse, the two "
+        "flat-opening G1 cells collapsing as the line flattens further — "
+        "B0005 from "
+        f"{ph('cgw_b0005_w' + str(w_lo), float(b05['mae']), '.1f')} to "
+        f"{ph('cgw_b0005_w' + str(w_hi), float(by_window[w_hi].loc['B0005']['mae']), '.1f')} "
+        "and B0007 from "
+        f"{ph('cgw_b0007_w' + str(w_lo), float(b07['mae']), '.1f')} to "
+        f"{ph('cgw_b0007_w' + str(w_hi), float(by_window[w_hi].loc['B0007']['mae']), '.1f')}. "
+        "The longer window is therefore not kept; the default stays at "
+        f"{ph('cgw_w' + str(w_lo), w_lo, 'd')} discharges."
+    )
+    lines.append("")
+    lines.append(
+        "The figure shows what fails. B0005 and B0007 fade all but flatly over "
+        f"those {ph('cgw_w' + str(w_lo), w_lo, 'd')} discharges, so the fitted "
+        f"line is far too shallow: it reaches "
+        f"{ph('cgw_threshold', threshold, 'd')}% at discharge "
+        f"{ph('cgw_b0005_imp', float(b05['implied_eol']), '.0f')} for B0005 and "
+        f"{ph('cgw_b0007_imp', float(b07['implied_eol']), '.0f')} for B0007, "
+        f"while the cells actually retire at "
+        f"{ph('cgw_b0005_eol', int(b05['eol_discharge']), 'd')} and "
+        f"{ph('cgw_b0007_eol', int(b07['eol_discharge']), 'd')}. The trajectory "
+        "matcher never extrapolates that opening slope — it reads the cell's "
+        "current level against reference curves — so it lands far closer on "
+        f"the same cells (B0005 {ph('cgw_b0005_traj', float(traj.loc['B0005']), '.1f')} "
+        f"against {ph('cgw_b0005_extrap', float(extrap20.loc['B0005']), '.1f')}, "
+        f"B0007 {ph('cgw_b0007_traj', float(traj.loc['B0007']), '.1f')} against "
+        f"{ph('cgw_b0007_extrap', float(extrap20.loc['B0007']), '.1f')}). The "
+        "reverse holds on B0006, which fades from the first discharge and "
+        "faster than any reference: there the matcher is the one that fails "
+        "and the extrapolation is accurate."
+    )
+    lines.append("")
+    lines.append(
+        "![Measured SOH against discharge index for B0005 and B0007, with the "
+        "fit window marked and the extrapolated line extended to the "
+        "retirement threshold](docs/rul_extrapolation_B0005_B0007.png)"
+    )
+
     return "\n".join(lines)
 
 
@@ -1390,6 +1541,7 @@ def main():
             frames["rul_g6_loco"],
             frames["rul_g1_to_g6"],
             frames["rul_g6_to_g1"],
+            frames["rul_window_sweep"],
         ),
     )
     degradation = region(
