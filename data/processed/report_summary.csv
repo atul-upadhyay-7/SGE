@@ -357,3 +357,9 @@ pack,thermal,synthetic injection,injected,24.0,cases,data/processed/pack_detecti
 pack,clean packs,no injected fault,discharges,564.0,discharges,data/processed/pack_false_alarms.csv
 pack,clean packs,no injected fault,false resistance spikes,0.0,alarms,data/processed/pack_false_alarms.csv
 pack,clean packs,no injected fault,false thermal alarms,0.0,alarms,data/processed/pack_false_alarms.csv
+bms_contract,partial-window model,trained band,window_voltage_high,4.0,V,src/features.py
+bms_contract,partial-window model,trained band,window_voltage_low,3.4,V,src/features.py
+bms_contract,partial-window model,reference baseline,min_reference_discharges,3.0,discharges,src/features.py
+bms_contract,partial-window model,reference baseline,reference_discharges,5.0,discharges,src/features.py
+bms_contract,partial-window model,trained band,train_current_low,2.0,A,src/features.py
+bms_contract,partial-window model,trained band,train_current_high,4.0,A,src/features.py

@@ -164,6 +164,15 @@ WINDOW_MODEL_FEATURES = [
 # amp, removing the 2 A (G1/G9) versus 4 A (G3) rate difference.
 WINDOW_NORMALIZATION_INPUTS = ["current_mean"]
 
+# The discharge-rate band the partial-window model was trained across.
+# The kept constant-current cells run at 2 A (G1, G9) and 4 A (G3);
+# the per-amp normalisation above removes that rate difference, but
+# only inside this band. A BMS that discharges far outside it is
+# presenting a rate the model has no training data for, so the band is
+# stated once here and quoted by the README rather than typed by hand.
+WINDOW_TRAIN_CURRENT_LOW_A = 2.0
+WINDOW_TRAIN_CURRENT_HIGH_A = 4.0
+
 # The voltage band every WINDOW_FEATURES value is measured over. The
 # extractor in load_data.py aliases these (VOLTAGE_WINDOW_HIGH/LOW),
 # so the band the model was trained on has one definition here.

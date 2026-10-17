@@ -115,6 +115,12 @@ B0041 was excluded from every model but the report only said its "very-low-capac
 
 ---
 
+## Step 24 — README scope: what this is not, and what a BMS must provide
+
+The README now opens its scope instead of leaving it to be inferred. A new **What this is not** section states three limits plainly: the numbers are measured on laboratory NASA cells cycled under controlled constant-current and randomised-load profiles, never on the production packs this project targets or on a customer cell; there is no field validation, no deployment on a real battery, no comparison with a manufacturer's reference and no hardware sign-off, and the dashboard and MQTT path are exercised on injected faults rather than aged field data; and the RUL is indicative rather than a forecast, because remaining-life labels need a cell that reaches the end-of-life threshold, only a few cells do, and the two methods disagree on the mean. A second section, **What a real BMS must provide**, states the three conditions a discharge must meet before the partial-window model will score it: it must cover the trained voltage band, the cell must supply the minimum number of early discharges the cell-relative baseline needs, and the discharge current must sit near the rate band the model was trained across. None of those thresholds is typed into the document. `src/features.py` gained the last missing constant — `WINDOW_TRAIN_CURRENT_LOW_A` and `WINDOW_TRAIN_CURRENT_HIGH_A`, the 2 A (G1, G9) and 4 A (G3) rates the kept cells run at — and `scripts/make_report.py` imports the module and reads the band, the minimum discharge count and the opening-baseline window straight from it, so the README states exactly what the model's own contract states and the two cannot drift. The new `bms_contract` region is rendered from those constants like every other region, so a hand-typed threshold or a stale one fails `scripts/check_numbers.py`. `tests/test_readme_scope.py` adds the guard: it fails if either section disappears, if the honesty bullet list loses its three claims, or if the rendered region disagrees with `src/features.py`.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

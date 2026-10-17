@@ -28,6 +28,7 @@ absent, or if a metric it needs is not present in its source CSV.
 """
 
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -37,6 +38,16 @@ from report_render import TEMPLATES_KEY, render
 ROOT = Path(__file__).resolve().parent.parent
 PROC = ROOT / "data" / "processed"
 EXP = PROC / "experiments"
+
+# The BMS contract thresholds live in src/features.py, not in this
+# script. Importing the module (rather than copying the numbers) is
+# what keeps the README's "what a real BMS must provide" section and
+# the model's own contract from drifting apart.
+sys.path.insert(0, str(ROOT / "src"))
+
+import features  # noqa: E402
+
+SRC_FEATURES = ROOT / "src" / "features.py"
 
 README = ROOT / "README.md"
 CHANGES = ROOT / "CHANGES.md"
@@ -1494,6 +1505,61 @@ def build_latency(latency):
     return "\n".join(lines)
 
 
+def build_bms_contract():
+    """
+    The measurement conditions a BMS must present for the
+    partial-window SOH model to score a discharge. Every threshold is
+    read from src/features.py, so the README states what the model's
+    own contract states — none of these numbers is typed here.
+    """
+
+    high = features.WINDOW_VOLTAGE_HIGH
+    low = features.WINDOW_VOLTAGE_LOW
+    minimum = features.WINDOW_MIN_REFERENCE_DISCHARGES
+    reference = features.WINDOW_REFERENCE_WINDOW
+    current_low = features.WINDOW_TRAIN_CURRENT_LOW_A
+    current_high = features.WINDOW_TRAIN_CURRENT_HIGH_A
+
+    record("bms_contract", "partial-window model", "trained band",
+           "window_voltage_high", high, "V", SRC_FEATURES)
+    record("bms_contract", "partial-window model", "trained band",
+           "window_voltage_low", low, "V", SRC_FEATURES)
+    record("bms_contract", "partial-window model", "reference baseline",
+           "min_reference_discharges", minimum, "discharges", SRC_FEATURES)
+    record("bms_contract", "partial-window model", "reference baseline",
+           "reference_discharges", reference, "discharges", SRC_FEATURES)
+    record("bms_contract", "partial-window model", "trained band",
+           "train_current_low", current_low, "A", SRC_FEATURES)
+    record("bms_contract", "partial-window model", "trained band",
+           "train_current_high", current_high, "A", SRC_FEATURES)
+
+    lines = []
+    lines.append(
+        f"- **A discharge that covers the trained window.** Every window "
+        f"feature is measured between `WINDOW_VOLTAGE_HIGH` = "
+        f"{ph('bms_window_high', high, '.1f')} V and `WINDOW_VOLTAGE_LOW` = "
+        f"{ph('bms_window_low', low, '.1f')} V in `src/features.py`. A window "
+        f"measured over a different span is refused, not scored."
+    )
+    lines.append(
+        f"- **At least {ph('bms_min_discharges', minimum)} early discharges.** "
+        f"The cell-relative baseline is the median of the first "
+        f"{ph('bms_reference_discharges', reference)} opening discharges, and a "
+        f"cell with fewer than {ph('bms_min_discharges', minimum)} is refused "
+        f"because the baseline would be a guess."
+    )
+    lines.append(
+        f"- **Current near the training range, "
+        f"{ph('bms_current_low', current_low, '.1f')}-"
+        f"{ph('bms_current_high', current_high, '.1f')} A.** The kept cells "
+        f"discharge at {ph('bms_current_low', current_low, '.1f')} A (G1, G9) "
+        f"and {ph('bms_current_high', current_high, '.1f')} A (G3); the "
+        f"per-amp normalisation removes that rate difference inside the band, "
+        f"but the model has no training data far outside it."
+    )
+    return "\n".join(lines)
+
+
 def build_final(soh_res, soh_nested, soh_base, soh_null, partial_transfer, rul):
     lines = []
     lines.append("| Task | Method | Protocol | Score | Baseline | Unit |")
@@ -1567,6 +1633,7 @@ def main():
     )
     dataset = region("dataset", build_dataset(audit))
     pack = region("pack", build_pack(frames["pack_detection"], frames["pack_false_alarms"]))
+    bms = region("bms_contract", build_bms_contract())
     final = region("final", build_final(
         frames["soh_results"], frames["soh_nested"], frames["soh_baselines"],
         frames["soh_null"], frames["partial_transfer"], frames["rul_trajectory"],
@@ -1578,6 +1645,7 @@ def main():
     readme = replace_region(readme, "degradation", degradation)
     readme = replace_region(readme, "dataset", dataset)
     readme = replace_region(readme, "pack", pack)
+    readme = replace_region(readme, "bms_contract", bms)
     README.write_text(readme)
 
     changes = CHANGES.read_text()

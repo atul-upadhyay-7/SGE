@@ -16,10 +16,46 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 
 ---
 
+## What this is not
+
+- **It is not our own packs.** Every number here is measured on laboratory
+  NASA lithium-ion cells cycled under controlled constant-current and
+  randomised-load profiles — never on the production packs this project
+  targets, and never on a customer cell.
+- **It has no field validation.** There is no deployment on a real battery,
+  no comparison against a manufacturer's reference, and no hardware
+  sign-off. The quality gates are smoke checks on a handful of lab cells,
+  and the dashboard and MQTT path are exercised on injected faults, not on
+  aged field data.
+- **The RUL is indicative, not a forecast.** Remaining-life labels need a cell
+  that reaches the end-of-life threshold; only a few cells do, and the two
+  RUL methods disagree on the mean. Every remaining-life number is reported
+  as a spread, not a prediction.
+
+## What a real BMS must provide
+
+To score a partial discharge, the model needs measurements it was actually
+trained on. Each threshold below is read from `src/features.py`, so this list
+cannot drift from the model's own contract:
+
+<!-- make_report:bms_contract -->
+- **A discharge that covers the trained window.** Every window feature is measured between `WINDOW_VOLTAGE_HIGH` = 4.0 V and `WINDOW_VOLTAGE_LOW` = 3.4 V in `src/features.py`. A window measured over a different span is refused, not scored.
+- **At least 3 early discharges.** The cell-relative baseline is the median of the first 5 opening discharges, and a cell with fewer than 3 is refused because the baseline would be a guess.
+- **Current near the training range, 2.0-4.0 A.** The kept cells discharge at 2.0 A (G1, G9) and 4.0 A (G3); the per-amp normalisation removes that rate difference inside the band, but the model has no training data far outside it.
+<!-- make_report:bms_contract:end -->
+
+Outside that contract there is no estimate: a window over a different voltage
+span, or a cell with too few opening discharges, is refused rather than
+guessed. `docs/CONTRACT.md` lists the full input set and its units.
+
+---
+
 ## Table of Contents
 
 - [Key Results](#key-results)
 - [Known Limits at a Glance](#known-limits-at-a-glance)
+- [What This Is Not](#what-this-is-not)
+- [What a Real BMS Must Provide](#what-a-real-bms-must-provide)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Setup & Installation](#setup--installation)
