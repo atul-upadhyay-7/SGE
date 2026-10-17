@@ -6,7 +6,7 @@ predictions from the existing trained model. Built alongside the repo's
 offline ML pipeline, and it reuses the same cycle/feature code in later
 phases.
 
-## Status: Phases 1–2 complete
+## Status: Phases 1–3 complete
 
 **Phase 1 — Foundation**
 
@@ -36,8 +36,21 @@ phases.
 - Simulated ESP32 publisher: `scripts/simulate_publisher.py`.
 - Ingestion counters: `GET /api/v1/health/ingestion`.
 
-Not yet implemented (later phases): historical query APIs, cycle
-aggregation, SoH inference.
+**Phase 3 — Historical queries**
+
+- `GET /api/v1/devices/{device_id}/telemetry` — time-bounded history with
+  keyset pagination. Query params: `from`, `to` (inclusive ISO timestamps,
+  assumed UTC when naive), `order` (`asc`/`desc`, default `desc`), `limit`
+  (1–1000, default 100), `cursor` (opaque; echo back `next_cursor`).
+  Keyset on `(measured_at, id)` keeps pages stable while new samples arrive,
+  unlike OFFSET.
+- `GET /api/v1/devices/{device_id}/telemetry/latest` — newest sample.
+- `GET /api/v1/devices/{device_id}/telemetry/summary` — sample count,
+  coverage (`first`/`last_measured_at`), device status/`last_seen_at`, and
+  rejections grouped by reason (data-quality overview).
+- Unknown device → `404`; bad cursor or `from > to` → `400`.
+
+Not yet implemented (later phases): cycle aggregation, SoH inference.
 
 ## Run with Docker (recommended)
 

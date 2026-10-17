@@ -10,8 +10,9 @@ so operators can see that a device reused a message identifier.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -95,6 +96,81 @@ class TelemetryRepository:
             if row is not None and not _matches(row, sample):
                 conflicting.append(sample)
         return conflicting
+
+    async def latest_sample(self, device_id: str) -> TelemetrySample | None:
+        """The most recent sample by measured time (id breaks ties)."""
+        result = await self._session.execute(
+            select(TelemetrySample)
+            .where(TelemetrySample.device_id == device_id)
+            .order_by(TelemetrySample.measured_at.desc(), TelemetrySample.id.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def list_samples(
+        self,
+        device_id: str,
+        *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        descending: bool = True,
+        limit: int = 100,
+        cursor: tuple[datetime, int] | None = None,
+    ) -> list[TelemetrySample]:
+        """A page of samples, optionally bounded by time and resume cursor.
+
+        Ordering is by ``(measured_at, id)``; the cursor is an exclusive bound
+        on that pair, so a page never repeats or skips rows even while new
+        samples land between requests.
+        """
+        query = select(TelemetrySample).where(TelemetrySample.device_id == device_id)
+        if start is not None:
+            query = query.where(TelemetrySample.measured_at >= start)
+        if end is not None:
+            query = query.where(TelemetrySample.measured_at <= end)
+        if cursor is not None:
+            pair = tuple_(TelemetrySample.measured_at, TelemetrySample.id)
+            query = query.where(pair < cursor if descending else pair > cursor)
+
+        if descending:
+            query = query.order_by(
+                TelemetrySample.measured_at.desc(), TelemetrySample.id.desc()
+            )
+        else:
+            query = query.order_by(
+                TelemetrySample.measured_at.asc(), TelemetrySample.id.asc()
+            )
+        result = await self._session.execute(query.limit(limit))
+        return list(result.scalars().all())
+
+    async def count_samples(self, device_id: str) -> int:
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(TelemetrySample)
+            .where(TelemetrySample.device_id == device_id)
+        )
+        return int(result.scalar_one())
+
+    async def measured_at_bounds(
+        self, device_id: str
+    ) -> tuple[datetime | None, datetime | None]:
+        result = await self._session.execute(
+            select(
+                func.min(TelemetrySample.measured_at),
+                func.max(TelemetrySample.measured_at),
+            ).where(TelemetrySample.device_id == device_id)
+        )
+        first, last = result.one()
+        return first, last
+
+    async def count_rejections_by_reason(self, device_id: str) -> dict[str, int]:
+        result = await self._session.execute(
+            select(TelemetryRejection.reason, func.count())
+            .where(TelemetryRejection.device_id == device_id)
+            .group_by(TelemetryRejection.reason)
+            .order_by(TelemetryRejection.reason)
+        )
+        return {reason: int(count) for reason, count in result.all()}
 
     async def insert_rejections(self, records: list[RejectionRecord]) -> int:
         if not records:
