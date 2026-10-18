@@ -99,7 +99,24 @@ The partial-window model is trained on the clean 4.0-3.4 V window; here the *hel
 
 **Verdict.** The model tolerates sensor noise: pooled held-out MAE stays under 3% up to the largest voltage noise tried, 20 mV, and the largest current noise tried, 5%. Current noise barely moves the features at all — the window capacity is an integral of the current, so zero-mean multiplicative noise averages out, and the window voltage features do not see the current. Voltage noise does move them, mostly through the dQ/dV peak height, but even at 20 mV the pooled MAE is 2.53%.
 
-It does **not** survive a shorter window. Both narrower bands push the pooled held-out MAE above the budget — 4.99% over 3.9–3.5 V and 6.47% over 3.8–3.6 V — so the smallest window whose pooled MAE stays under the budget is the trained band itself, 4.0–3.4 V (span 0.60 V). The cost lands on G1: its leave-one-cell-out MAE rises from the clean value to well above the budget on both bands, while G3 and B0053 stay near it. This is a mismatch test, not a verdict on shorter windows in general — the model is trained on the 4.0–3.4 V feature distribution, so a different band at inference moves its inputs off what it learnt. A model trained on a narrower band is a separate experiment.
+It does **not** survive a shorter window *at inference*: feeding a narrower band to the model trained on 4.0–3.4 V moves its inputs off the distribution it learnt, and both narrower bands push the pooled held-out MAE above the budget — 4.99% over 3.9–3.5 V and 6.47% over 3.8–3.6 V — but this is a mismatch test, not a verdict on shorter windows. The cost lands on G1: its leave-one-cell-out MAE rises from the clean value to well above the budget on both bands, while G3 and B0053 stay near it. Whether a *model trained on* the shorter band works is a separate question, answered in the next subsection.
+
+
+#### A model trained on its own window (held-out cells)
+
+The robustness test above feeds a shorter band to the *shipped* model, which is trained on the 4.0–3.4 V feature distribution, so its failure is a mismatch. This test removes the mismatch: each band gets its own model, with its cell-relative features recomputed from the raw traces over that band only, and is scored the same way the present model is — leave-one-cell-out within G1 and within G3, then train on every G1 and G3 cell and test B0053 and the four random-load cells. All thirteen scored cells are held out of their own training set, and a band's training rows never enter another band's model. The MAE is pooled over the held-out cells; the random-load columns are those four cells alone.
+
+| Window (V) | Span (V) | XGBoost MAE (%) | ElasticNet MAE (%) | window formula MAE (%) | Random-load XGBoost MAE (%) | Random-load ElasticNet MAE (%) |
+|---|---|---|---|---|---|---|
+| 4.0–3.4 | 0.60 | 1.57 | 1.81 | 9.22 | 2.18 | 605.04 |
+| 3.9–3.5 | 0.40 | 1.47 | 1.02 | 10.96 | 2.83 | 641.22 |
+| 3.8–3.6 | 0.20 | 1.56 | 1.34 | 10.92 | 3.33 | 7.78 |
+| 4.1–3.7 | 0.40 | 1.71 | 1.52 | 11.66 | 5.27 | 11.16 |
+| 3.7–3.4 | 0.30 | 2.22 | 1.37 | 8.74 | 3.23 | 359.75 |
+
+**Verdict.** A shorter window *does* work once the model is trained on it: with a model of its own, every band tried keeps the pooled held-out MAE under 3% (5 of 5 bands). The smallest is 3.8–3.6 V (span 0.20 V), at 1.56% pooled over the nine constant-current held-out cells and 1.94% over all thirteen, against 1.70% for the shipped 4.0–3.4 V band. The earlier failure was the shipped model being handed a different band, not the window length. The random-load cells are the stricter half of the test: there the smallest band sits just over budget at 3.33%, so the narrowest window that also stays under 3% on the random-load cells is 3.9–3.5 V at 2.83%.
+
+ElasticNet is reported for comparison but is the fragile model here: its inputs are unbounded ratios, and a random-load cell whose opening discharges barely cross the band (B0039) gives a tiny five-discharge baseline, so its later window ratios run orders of magnitude past the training range. A linear fit extrapolates that to implausible SOH while the tree model stays bounded, which is why the 3% question is read against XGBoost, the shipped model family.
 
 
 #### Reference-window sensitivity (partial-discharge)

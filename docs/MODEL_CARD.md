@@ -91,6 +91,7 @@ Indicative RUL, from the reference-trajectory matcher scored leave-one-cell-out 
 - The 4 random-load cells the audit keeps (B0039, B0042–B0044), scored with the shipped model but never trained on.
 - Sensor noise added to a held-out cell's inputs: Gaussian voltage noise up to 20 mV and Gaussian current noise up to 5% of each sample's current.
 - The trained window and two narrower windows: 4.0–3.4 V (trained), 3.9–3.5 V and 3.8–3.6 V (tested at inference).
+- A model trained on each candidate window (4.0–3.4, 3.9–3.5, 3.8–3.6, 4.1–3.7, 3.7–3.4 V): the smallest that holds the pooled held-out MAE under 3% is 3.8–3.6 V (span 0.20 V) at 1.94%.
 
 ## Conditions NOT tested
 

@@ -1,0 +1,2 @@
+mae_limit_pct,n_windows,n_under_limit,trained_window,trained_window_mae_pct,smallest_under_limit_window,smallest_under_limit_span_v,smallest_under_limit_high_v,smallest_under_limit_low_v,smallest_under_limit_mae_pct,smallest_tried_window,smallest_tried_span_v,smallest_tried_mae_pct
+3.0,5,5,window_4.0_3.4,1.6961844911,window_3.8_3.6,0.2,3.8,3.6,1.9374171262,window_3.8_3.6,0.2,1.9374171262

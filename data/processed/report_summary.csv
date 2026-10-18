@@ -117,6 +117,31 @@ SOH,window robustness,leave-one-cell-out: G3,XGBoost MAE (window_3.8_3.6),2.8499
 SOH,window robustness,"train G1+G3, test B0053",XGBoost MAE (clean),2.9871276212,%,data/processed/soh_window_robustness.csv
 SOH,window robustness,"train G1+G3, test B0053",XGBoost MAE (window_3.9_3.5),3.4369895807,%,data/processed/soh_window_robustness.csv
 SOH,window robustness,"train G1+G3, test B0053",XGBoost MAE (window_3.8_3.6),3.5630402194,%,data/processed/soh_window_robustness.csv
+SOH,window train sweep,window_4.0_3.4,XGBoost MAE,1.5667334163,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.0_3.4,ElasticNet MAE,1.8099104017,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.0_3.4,window formula MAE,9.2166033331,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.0_3.4,random-load XGBoost MAE,2.1751534678,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.0_3.4,random-load ElasticNet MAE,605.0447288419,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.9_3.5,XGBoost MAE,1.4719093676,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.9_3.5,ElasticNet MAE,1.020793421,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.9_3.5,window formula MAE,10.9597003749,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.9_3.5,random-load XGBoost MAE,2.8293494899,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.9_3.5,random-load ElasticNet MAE,641.2164993192,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.8_3.6,XGBoost MAE,1.5637612793,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.8_3.6,ElasticNet MAE,1.3393318657,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.8_3.6,window formula MAE,10.921265495,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.8_3.6,random-load XGBoost MAE,3.3320711862,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.8_3.6,random-load ElasticNet MAE,7.7801356592,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.1_3.7,XGBoost MAE,1.7080463437,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.1_3.7,ElasticNet MAE,1.5225821956,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.1_3.7,window formula MAE,11.6615423753,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.1_3.7,random-load XGBoost MAE,5.27413167,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.1_3.7,random-load ElasticNet MAE,11.1590973227,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.7_3.4,XGBoost MAE,2.2186802617,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.7_3.4,ElasticNet MAE,1.3695031867,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.7_3.4,window formula MAE,8.7390876065,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.7_3.4,random-load XGBoost MAE,3.2292821707,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.7_3.4,random-load ElasticNet MAE,359.7529286251,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",window formula MAE,15.1573446147,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",ElasticNet MAE,1.4610524838,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",XGBoost MAE,1.8207054538,%,data/processed/experiments/soh_partial_reference_window.csv
