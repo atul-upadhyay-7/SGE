@@ -82,6 +82,8 @@ REQUIRED = {
     "window_train": PROC / "soh_window_train_sweep.csv",
     "window_train_summary": PROC / "soh_window_train_sweep_summary.csv",
     "window_train_limits": PROC / "soh_window_train_sweep_limits.csv",
+    "charge_window": PROC / "soh_charge_window.csv",
+    "charge_comparison": PROC / "soh_charge_window_comparison.csv",
     "rul_random_labels": PROC / "rul_random_load_labels.csv",
     "rul_g6_loco": PROC / "rul_cross_group_g6_loco.csv",
     "rul_g1_to_g6": PROC / "rul_cross_group_g1_to_g6.csv",
@@ -1100,6 +1102,116 @@ def build_window_train_share(summary, limits, wr_limits):
         f"pooled held-out MAE (see *A model trained on its own window* under "
         f"Key Results)."
     )
+
+
+def build_charge(comparison):
+    """
+    docs/RESULTS.md: whether the constant-current charge estimates SOH as
+    well as the discharge window does, from the separate charge stage.
+    """
+
+    lines = []
+
+    lines.append("#### Can constant-current charging estimate SOH?\n")
+
+    lines.append(
+        "The discharge loader keeps discharge cycles only: "
+        "`load_data.iter_discharge_traces` skips every cycle whose type is "
+        "not a discharge, so the ML dataset, the window model and every "
+        "document see discharges alone. Charge segments are read by a "
+        "separate stage (`src/charge_soh.py`) that leaves the discharge "
+        "path untouched. It rebuilds the same window quantities — time, "
+        "capacity, mean voltage and the dQ/dV peak — over the "
+        f"{ph('ch_low', 3.8, '.1f')}–{ph('ch_high', 4.0, '.1f')} V "
+        "constant-current charge band, pairs each charge with the discharge "
+        "that follows it (which carries the production-rule SOH target), and "
+        "scores the same held-out protocol: leave-one-cell-out within G1 and "
+        "G3, then train on G1+G3 and test B0053 and the four random-load "
+        "cells. The upper bound is "
+        f"{ph('ch_high', 4.0, '.1f')} V rather than the "
+        f"{ph('ch_alt_high', 4.1, '.1f')} V one might first try because "
+        "several charges on B0053, B0032 and B0039 top out near "
+        f"{ph('ch_top_v', 4.08, '.2f')} V, so a "
+        f"{ph('ch_alt_high', 4.1, '.1f')} V band is not crossed every cycle "
+        "and would drop those cells; every kept cell crosses "
+        f"{ph('ch_low', 3.8, '.1f')}–{ph('ch_high', 4.0, '.1f')} V.\n"
+    )
+
+    tag_of = {
+        "leave-one-cell-out: G1": "g1",
+        "leave-one-cell-out: G3": "g3",
+        "train G1+G3, test B0053": "b0053",
+        "train G1+G3, test random-load": "rl",
+    }
+    label_of = {
+        "leave-one-cell-out: G1": "Leave-one-cell-out G1",
+        "leave-one-cell-out: G3": "Leave-one-cell-out G3",
+        "train G1+G3, test B0053": "G1+G3 → B0053",
+        "train G1+G3, test random-load": "G1+G3 → random-load",
+    }
+
+    lines.append(
+        "| Protocol | Model | Charge-window MAE (%) | "
+        "Discharge-window MAE (%) | Difference (%) |"
+    )
+    lines.append("|---|---|---|---|---|")
+
+    for _, row in comparison.iterrows():
+
+        tag = f"ch_{tag_of[row['protocol']]}_{str(row['model']).lower()}"
+
+        for metric, key in (
+            ("charge-window MAE", "charge_mae_pct"),
+            ("discharge-window MAE", "discharge_mae_pct"),
+            ("charge minus discharge MAE", "delta_mae_pct"),
+        ):
+            record("SOH", "charge window", row["protocol"],
+                   f"{row['model']} {metric}", row[key], "%",
+                   REQUIRED["charge_comparison"])
+
+        lines.append(
+            f"| {label_of[row['protocol']]} | {row['model']} | "
+            f"{ph(tag + '_charge', float(row['charge_mae_pct']), '.2f')} | "
+            f"{ph(tag + '_discharge', float(row['discharge_mae_pct']), '.2f')} | "
+            f"{ph(tag + '_delta', float(row['delta_mae_pct']), '.2f')} |"
+        )
+
+    def _cell(protocol, model):
+        block = comparison[
+            (comparison["protocol"] == protocol)
+            & (comparison["model"] == model)
+        ]
+        return block.iloc[0] if not block.empty else None
+
+    g3 = _cell("leave-one-cell-out: G3", "XGBoost")
+    g1 = _cell("leave-one-cell-out: G1", "XGBoost")
+    b0053 = _cell("train G1+G3, test B0053", "XGBoost")
+    rl = _cell("train G1+G3, test random-load", "XGBoost")
+
+    lines.append("")
+    lines.append(
+        "**Verdict.** Charging carries a real SOH signal — on the G3 cells a "
+        "model over the charge window matches the discharge model, "
+        f"{ph('ch_g3_xgboost_charge', float(g3['charge_mae_pct']), '.2f')}% "
+        "against "
+        f"{ph('ch_g3_xgboost_discharge', float(g3['discharge_mae_pct']), '.2f')}% "
+        "— but it transfers worse everywhere else and is not a replacement "
+        "for the discharge window. On the warm G1 cells it is "
+        f"{ph('ch_g1_xgboost_charge', float(g1['charge_mae_pct']), '.2f')}% "
+        f"(discharge {ph('ch_g1_xgboost_discharge', float(g1['discharge_mae_pct']), '.2f')}%), "
+        "on the cold G9 cell B0053, a condition the charge model never saw, it "
+        f"is {ph('ch_b0053_xgboost_charge', float(b0053['charge_mae_pct']), '.2f')}% "
+        f"(discharge {ph('ch_b0053_xgboost_discharge', float(b0053['discharge_mae_pct']), '.2f')}%), "
+        "and on the random-load cells it is "
+        f"{ph('ch_rl_xgboost_charge', float(rl['charge_mae_pct']), '.2f')}% "
+        f"(discharge {ph('ch_rl_xgboost_discharge', float(rl['discharge_mae_pct']), '.2f')}%). "
+        "So the answer is: partly, on the cells and conditions the charge "
+        "model is trained on, but the charge window is a weaker held-out "
+        f"estimator than the discharge window, and only the G3 protocol "
+        f"stays under the {ph('ch_limit', 3.0, '.0f')}% budget.\n"
+    )
+
+    return "\n".join(lines)
 
 
 def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
@@ -2592,6 +2704,7 @@ def main():
         build_degradation(audit, frames["reference_sensitivity"]),
     )
     dataset = region("dataset", build_dataset(audit))
+    charge = region("charge", build_charge(frames["charge_comparison"]))
     pack = region("pack", build_pack(frames["pack_detection"], frames["pack_false_alarms"]))
     bms = region("bms_contract", build_bms_contract())
     final_body = build_final(
@@ -2631,6 +2744,7 @@ def main():
     })
     write_regions(RESULTS, {
         "results": results,
+        "charge": charge,
         "rul": rul,
         "degradation": degradation,
         "dataset": dataset,

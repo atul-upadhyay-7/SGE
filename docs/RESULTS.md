@@ -195,6 +195,25 @@ When the full discharge is available, SOH is read directly from the measured cap
 | D — window features only | 5 | 1.86 | 2.57 |
 <!-- make_report:results:end -->
 
+<!-- make_report:charge -->
+#### Can constant-current charging estimate SOH?
+
+The discharge loader keeps discharge cycles only: `load_data.iter_discharge_traces` skips every cycle whose type is not a discharge, so the ML dataset, the window model and every document see discharges alone. Charge segments are read by a separate stage (`src/charge_soh.py`) that leaves the discharge path untouched. It rebuilds the same window quantities — time, capacity, mean voltage and the dQ/dV peak — over the 3.8–4.0 V constant-current charge band, pairs each charge with the discharge that follows it (which carries the production-rule SOH target), and scores the same held-out protocol: leave-one-cell-out within G1 and G3, then train on G1+G3 and test B0053 and the four random-load cells. The upper bound is 4.0 V rather than the 4.1 V one might first try because several charges on B0053, B0032 and B0039 top out near 4.08 V, so a 4.1 V band is not crossed every cycle and would drop those cells; every kept cell crosses 3.8–4.0 V.
+
+| Protocol | Model | Charge-window MAE (%) | Discharge-window MAE (%) | Difference (%) |
+|---|---|---|---|---|
+| Leave-one-cell-out G1 | XGBoost | 3.23 | 1.57 | 1.66 |
+| Leave-one-cell-out G1 | ElasticNet | 3.09 | 1.68 | 1.41 |
+| Leave-one-cell-out G3 | XGBoost | 1.35 | 1.07 | 0.28 |
+| Leave-one-cell-out G3 | ElasticNet | 1.41 | 1.78 | -0.37 |
+| G1+G3 → B0053 | XGBoost | 12.72 | 2.99 | 9.73 |
+| G1+G3 → B0053 | ElasticNet | 9.17 | 3.42 | 5.74 |
+| G1+G3 → random-load | XGBoost | 8.04 | 2.18 | 5.86 |
+| G1+G3 → random-load | ElasticNet | 9.81 | 605.04 | -595.23 |
+
+**Verdict.** Charging carries a real SOH signal — on the G3 cells a model over the charge window matches the discharge model, 1.35% against 1.07% — but it transfers worse everywhere else and is not a replacement for the discharge window. On the warm G1 cells it is 3.23% (discharge 1.57%), on the cold G9 cell B0053, a condition the charge model never saw, it is 12.72% (discharge 2.99%), and on the random-load cells it is 8.04% (discharge 2.18%). So the answer is: partly, on the cells and conditions the charge model is trained on, but the charge window is a weaker held-out estimator than the discharge window, and only the G3 protocol stays under the 3% budget.
+<!-- make_report:charge:end -->
+
 ### RUL Prediction (Remaining Useful Life, Indicative)
 
 <!-- make_report:rul -->

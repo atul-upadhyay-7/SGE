@@ -436,6 +436,30 @@ dataset,summary,B0053,discharges,55.0,rows,data/processed/cell_audit.csv
 dataset,summary,B0053,initial SOH,94.5652452928,%,data/processed/cell_audit.csv
 dataset,summary,B0053,final SOH,89.358409127,%,data/processed/cell_audit.csv
 dataset,summary,kept cells,discharges,851.0,rows,data/processed/cell_audit.csv
+SOH,charge window,leave-one-cell-out: G1,XGBoost charge-window MAE,3.2279725037,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G1,XGBoost discharge-window MAE,1.5696406127,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G1,XGBoost charge minus discharge MAE,1.658331891,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G1,ElasticNet charge-window MAE,3.0907231598,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G1,ElasticNet discharge-window MAE,1.6774596324,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G1,ElasticNet charge minus discharge MAE,1.4132635274,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G3,XGBoost charge-window MAE,1.3450857418,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G3,XGBoost discharge-window MAE,1.0669168027,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G3,XGBoost charge minus discharge MAE,0.2781689391,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G3,ElasticNet charge-window MAE,1.4069490789,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G3,ElasticNet discharge-window MAE,1.7816329601,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G3,ElasticNet charge minus discharge MAE,-0.3746838812,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test B0053",XGBoost charge-window MAE,12.7217671319,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test B0053",XGBoost discharge-window MAE,2.9871276212,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test B0053",XGBoost charge minus discharge MAE,9.7346395107,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test B0053",ElasticNet charge-window MAE,9.1661711128,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test B0053",ElasticNet discharge-window MAE,3.4237845826,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test B0053",ElasticNet charge minus discharge MAE,5.7423865302,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",XGBoost charge-window MAE,8.0359727179,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",XGBoost discharge-window MAE,2.1751534679,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",XGBoost charge minus discharge MAE,5.86081925,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",ElasticNet charge-window MAE,9.8098056203,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",ElasticNet discharge-window MAE,605.0447288419,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",ElasticNet charge minus discharge MAE,-595.2349232217,%,data/processed/soh_charge_window_comparison.csv
 pack,cell_sag,synthetic injection,rule detection,75.0,%,data/processed/pack_detection_summary.csv
 pack,cell_sag,synthetic injection,iforest detection,25.0,%,data/processed/pack_detection_summary.csv
 pack,cell_sag,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv

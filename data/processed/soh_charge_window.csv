@@ -1,0 +1,40 @@
+protocol,test_cell,test_group,is_random_load,model,n_cycles,mae_pct,r2
+leave-one-cell-out: G1,B0005,G1,False,ElasticNet,167,2.093053901,0.947253551
+leave-one-cell-out: G1,B0005,G1,False,XGBoost,167,2.4595153875,0.9166495898
+leave-one-cell-out: G1,B0005,G1,False,window_formula,167,21.8442733211,-6.0098278438
+leave-one-cell-out: G1,B0006,G1,False,ElasticNet,168,2.2104914794,0.8705131918
+leave-one-cell-out: G1,B0006,G1,False,XGBoost,168,4.9122239156,0.7000883966
+leave-one-cell-out: G1,B0006,G1,False,window_formula,168,36.0213110116,-9.829201348
+leave-one-cell-out: G1,B0007,G1,False,ElasticNet,167,1.7368591797,0.9488040999
+leave-one-cell-out: G1,B0007,G1,False,XGBoost,167,2.0058774678,0.932572925
+leave-one-cell-out: G1,B0007,G1,False,window_formula,167,14.1573821459,-3.4800626153
+leave-one-cell-out: G1,B0018,G1,False,ElasticNet,131,7.2173260086,0.0895578262
+leave-one-cell-out: G1,B0018,G1,False,XGBoost,131,3.6055906118,0.7231669016
+leave-one-cell-out: G1,B0018,G1,False,window_formula,131,13.3576666891,-3.095185911
+leave-one-cell-out: G3,B0029,G3,False,ElasticNet,39,1.1090303765,0.836394884
+leave-one-cell-out: G3,B0029,G3,False,XGBoost,39,1.0276692204,0.8427888075
+leave-one-cell-out: G3,B0029,G3,False,window_formula,39,3.3618866716,-0.2216513984
+leave-one-cell-out: G3,B0030,G3,False,ElasticNet,39,1.4566933519,0.7643321965
+leave-one-cell-out: G3,B0030,G3,False,XGBoost,39,1.5556306184,0.7138115207
+leave-one-cell-out: G3,B0030,G3,False,window_formula,39,2.2556811001,0.3698182442
+leave-one-cell-out: G3,B0031,G3,False,ElasticNet,39,1.1875248383,0.5014088448
+leave-one-cell-out: G3,B0031,G3,False,XGBoost,39,0.9828119732,0.6236449097
+leave-one-cell-out: G3,B0031,G3,False,window_formula,39,2.3793744458,-0.7481770428
+leave-one-cell-out: G3,B0032,G3,False,ElasticNet,39,1.8745477489,0.6164303794
+leave-one-cell-out: G3,B0032,G3,False,XGBoost,39,1.8142311553,0.6936666782
+leave-one-cell-out: G3,B0032,G3,False,window_formula,39,5.0022328966,-1.5291531126
+"train G1+G3, test B0053",B0053,G9,False,ElasticNet,45,9.1661711128,-9.878623175
+"train G1+G3, test B0053",B0053,G9,False,XGBoost,45,12.7217671319,-14.7995258722
+"train G1+G3, test B0053",B0053,G9,False,window_formula,45,11.2690622891,-51.5783647338
+"train G1+G3, test random-load",B0039,G5,True,ElasticNet,34,7.199021679,-0.4634050107
+"train G1+G3, test random-load",B0039,G5,True,XGBoost,34,6.7262272335,-0.3658115027
+"train G1+G3, test random-load",B0039,G5,True,window_formula,34,5.556380333,-0.683918404
+"train G1+G3, test random-load",B0042,G6,True,ElasticNet,63,9.6093001539,-1.8193411033
+"train G1+G3, test random-load",B0042,G6,True,XGBoost,63,6.5928871274,-0.5757861505
+"train G1+G3, test random-load",B0042,G6,True,window_formula,63,30.0931655766,-39.6239396674
+"train G1+G3, test random-load",B0043,G6,True,ElasticNet,63,9.8681381556,-2.8094832983
+"train G1+G3, test random-load",B0043,G6,True,XGBoost,63,7.8449583713,-1.6266325029
+"train G1+G3, test random-load",B0043,G6,True,window_formula,63,32.4593466204,-50.6822966564
+"train G1+G3, test random-load",B0044,G6,True,ElasticNet,60,11.4385314311,-3.3593266776
+"train G1+G3, test random-load",B0044,G6,True,XGBoost,60,10.4939667596,-2.3948802254
+"train G1+G3, test random-load",B0044,G6,True,window_formula,60,36.1595237228,-55.7991214829

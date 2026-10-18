@@ -17,19 +17,20 @@ Stages
    6. window_robustness  does it survive noise and shorter windows?
    7. window_partial   how partial is the window? (per cell + mean)
    8. window_train     a model trained on each candidate window
-   9. data_quality     audit, fails loudly on a bad table
-  10. train_soh        SOH models and artifacts
-  11. train_rul        RUL models and artifacts
-  12. rul_trajectory   RUL trajectories, bands and method disagreement
-  13. rul_cross_group  RUL on the random-load groups
-  14. run_experiments  formulas, ablation, leave-one-group-out
-  15. pack_evaluate    pack alert engine on synthetic faults
-  16. anomaly          cycle screening
-  17. benchmark_latency inference latency
-  18. make_report      README/CHANGES numbers from the CSVs
-  19. make_alerts      Grafana alert rules from the training range
-  20. load_to_sqlite   dashboard database
-  21. pytest           the full suite
+   9. charge_soh       can the charge window estimate SOH too?
+  10. data_quality     audit, fails loudly on a bad table
+  11. train_soh        SOH models and artifacts
+  12. train_rul        RUL models and artifacts
+  13. rul_trajectory   RUL trajectories, bands and method disagreement
+  14. rul_cross_group  RUL on the random-load groups
+  15. run_experiments  formulas, ablation, leave-one-group-out
+  16. pack_evaluate    pack alert engine on synthetic faults
+  17. anomaly          cycle screening
+  18. benchmark_latency inference latency
+  19. make_report      README/CHANGES numbers from the CSVs
+  20. make_alerts      Grafana alert rules from the training range
+  21. load_to_sqlite   dashboard database
+  22. pytest           the full suite
 
 Any stage that exits non-zero stops the run. Nothing is
 swallowed: the failing stage, its command and its own output
@@ -75,6 +76,7 @@ STAGES = [
     ("window_robustness", [sys.executable, "src/window_robustness.py"]),
     ("window_partial", [sys.executable, "src/window_partial.py"]),
     ("window_train", [sys.executable, "src/window_train_sweep.py"]),
+    ("charge_soh", [sys.executable, "src/charge_soh.py"]),
     ("data_quality", [sys.executable, "src/data_quality.py"]),
     ("train_soh", [sys.executable, "src/train_soh.py"]),
     ("train_rul", [sys.executable, "src/train_rul.py"]),
