@@ -167,6 +167,24 @@ Step 27 scored the shipped model on narrower bands and found it fail, but that i
 
 The question was whether the constant-current charge can estimate SOH the way the 4.0–3.4 V discharge window does. First answer: the loader never kept charge data — `load_data.iter_discharge_traces` skips every cycle whose type is not a discharge, so the ML dataset, the window model and every document see discharges alone (B0005 has 170 charges in the `.mat`, none in the dataset). Following the phase instruction, charge loading was added as a *separate* stage rather than by changing the discharge path: `src/charge_soh.py` has its own `iter_charge_traces` and a rising-band window extractor (the discharge extractor walks the band down; a charge walks it up), so no existing output moves. It reads the 3.8–4.0 V constant-current charge band — the upper bound is 4.0 V, not the 4.1 V one might first try, because several charges on B0053, B0032 and B0039 top out near 4.08 V and a 4.1 V band would drop those cells from the protocol — rebuilds the same five window quantities (time, capacity, mean voltage, dQ/dV peak) and the same `features.window_model_row` cell-relative ratios, pairs each charge with the discharge that follows it for the production-rule SOH target, and runs the same held-out protocol (LOCO G1+G3, B0053, random-load). Result: charging carries a real SOH signal but is not a replacement for the discharge window. On G3 the charge model matches the discharge model (XGBoost 1.35% vs 1.07%), but it fails the 3% budget on G1 (3.23% vs 1.57%), on B0053 (12.72% vs 2.99%) and on the random-load cells (8.04% vs 2.18%): the charge window transfers worse to the colder and unseen-load cells. Outputs `data/processed/soh_charge_window.csv` and `soh_charge_window_comparison.csv`; a new `charge` region renders the comparison table and verdict in `docs/RESULTS.md`. `tests/test_charge_soh.py` counts both readers against the raw `.mat` cycle list (so the "loader drops charge" claim is checked, not asserted), checks the discharge column is the same held-out task as the discharge sweep's trained band, and pins the G3-matches/G1-B0053-random-load-lose pattern.
 
+## Step 33 — Freeze `v1.0-nasa`
+
+Froze this build as `v1.0-nasa` on the verified commit and stopped adding methods. Everything the tag claims comes from the NASA lab cells in the audited dataset, is produced by the committed pipeline, and is reproduced by `scripts/verify.sh` on the tagged commit. No new method may land after this tag until our own cell data exists.
+
+**Validated (NASA lab cells).** One thing per cell only:
+
+- The SOH and RUL models, the window model, the partial-window analysis, the per-window trained models and the charge-window comparison, each on the nine audit-kept NASA cells plus the four random-load cells, under the held-out protocol stated on each result.
+- Every number in `README.md`, `CHANGES.md`, `docs/RESULTS.md`, `docs/SETUP.md` and `docs/MODEL_CARD.md` is rendered from a CSV by `scripts/make_report.py` and re-checked by `scripts/check_numbers.py`; the exact CSV path, group split, model family and held-out protocol are on each result rather than assumed.
+- Documentation-vs-code consistency: `scripts/verify.sh` re-runs the pipeline from the committed tree in a clean clone and fails on any drift.
+
+**Not validated (our own packs).** Nothing about a pack or a cell we own:
+
+- No field data and no customer cell: every result is a lab cell in a controlled chamber, not a pack in service.
+- No variable/real-load pack: the random-load cells are NASA cells replayed under the imported load, which is a stress test of transfer, not validation on our hardware.
+- No hardware sign-off: no ESP32/battery-hardware run, no pack-level thermal or safety validation.
+- No external alerting path: the alert rule is delivered to a local mock receiver, not a real email/pager endpoint.
+- The RUL band is a reference spread, not a calibrated interval, and has not been recalibrated (the per-cell failure is reported rather than hidden).
+
 ---
 
 ## Final performance & baseline comparison
