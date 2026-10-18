@@ -15,18 +15,20 @@ Stages
    4. random_load      do B0038-B0044 reach 80%? (count, no model)
    5. random_load_transfer  does the window model transfer to them?
    6. window_robustness  does it survive noise and shorter windows?
-   7. data_quality     audit, fails loudly on a bad table
-   8. train_soh        SOH models and artifacts
-   9. train_rul        RUL models and artifacts
-  10. rul_trajectory   RUL trajectories, bands and method disagreement
-  11. run_experiments  formulas, ablation, leave-one-group-out
-  12. pack_evaluate    pack alert engine on synthetic faults
-  13. anomaly          cycle screening
-  14. benchmark_latency inference latency
-  15. make_report      README/CHANGES numbers from the CSVs
-  16. make_alerts      Grafana alert rules from the training range
-  17. load_to_sqlite   dashboard database
-  18. pytest           the full suite
+   7. window_partial   how partial is the window? (per cell + mean)
+   8. data_quality     audit, fails loudly on a bad table
+   9. train_soh        SOH models and artifacts
+  10. train_rul        RUL models and artifacts
+  11. rul_trajectory   RUL trajectories, bands and method disagreement
+  12. rul_cross_group  RUL on the random-load groups
+  13. run_experiments  formulas, ablation, leave-one-group-out
+  14. pack_evaluate    pack alert engine on synthetic faults
+  15. anomaly          cycle screening
+  16. benchmark_latency inference latency
+  17. make_report      README/CHANGES numbers from the CSVs
+  18. make_alerts      Grafana alert rules from the training range
+  19. load_to_sqlite   dashboard database
+  20. pytest           the full suite
 
 Any stage that exits non-zero stops the run. Nothing is
 swallowed: the failing stage, its command and its own output
@@ -70,6 +72,7 @@ STAGES = [
         [sys.executable, "src/random_load_transfer.py"],
     ),
     ("window_robustness", [sys.executable, "src/window_robustness.py"]),
+    ("window_partial", [sys.executable, "src/window_partial.py"]),
     ("data_quality", [sys.executable, "src/data_quality.py"]),
     ("train_soh", [sys.executable, "src/train_soh.py"]),
     ("train_rul", [sys.executable, "src/train_rul.py"]),

@@ -13,9 +13,11 @@ copy drifts from it.
 ## Partial-window inputs
 
 The partial-window SOH model scores one discharge from the
-window a BMS can always see — the cell's first stage from
-4.0 V down to 3.4 V (`WINDOW_VOLTAGE_HIGH` /
-`WINDOW_VOLTAGE_LOW`) — plus the cell's opening discharges. A
+window a BMS can always see — the 4.0 V down to
+3.4 V span every discharge crosses
+(`WINDOW_VOLTAGE_HIGH` / `WINDOW_VOLTAGE_LOW`), which is most
+of a warm cell's capacity and not a small early slice — plus
+the cell's opening discharges. A
 window measurement outside that band is refused rather than
 scored (see *Refusals* below).
 

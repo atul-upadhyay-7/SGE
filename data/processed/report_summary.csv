@@ -429,6 +429,26 @@ bms_contract,partial-window model,reference baseline,min_reference_discharges,3.
 bms_contract,partial-window model,reference baseline,reference_discharges,5.0,discharges,src/features.py
 bms_contract,partial-window model,trained band,train_current_low,2.0,A,src/features.py
 bms_contract,partial-window model,trained band,train_current_high,4.0,A,src/features.py
+SOH,partial-window share,all kept discharges,mean capacity inside window,55.66644721701111,%,data/processed/soh_window_partial.csv
+SOH,partial-window share,all kept discharges,mean time inside window,51.44604047805555,%,data/processed/soh_window_partial.csv
+model card,window share,B0005,capacity inside window,76.4291778995,%,data/processed/soh_window_partial.csv
+model card,window share,B0005,time inside window,68.8425191907,%,data/processed/soh_window_partial.csv
+model card,window share,B0006,capacity inside window,62.378460224,%,data/processed/soh_window_partial.csv
+model card,window share,B0006,time inside window,56.0376247829,%,data/processed/soh_window_partial.csv
+model card,window share,B0007,capacity inside window,79.6319275631,%,data/processed/soh_window_partial.csv
+model card,window share,B0007,time inside window,75.7372604331,%,data/processed/soh_window_partial.csv
+model card,window share,B0018,capacity inside window,74.5858072458,%,data/processed/soh_window_partial.csv
+model card,window share,B0018,time inside window,67.9128983494,%,data/processed/soh_window_partial.csv
+model card,window share,B0029,capacity inside window,49.6043549692,%,data/processed/soh_window_partial.csv
+model card,window share,B0029,time inside window,47.3878965132,%,data/processed/soh_window_partial.csv
+model card,window share,B0030,capacity inside window,46.4611683229,%,data/processed/soh_window_partial.csv
+model card,window share,B0030,time inside window,42.7006531438,%,data/processed/soh_window_partial.csv
+model card,window share,B0031,capacity inside window,49.8307087703,%,data/processed/soh_window_partial.csv
+model card,window share,B0031,time inside window,48.6875171669,%,data/processed/soh_window_partial.csv
+model card,window share,B0032,capacity inside window,36.093135053,%,data/processed/soh_window_partial.csv
+model card,window share,B0032,time inside window,35.3469228987,%,data/processed/soh_window_partial.csv
+model card,window share,B0053,capacity inside window,25.9832849053,%,data/processed/soh_window_partial.csv
+model card,window share,B0053,time inside window,20.3610718238,%,data/processed/soh_window_partial.csv
 model card,held-out SOH,B0005,cell-relative XGBoost MAE,1.0562372899,%,data/processed/experiments/soh_partial_transfer.csv
 model card,held-out SOH,B0006,cell-relative XGBoost MAE,3.3141604965,%,data/processed/experiments/soh_partial_transfer.csv
 model card,held-out SOH,B0007,cell-relative XGBoost MAE,0.875956311,%,data/processed/experiments/soh_partial_transfer.csv

@@ -151,6 +151,12 @@ The README had grown to 1250 lines and mixed the results with the setup manual, 
 
 ---
 
+## Step 30 — How partial the window really is
+
+The documents call the 4.0–3.4 V window a "partial discharge", which is easy to read as a small early slice. It is not: for the warm G1 cells it holds most of the discharge, and only the cold G9 cell holds a minority. New `src/window_partial.py`, a pipeline stage after `window_robustness`, measures the claim from `data/processed/nasa_ml_dataset_clean.csv` instead of asserting it — per kept cell it averages `vw_capacity_ah / capacity_ah` and `vw_time_s / discharge_duration_s` over the cell's discharges and writes `data/processed/soh_window_partial.csv` (per cell plus a MEAN row). Across the nine kept cells the window holds 55.67% of each discharge's capacity and 51.45% of its time on average, ranging from 25.98% (B0053, G9, 4 °C) to 79.63% (B0007, G1): a majority for the G1 cells, about half for G3, and a quarter or less for the cold G9 cell. `scripts/make_report.py` renders a new `window_share` region — the README limits-table row "**\"Partial\" does not mean small**" — and adds a "How partial the window is" section with the per-cell table to `docs/MODEL_CARD.md`, both from those numbers, so no fraction is typed by hand. The `replace_region` helper grew one rule to support it: a region whose start marker is not at the beginning of a line is rendered inline, so a markdown table cell does not get split across lines. Two claims that implied the window was a small early stage were reworded: the model card's "first stage of a discharge" and the generated `docs/CONTRACT.md` "the cell's first stage" (via `docs/make_contract.py`). `tests/test_window_partial.py` recomputes the per-cell shares from the clean dataset, checks every share is a fraction in (0, 1], checks the MEAN row and that B0053 holds the least, and checks both documents carry the numbers.
+
+---
+
 ## Final performance & baseline comparison
 
 <!-- make_report:final -->

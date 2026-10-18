@@ -14,7 +14,24 @@ A hand-typed number in the card fails `scripts/check_numbers.py`.
 <!-- make_report:model_card -->
 ## What it predicts
 
-Three things from measurements a battery management system can actually take. A **partial-window SOH** (percent) from the first stage of a discharge — the 4.0–3.4 V window, read before the discharge finishes. An **indicative remaining life** in sequential discharges, reported as a range, not a point. And the **window formula** it is scored against, the best a BMS can compute from the window alone.
+Three things from measurements a battery management system can actually take. A **partial-window SOH** (percent) from the 4.0–3.4 V window alone — the majority of a discharge's capacity on the warm cells and about a quarter on the cold one, not a small early slice — read before the discharge finishes. An **indicative remaining life** in sequential discharges, reported as a range, not a point. And the **window formula** it is scored against, the best a BMS can compute from the window alone.
+
+## How partial the window is
+
+Calling this a "partial discharge" is not a claim that the window is small. Averaged over the 9 kept cells the 4.0–3.4 V window holds 55.7% of each discharge's capacity and 51.4% of its time. It is not uniform: the warm G1 cells hold most of their capacity in the window, while the cold G9 cell traverses the band early and holds little.
+
+| Cell | Capacity inside the window (%) | Time inside the window (%) |
+|---|---|---|
+| B0005 | 76.43 | 68.84 |
+| B0006 | 62.38 | 56.04 |
+| B0007 | 79.63 | 75.74 |
+| B0018 | 74.59 | 67.91 |
+| B0029 | 49.60 | 47.39 |
+| B0030 | 46.46 | 42.70 |
+| B0031 | 49.83 | 48.69 |
+| B0032 | 36.09 | 35.35 |
+| B0053 | 25.98 | 20.36 |
+| **Mean over 9 cells** | 55.67 | 51.45 |
 
 ## Inputs and units
 

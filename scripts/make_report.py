@@ -78,6 +78,7 @@ REQUIRED = {
     "window_robustness": PROC / "soh_window_robustness.csv",
     "window_robustness_summary": PROC / "soh_window_robustness_summary.csv",
     "window_robustness_limits": PROC / "soh_window_robustness_limits.csv",
+    "window_partial": PROC / "soh_window_partial.csv",
     "rul_random_labels": PROC / "rul_random_load_labels.csv",
     "rul_g6_loco": PROC / "rul_cross_group_g6_loco.csv",
     "rul_g1_to_g6": PROC / "rul_cross_group_g1_to_g6.csv",
@@ -163,7 +164,13 @@ def replace_region(text, name, body):
         raise ValueError(f"marker pair '{name}' not found")
     head, rest = text.split(start, 1)
     _, tail = rest.split(end, 1)
-    return f"{head}{start}\n{body.rstrip()}\n{end}{tail}"
+    # A region whose start marker sits at the beginning of a line is a
+    # block: the body goes on its own lines. A marker in the middle of a
+    # line (an inline region, used for a single markdown table cell) gets
+    # the body inline, so it cannot split the row across lines.
+    if head == "" or head.endswith("\n"):
+        return f"{head}{start}\n{body.rstrip()}\n{end}{tail}"
+    return f"{head}{start}{body.strip()}{end}{tail}"
 
 
 def region(name, template):
@@ -2029,8 +2036,61 @@ def build_final(soh_res, soh_nested, soh_base, soh_null, partial_transfer, rul):
     return "\n".join(lines)
 
 
+def window_partial_stats(window_partial):
+    """
+    The per-cell capacity and time share inside the trained window,
+    with the mean and range across cells, from
+    data/processed/soh_window_partial.csv (src/window_partial.py).
+    """
+
+    cells = window_partial[window_partial["cell_id"] != "MEAN"].copy()
+    capacity = cells["capacity_inside_window_pct"]
+    time = cells["time_inside_window_pct"]
+
+    return {
+        "cells": cells,
+        "n_cells": int(len(cells)),
+        "capacity_mean": float(capacity.mean()),
+        "time_mean": float(time.mean()),
+        "capacity_min": float(capacity.min()),
+        "capacity_max": float(capacity.max()),
+        "time_min": float(time.min()),
+        "time_max": float(time.max()),
+    }
+
+
+def build_window_share(window_partial):
+    """
+    The one-line README limits-table cell: how partial the window is,
+    as a mean over the kept cells rather than an assertion.
+    """
+
+    stats = window_partial_stats(window_partial)
+
+    record("SOH", "partial-window share", "all kept discharges",
+           "mean capacity inside window", stats["capacity_mean"], "%",
+           REQUIRED["window_partial"])
+    record("SOH", "partial-window share", "all kept discharges",
+           "mean time inside window", stats["time_mean"], "%",
+           REQUIRED["window_partial"])
+
+    return (
+        f"The {ph('wp_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
+        f"{ph('wp_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V window "
+        f"is not a small slice: across the "
+        f"{ph('wp_n_cells', stats['n_cells'], 'd')} kept cells it holds "
+        f"{ph('wp_capacity_mean', stats['capacity_mean'], '.0f')}% of each "
+        f"discharge's capacity and "
+        f"{ph('wp_time_mean', stats['time_mean'], '.0f')}% of its time on "
+        f"average ({ph('wp_capacity_min', stats['capacity_min'], '.0f')}–"
+        f"{ph('wp_capacity_max', stats['capacity_max'], '.0f')}% cell by "
+        f"cell; the cold G9 cell B0053 holds the least). Per cell in "
+        f"`docs/MODEL_CARD.md`."
+    )
+
+
 def build_model_card(partial_transfer, rul, clean, wr_summary, wr_limits,
-                     random_transfer):
+                     random_transfer, window_partial):
     """
     docs/MODEL_CARD.md: what the shipped model takes, how well it
     scores on cells it never saw, which conditions were exercised,
@@ -2048,14 +2108,55 @@ def build_model_card(partial_transfer, rul, clean, wr_summary, wr_limits,
     lines.append("")
     lines.append(
         "Three things from measurements a battery management system can "
-        "actually take. A **partial-window SOH** (percent) from the first "
-        "stage of a discharge — the "
+        "actually take. A **partial-window SOH** (percent) from the "
         f"{ph('mc_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
-        f"{ph('mc_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V window, "
+        f"{ph('mc_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V window "
+        "alone — the majority of a discharge's capacity on the warm cells "
+        "and about a quarter on the cold one, not a small early slice — "
         "read before the discharge finishes. An **indicative remaining life** "
         "in sequential discharges, reported as a range, not a point. And the "
         "**window formula** it is scored against, the best a BMS can compute "
         "from the window alone."
+    )
+
+    lines.append("")
+    lines.append("## How partial the window is")
+    lines.append("")
+    stats = window_partial_stats(window_partial)
+    lines.append(
+        f"Calling this a \"partial discharge\" is not a claim that the window "
+        f"is small. Averaged over the {ph('mc_wp_n_cells', stats['n_cells'], 'd')} "
+        f"kept cells the {ph('mc_wp_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
+        f"{ph('mc_wp_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V window "
+        f"holds {ph('mc_wp_capacity_mean', stats['capacity_mean'], '.1f')}% of "
+        f"each discharge's capacity and "
+        f"{ph('mc_wp_time_mean', stats['time_mean'], '.1f')}% of its time. It "
+        "is not uniform: the warm G1 cells hold most of their capacity in the "
+        "window, while the cold G9 cell traverses the band early and holds "
+        "little."
+    )
+    lines.append("")
+    lines.append("| Cell | Capacity inside the window (%) | Time inside the window (%) |")
+    lines.append("|---|---|---|")
+    for _, row in stats["cells"].iterrows():
+        cell = str(row["cell_id"])
+        tag = str(row["cell_id"]).lower()
+        capacity = float(row["capacity_inside_window_pct"])
+        time = float(row["time_inside_window_pct"])
+        record("model card", "window share", cell,
+               "capacity inside window", capacity, "%",
+               REQUIRED["window_partial"])
+        record("model card", "window share", cell,
+               "time inside window", time, "%",
+               REQUIRED["window_partial"])
+        lines.append(
+            f"| {cell} | {ph(f'mc_wp_{tag}_cap', capacity, '.2f')} | "
+            f"{ph(f'mc_wp_{tag}_time', time, '.2f')} |"
+        )
+    lines.append(
+        f"| **Mean over {ph('mc_wp_n_cells', stats['n_cells'], 'd')} cells** | "
+        f"{ph('mc_wp_capacity_mean', stats['capacity_mean'], '.2f')} | "
+        f"{ph('mc_wp_time_mean', stats['time_mean'], '.2f')} |"
     )
 
     lines.append("")
@@ -2297,6 +2398,9 @@ def main():
     )
     final = region("final", final_body)
     glance = region("results_glance", final_body)
+    window_share = region(
+        "window_share", build_window_share(frames["window_partial"])
+    )
     card = region("model_card", build_model_card(
         frames["partial_transfer"],
         frames["rul_trajectory"],
@@ -2304,9 +2408,14 @@ def main():
         frames["window_robustness_summary"],
         frames["window_robustness_limits"],
         frames["random_load_transfer"],
+        frames["window_partial"],
     ))
 
-    write_regions(README, {"bms_contract": bms, "results_glance": glance})
+    write_regions(README, {
+        "bms_contract": bms,
+        "results_glance": glance,
+        "window_share": window_share,
+    })
     write_regions(RESULTS, {
         "results": results,
         "rul": rul,
