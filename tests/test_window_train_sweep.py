@@ -302,10 +302,20 @@ def test_the_stage_writes_byte_identical_files_twice(tmp_path, monkeypatch):
     monkeypatch.setattr(W, "BANDS", (W.BANDS[0],))
     monkeypatch.setattr(W, "RANDOM_LOAD_CELLS", ())
 
-    # Pass the raw directory by absolute path: resolve_raw_dir() uses
-    # paths relative to the cwd, and an unrelated test (train.py's
-    # driver) leaves the cwd elsewhere.
-    raw = REPO / "data" / "raw"
+    # Resolve the raw directory explicitly: resolve_raw_dir() uses paths
+    # relative to the cwd, and an unrelated test (train.py's driver)
+    # leaves the cwd elsewhere, and a fresh clone may hold the .mat files
+    # in the in-repo BMS copy rather than data/raw.
+    monkeypatch.chdir(REPO)
+
+    import load_data
+
+    raw = load_data.resolve_raw_dir()
+
+    if not raw.is_absolute():
+        raw = REPO / raw
+
+    raw = raw.resolve()
 
     outputs = {
         name: tmp_path / f"{name}.csv"
