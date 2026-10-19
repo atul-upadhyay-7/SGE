@@ -127,3 +127,86 @@ def test_window_band_matches_the_extractor():
         load_data.VOLTAGE_WINDOW_HIGH == features.WINDOW_VOLTAGE_HIGH
     )
     assert load_data.VOLTAGE_WINDOW_LOW == features.WINDOW_VOLTAGE_LOW
+
+
+BUNDLE_JSON = ROOT / "models" / "soh_window_all.json"
+
+
+def _bundle_ranges():
+    """The per-feature [min, max] the deployable model records."""
+
+    import json
+
+    meta = json.loads(BUNDLE_JSON.read_text(encoding="utf-8"))
+
+    return meta["feature_ranges"]
+
+
+def test_bundle_records_the_training_range_of_every_model_input():
+    """
+    The estimator refuses inputs outside the model's own training
+    range, so that range has to travel in the bundle. Each recorded
+    [min, max] must be the range of that feature over the audited
+    cells the model was trained on.
+    """
+
+    ranges = _bundle_ranges()
+
+    assert set(ranges) == set(features.WINDOW_MODEL_FEATURES)
+
+    df = pd.read_csv(CLEAN)
+
+    data = run_experiments.cell_relative_features(df)
+
+    for name, (low, high) in ranges.items():
+
+        assert low <= high
+
+        assert low == pytest.approx(float(data[name].min()))
+        assert high == pytest.approx(float(data[name].max()))
+
+
+def test_the_allowed_range_is_the_training_range_widened_by_the_slack():
+    """PHASE 3: the guard widens the training [min, max] by
+    WINDOW_RANGE_SLACK of its span on each side, so a value a little
+    past the training maximum is still scored but a value far past it
+    is not."""
+
+    low, high = 1.0, 2.0
+
+    span = high - low
+
+    got_low, got_high = features.widen_trained_range(low, high)
+
+    assert got_low == pytest.approx(
+        low - features.WINDOW_RANGE_SLACK * span
+    )
+    assert got_high == pytest.approx(
+        high + features.WINDOW_RANGE_SLACK * span
+    )
+
+    ranges = {"f": (low, high)}
+
+    just_past = high + 0.5 * features.WINDOW_RANGE_SLACK * span
+    assert features.out_of_range_features({"f": just_past}, ranges) == {}
+
+    well_past = high + 2.0 * features.WINDOW_RANGE_SLACK * span
+    flagged = features.out_of_range_features({"f": well_past}, ranges)
+
+    assert flagged["f"][0] == pytest.approx(well_past)
+
+
+def test_three_times_the_training_maximum_is_out_of_range():
+    """PHASE 3: a feature set at three times the training maximum is
+    outside the widened band, so the guard names every input."""
+
+    ranges = _bundle_ranges()
+
+    inputs = {
+        name: 3.0 * bounds[1] for name, bounds in ranges.items()
+    }
+
+    flagged = features.out_of_range_features(inputs, ranges)
+
+    assert set(flagged) == set(features.WINDOW_MODEL_FEATURES)
+

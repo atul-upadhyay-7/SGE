@@ -127,6 +127,7 @@ def load_portable_bundle(path):
         "features": meta["features"],
         "target": meta.get("target", "soh"),
         "trained_on": meta.get("trained_on", []),
+        "feature_ranges": meta.get("feature_ranges", {}),
         "library_versions": meta.get("library_versions", {}),
     }
 

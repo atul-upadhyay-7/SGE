@@ -127,6 +127,19 @@ def _prediction_frames(df, cell, early, features):
     return built
 
 
+def _feature_ranges(frame, features):
+    """
+    The [min, max] each model feature was trained across, written into
+    the bundle so the estimator can refuse an input outside the range
+    (widened by features.WINDOW_RANGE_SLACK) rather than score it.
+    """
+
+    return {
+        name: (float(frame[name].min()), float(frame[name].max()))
+        for name in features
+    }
+
+
 def _raw_columns(raw):
 
     record = {
@@ -192,18 +205,24 @@ def main():
 
     trained_on = sorted(data["cell_id"].unique().tolist())
 
+    feature_ranges = _feature_ranges(data, features)
+
     joblib.dump(
         {
             "model": model,
             "features": features,
             "target": TARGET,
             "trained_on": trained_on,
+            "feature_ranges": {
+                name: list(bounds) for name, bounds in feature_ranges.items()
+            },
         },
         MODEL_DIR / f"{MODEL_NAME}.joblib",
     )
 
     _save_portable(
-        model, features, TARGET, trained_on, MODEL_DIR / MODEL_NAME
+        model, features, TARGET, trained_on, MODEL_DIR / MODEL_NAME,
+        feature_ranges=feature_ranges,
     )
 
     bundle = load_portable_bundle(MODEL_DIR / f"{MODEL_NAME}.ubj")
@@ -236,12 +255,18 @@ def main():
 
     trained_on_heldout = sorted(train["cell_id"].unique().tolist())
 
+    heldout_ranges = _feature_ranges(data.loc[train.index], features)
+
     joblib.dump(
         {
             "model": xgb,
             "features": features,
             "target": TARGET,
             "trained_on": trained_on_heldout,
+            "feature_ranges": {
+                name: list(bounds)
+                for name, bounds in heldout_ranges.items()
+            },
         },
         MODEL_DIR / f"{HELDOUT_MODEL_NAME}.joblib",
     )
@@ -249,6 +274,7 @@ def main():
     _save_portable(
         xgb, features, TARGET, trained_on_heldout,
         MODEL_DIR / HELDOUT_MODEL_NAME,
+        feature_ranges=heldout_ranges,
     )
 
     en = build_model("ElasticNet")

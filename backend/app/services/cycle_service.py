@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import TelemetrySample
 from app.ml import registry
 from app.ml.estimator import (
+    OUT_OF_TRAINED_RANGE,
     WINDOW_FEATURES,
     WINDOW_MIN_REFERENCE_DISCHARGES,
     WINDOW_REFERENCE_WINDOW,
@@ -244,6 +245,13 @@ def _predictions(
         try:
             predicted = predict_soh(row, opening)
         except (InsufficientReferenceError, WindowRangeError, ValueError):
+            refused += 1
+            continue
+
+        # A discharge whose inputs leave the trained range comes back
+        # as this sentinel, not a number: refuse it rather than store
+        # a value the model has no basis for.
+        if predicted == OUT_OF_TRAINED_RANGE:
             refused += 1
             continue
 

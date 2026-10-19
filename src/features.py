@@ -188,6 +188,74 @@ class WindowRangeError(ValueError):
     """Raised when a window measurement is not inside the trained band."""
 
 
+# How far past the training min/max a cell-relative model input may
+# sit before the estimator refuses it: the allowed interval is the
+# training [min, max] widened by this fraction of the training span on
+# each side. ElasticNet's blow-ups showed that inputs outside the
+# training range produce implausible SOH while the tree model stays
+# bounded; the guard makes the estimator return a refusal instead of a
+# number the model has no basis for.
+WINDOW_RANGE_SLACK = 0.10
+
+# The value the estimator returns (rather than a scored number) when a
+# model input leaves the widened training range. Kept as one string so
+# the estimator and its callers cannot disagree about the spelling.
+OUT_OF_TRAINED_RANGE = "out of trained range"
+
+
+def widen_trained_range(low, high, slack=WINDOW_RANGE_SLACK):
+    """
+    The allowed interval for one model input: the training ``[low,
+    high]`` widened by ``slack`` of its span on each side.
+    """
+
+    span = float(high) - float(low)
+
+    pad = slack * span
+
+    return float(low) - pad, float(high) + pad
+
+
+def out_of_range_features(inputs, ranges, slack=WINDOW_RANGE_SLACK):
+    """
+    The model inputs that sit outside their widened training range.
+
+    `inputs` maps a model feature name to its value; `ranges` maps the
+    same names to their training ``(min, max)``. Returns
+    ``{name: (value, low, high)}`` for every input below ``low`` or
+    above ``high`` after widening, so a caller can refuse to score
+    rather than feed the model a value it was never trained on. A
+    missing or NaN input is left to the imputer and is not flagged.
+    """
+
+    import numpy as np
+
+    offenders = {}
+
+    for name, bounds in ranges.items():
+
+        if name not in inputs:
+            continue
+
+        value = inputs[name]
+
+        if value is None:
+            continue
+
+        value = float(value)
+
+        if np.isnan(value):
+            continue
+
+        low, high = widen_trained_range(bounds[0], bounds[1], slack)
+
+        if value < low or value > high:
+
+            offenders[name] = (value, low, high)
+
+    return offenders
+
+
 def validate_window_voltage(window_row):
     """
     Refuse a window measurement taken outside the 4.0-3.4 V band.

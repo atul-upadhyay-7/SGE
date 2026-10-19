@@ -107,5 +107,6 @@ The estimator returns no number, rather than a guess, when:
 
 - a window is measured outside the trained 4.0–3.4 V band (`features.WindowRangeError`);
 - fewer than 3 opening discharges are available for the cell-relative baseline (`InsufficientReferenceError`);
-- the discharge current sits far outside the trained 2.0–4.0 A band, where the model has no training data.
+- the discharge current sits far outside the trained 2.0–4.0 A band, where the model has no training data;
+- any cell-relative model input leaves the range the model was trained across, widened by 10% of its span: the estimator returns the message *out of trained range* instead of a number, because the model has no basis outside that range.
 <!-- make_report:model_card:end -->

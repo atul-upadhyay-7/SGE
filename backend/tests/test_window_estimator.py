@@ -55,6 +55,11 @@ def test_window_feature_lists_match_offline_pipeline():
         == features.WINDOW_MIN_REFERENCE_DISCHARGES
     )
     assert estimator.WindowRangeError is features.WindowRangeError
+    assert (
+        estimator.OUT_OF_TRAINED_RANGE == features.OUT_OF_TRAINED_RANGE
+    )
+    # The refusal is a user-facing message, so pin its spelling.
+    assert features.OUT_OF_TRAINED_RANGE == "out of trained range"
 
 
 def test_predict_soh_matches_saved_csv_for_b0005():
@@ -127,3 +132,39 @@ def test_input_outside_the_trained_window_is_refused(mean_voltage):
 
     assert "window" in message.lower()
     assert f"{mean_voltage}" in message
+
+
+def test_input_at_three_times_the_training_maximum_is_refused():
+    """
+    PHASE 3: the estimator input is range-checked against the model's
+    own training range. A discharge whose capacity-per-amp stands at
+    three times the training maximum must come back as the refusal
+    sentinel, not a scored number, because the model has no basis
+    outside the range it was trained across.
+    """
+
+    import json
+
+    meta = json.loads(
+        (REPO_ROOT / "models" / "soh_window_all.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    high = float(
+        meta["feature_ranges"]["vw_capacity_per_amp"][1]
+    )
+
+    rows = _rows()
+
+    early = rows.head(features.WINDOW_REFERENCE_WINDOW)
+
+    row = dict(rows.iloc[10])
+
+    current = abs(float(row["current_mean"]))
+
+    row["vw_capacity_ah"] = 3.0 * high * current
+
+    got = estimator.predict_soh(row, early)
+
+    assert got == features.OUT_OF_TRAINED_RANGE

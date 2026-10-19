@@ -13,7 +13,11 @@ disagree.
 
 A cell is only scored once it has enough opening discharges to form a
 baseline: fewer than ``WINDOW_MIN_REFERENCE_DISCHARGES`` raises
-``InsufficientReferenceError`` rather than guessing.
+``InsufficientReferenceError`` rather than guessing. A discharge whose
+cell-relative inputs leave the range the model was trained across
+(widened by ``WINDOW_RANGE_SLACK``) is refused with
+``OUT_OF_TRAINED_RANGE`` instead of a scored number, because the model
+has no basis outside that range.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from features import (  # noqa: E402
+    OUT_OF_TRAINED_RANGE,
     WINDOW_FEATURES,
     WINDOW_MIN_REFERENCE_DISCHARGES,
     WINDOW_MODEL_FEATURES,
@@ -38,6 +43,7 @@ from features import (  # noqa: E402
     WINDOW_VOLTAGE_HIGH,
     WINDOW_VOLTAGE_LOW,
     WindowRangeError,
+    out_of_range_features,
     window_model_row,
 )
 
@@ -111,7 +117,7 @@ def predict_soh(
     early_discharges: Iterable[Mapping[str, Any]],
     *,
     model_path=None,
-) -> float:
+) -> float | str:
     """
     Estimate state of health (%) for one discharge.
 
@@ -129,6 +135,16 @@ def predict_soh(
         is the median of the first ``WINDOW_REFERENCE_WINDOW`` of them.
     model_path
         Optional override for the model to load.
+
+    Returns
+    -------
+    float
+        The estimated SOH, or the string ``"out of trained range"``
+        if any cell-relative model input leaves the range the model
+        was trained across (widened by ``WINDOW_RANGE_SLACK``). The
+        model has no basis there — ElasticNet's blow-ups on a
+        random-load cell are the reason — so the caller is told the
+        input is out of range instead of handed a number.
 
     Raises
     ------
@@ -153,6 +169,11 @@ def predict_soh(
     inputs = window_model_row(window_features, rows)
 
     bundle = _load_model(model_path)
+
+    if out_of_range_features(inputs, bundle.get("feature_ranges", {})):
+
+        return OUT_OF_TRAINED_RANGE
+
     model = bundle["model"]
 
     import pandas as pd

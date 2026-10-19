@@ -2764,7 +2764,15 @@ def build_model_card(partial_transfer, rul, clean, wr_summary, wr_limits,
         f"- the discharge current sits far outside the trained "
         f"{ph('mc_current_low', features.WINDOW_TRAIN_CURRENT_LOW_A, '.1f')}–"
         f"{ph('mc_current_high', features.WINDOW_TRAIN_CURRENT_HIGH_A, '.1f')} A "
-        "band, where the model has no training data."
+        "band, where the model has no training data;"
+    )
+    lines.append(
+        "- any cell-relative model input leaves the range the model was "
+        "trained across, widened by "
+        f"{ph('mc_range_slack_pct', 100 * features.WINDOW_RANGE_SLACK, '.0f')}% "
+        "of its span: the estimator returns the message "
+        f"*{features.OUT_OF_TRAINED_RANGE}* instead of a number, because "
+        "the model has no basis outside that range."
     )
 
     return "\n".join(lines)

@@ -866,7 +866,7 @@ def main():
 
 
 def _save_portable(
-    pipeline, features, target, trained_on, prefix
+    pipeline, features, target, trained_on, prefix, feature_ranges=None
 ):
     """
     Save a version-proof copy: XGBoost UBJ booster + JSON
@@ -876,6 +876,11 @@ def _save_portable(
     unlike the full Pipeline pickle which embeds the native
     booster binary. The imputer medians are saved too so
     the pipeline can be reconstructed.
+
+    ``feature_ranges`` (optional) is the per-feature
+    ``[min, max]`` the model was trained across; the estimator
+    refuses an input outside that range widened by
+    ``features.WINDOW_RANGE_SLACK`` rather than scoring it.
     """
 
     import json
@@ -905,6 +910,13 @@ def _save_portable(
             "python": platform.python_version(),
         },
     }
+
+    if feature_ranges is not None:
+
+        meta["feature_ranges"] = {
+            name: [float(bounds[0]), float(bounds[1])]
+            for name, bounds in feature_ranges.items()
+        }
 
     with open(str(prefix) + ".json", "w") as f:
         json.dump(meta, f, indent=2)
