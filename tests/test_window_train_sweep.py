@@ -15,11 +15,13 @@ the four random-load cells.
     feature path exactly, so the sweep is scored on the shipped task;
   * every candidate window is scored for both models on all thirteen
     held-out cells;
-  * with its own model every window, including the 0.20 V inset, keeps
-    the pooled held-out MAE under the 3% budget;
-  * the smallest surviving window is the 3.8-3.6 V inset, and the
-    random-load cells are the stricter subset;
-  * docs/RESULTS.md and the README carry the result.
+  * a window is judged on three held-out numbers at once -- pooled MAE,
+    random-load-only MAE and the worst single cell -- and passes only
+    when all three are under the 3% budget; on this data none does, so
+    the limits file says `none`;
+  * docs/RESULTS.md carries the three numbers for XGBoost as the
+    headline and confines ElasticNet to an appendix;
+  * the README says no window is settled on every cell.
 """
 
 import sys
@@ -162,6 +164,10 @@ def test_every_window_scores_both_models_on_all_cells(detail):
 
 
 def test_every_window_survives_with_its_own_model(summary):
+    """The pooled numbers alone: every band holds those with its own
+    model. The verdict rests on all three held-out numbers, tested
+    separately below."""
+
     assert (summary["xgb_mae_pct"] < LIMIT).all(), (
         "with a model of its own every band should hold the budget on "
         "the constant-current held-out cells"
@@ -169,20 +175,77 @@ def test_every_window_survives_with_its_own_model(summary):
     assert (summary["xgb_mae_all_pct"] < LIMIT).all()
 
 
-def test_smallest_surviving_window_is_the_tightest_inset(limits, summary):
+def test_worst_cell_is_the_largest_held_out_cell(detail, summary):
+    """The third judged number is one cell, not the pool: it must be the
+    maximum per-cell MAE for the band."""
+
+    for name, _high, _low in WINDOWS:
+
+        block = detail[
+            (detail["window"] == name) & (detail["model"] == "XGBoost")
+        ]
+
+        expected = float(block["mae_pct"].astype(float).max())
+        got = float(
+            summary.loc[
+                summary["window"] == name, "xgb_mae_worst_cell_pct"
+            ].iloc[0]
+        )
+
+        assert np.isclose(got, expected, atol=TOL), name
+
+
+def test_under_limit_requires_all_three_held_out_numbers(summary):
+    """A band passes only when the pooled MAE, the random-load MAE and
+    the worst single cell are all under budget, so a band that holds the
+    first two and loses one cell is not counted as passing."""
+
+    for _, row in summary.iterrows():
+
+        pooled = bool(row["passes_pooled"])
+        random_load = bool(row["passes_random_load"])
+        worst = bool(row["passes_worst_cell"])
+
+        assert bool(row["under_limit"]) == (pooled and random_load and worst)
+
+        assert pooled == (float(row["xgb_mae_all_pct"]) < LIMIT)
+        assert random_load == (float(row["xgb_mae_random_load_pct"]) < LIMIT)
+        assert worst == (float(row["xgb_mae_worst_cell_pct"]) < LIMIT)
+
+    # The three tests disagree on this data, so the conjunction is not
+    # just the pool: every band holds the pool, two hold random load,
+    # none holds the worst cell, and so none passes.
+    assert summary["passes_pooled"].all()
+    assert summary["passes_random_load"].any()
+    assert not summary["passes_worst_cell"].any()
+    assert not summary["under_limit"].any()
+
+
+def test_no_window_passes_all_three_tests(summary, limits):
     row = limits.iloc[0]
 
-    assert row["smallest_under_limit_window"] == "window_3.8_3.6"
-    assert np.isclose(row["smallest_under_limit_span_v"], 0.2, atol=TOL)
+    assert int(row["n_under_limit"]) == 0
+    assert row["smallest_under_limit_window"] == "none"
 
-    under = summary[summary["xgb_mae_all_pct"] < LIMIT]
+    trained = summary[summary["window"] == "window_4.0_3.4"].iloc[0]
 
-    assert row["smallest_under_limit_span_v"] == under["window_span_v"].min()
+    assert float(trained["xgb_mae_all_pct"]) < LIMIT
+    assert float(trained["xgb_mae_random_load_pct"]) < LIMIT
+    assert float(trained["xgb_mae_worst_cell_pct"]) > LIMIT
+
     assert np.isclose(
-        row["smallest_under_limit_mae_pct"],
-        summary.loc[
-            summary["window"] == "window_3.8_3.6", "xgb_mae_all_pct"
-        ].iloc[0],
+        float(row["trained_window_mae_pct"]),
+        float(trained["xgb_mae_all_pct"]),
+        atol=TOL,
+    )
+    assert np.isclose(
+        float(row["trained_window_random_load_mae_pct"]),
+        float(trained["xgb_mae_random_load_pct"]),
+        atol=TOL,
+    )
+    assert np.isclose(
+        float(row["trained_window_worst_cell_mae_pct"]),
+        float(trained["xgb_mae_worst_cell_pct"]),
         atol=TOL,
     )
 
@@ -195,33 +258,49 @@ def test_random_load_cells_are_the_stricter_subset(summary):
     assert raised["xgb_mae_random_load_pct"] > LIMIT
 
 
-def test_results_document_carries_the_fair_test(summary, limits):
+def test_results_document_carries_the_three_number_test(summary):
     text = RESULTS.read_text()
 
     assert "A model trained on its own window" in text
 
-    small = summary[
-        summary["window"] == limits.iloc[0]["smallest_under_limit_window"]
-    ].iloc[0]
+    # Headline table is the three held-out numbers, all XGBoost.
+    assert (
+        "| Pooled MAE (%) | Random-load MAE (%) | "
+        "Worst single-cell MAE (%) |" in text
+    )
+
+    # ElasticNet is not a headline column; its table is confined to the
+    # appendix.
+    section = text.split("#### A model trained on its own window", 1)[1]
+    section = section.split("Appendix: ElasticNet", 1)[0]
+    assert "ElasticNet MAE (%)" not in section
+    assert (
+        "| Window (V) | ElasticNet MAE (%) | "
+        "Random-load ElasticNet MAE (%) |" in text
+    )
+
+    trained = summary[summary["window"] == "window_4.0_3.4"].iloc[0]
 
     assert (
-        f"| {small['window_high_v']:.1f}–{small['window_low_v']:.1f} | "
-        f"{small['window_span_v']:.2f} |"
+        f"| 4.0–3.4 | 0.60 | {float(trained['xgb_mae_all_pct']):.2f} | "
+        f"{float(trained['xgb_mae_random_load_pct']):.2f} | "
+        f"{float(trained['xgb_mae_worst_cell_pct']):.2f} | no |"
     ) in text
 
 
-def test_readme_row_carries_the_smallest_window(summary, limits):
+def test_readme_says_no_window_is_settled_on_every_cell(summary, limits):
     text = README.read_text()
+    row = limits.iloc[0]
 
-    assert "a shorter window works if trained on it" in text
+    assert row["smallest_under_limit_window"] == "none"
+    assert "a shorter window is not settled on every cell" in text
+    assert f"no window of the {int(row['n_windows'])} tried" in text
+    assert f"holds all three under {int(row['mae_limit_pct'])}%" in text
 
-    small = summary[
-        summary["window"] == limits.iloc[0]["smallest_under_limit_window"]
-    ].iloc[0]
+    trained = summary[summary["window"] == "window_4.0_3.4"].iloc[0]
 
-    assert f"{small['window_span_v']:.2f} V window" in text
     assert (
-        f"{limits.iloc[0]['smallest_under_limit_mae_pct']:.2f}% pooled"
+        f"worst cell is {float(trained['xgb_mae_worst_cell_pct']):.2f}%"
         in text
     )
 
@@ -261,6 +340,7 @@ def test_no_unstable_metric_is_written_as_a_raw_number(detail, summary):
         "elasticnet_mae_random_load_pct",
         "xgb_mae_all_pct",
         "elasticnet_mae_all_pct",
+        "xgb_mae_worst_cell_pct",
     )
 
     for column in summary_metrics:

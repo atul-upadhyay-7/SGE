@@ -15,7 +15,7 @@ An end-to-end machine-learning pipeline and interactive monitoring dashboard for
 | **"Partial" does not mean small** | <!-- make_report:window_share -->The 4.0–3.4 V window is not a small slice: across the 9 kept cells it holds 56% of each discharge's capacity and 51% of its time on average (26–80% cell by cell; the cold G9 cell B0053 holds the least). Per cell in `docs/MODEL_CARD.md`.<!-- make_report:window_share:end --> |
 | **RUL is indicative, and not only on G1** | Remaining-life labels need a cell that reaches 80% SOH. The four G1 cells do, so each is scored leave-one-cell-out over the other three trajectories, but four random-load cells (B0039, B0042, B0043, B0044) also reach 80% and are kept out of the model because their load and temperature change across the record. Two RUL methods disagree by 63.8 discharges on the mean, so every RUL number is reported as indicative, not a forecast. |
 | **The window model transfers to the random-load cells it never saw** | The shipped partial-window SOH model is trained only on the nine constant-current cells, yet it beats the window formula on all four random-load cells the audit keeps, so their exclusion is a comparability choice, not a transfer failure (see *Random-load transfer* under Key Results). The caveat is B0039: its R² is below zero, so there the model reads the level, not the fade shape. |
-| **Robust to sensor noise; a shorter window works if trained on it** | <!-- make_report:window_train -->With Gaussian noise on the held-out cell's inputs the pooled MAE stays under 3% up to 20 mV of voltage noise and 5% of current noise. A shorter window fails only when the 4.0–3.4 V model is handed a band it was not trained on: train a model on the band and it works down to a 0.20 V window (3.8–3.6 V), which holds 1.94% pooled held-out MAE (see *A model trained on its own window* under Key Results).<!-- make_report:window_train:end --> |
+| **Robust to sensor noise; a shorter window is not settled on every cell** | <!-- make_report:window_train -->With Gaussian noise on the held-out cell's inputs the pooled MAE stays under 3% up to 20 mV of voltage noise and 5% of current noise. A shorter window fails only when the 4.0–3.4 V model is handed a band it was not trained on, but judged on three held-out numbers at once — pooled MAE, random-load-only MAE and the worst single cell — no window of the 5 tried, the shipped band included, holds all three under 3%. Only 2 of 5 otherwise hold the random-load mean, and the shipped 4.0–3.4 V band's worst cell is 3.64% against 1.70% pooled (see *A model trained on its own window* under Key Results).<!-- make_report:window_train:end --> |
 | **Alerts** | Grafana evaluates the rules itself through a Prometheus exporter and they fire on the injected fault; firing alerts are delivered to a provisioned local webhook contact point (`alert-sink` in the compose stack), so the notification path is exercised end to end. No external email/pager endpoint is configured. |
 | **Model versus formula** | A full discharge is Coulomb counting (a formula, no model). The partial window is the only place a model is scored against the window formula; the full-feature SOH benchmark is offline and is not the online estimator. |
 
@@ -174,15 +174,19 @@ amount of tuning removes them.
    are only defined at cycle end.
 
 9. **The window model is robust to sensor noise; a shorter
-   window works if you train on it.** Adding Gaussian noise to a
+   window is not settled on every cell.** Adding Gaussian noise to a
    held-out cell's voltage and current barely moves the pooled
    held-out MAE: it stays under 3% up to 20 mV of voltage noise and
    5% of current noise. Feeding a narrower band to the 4.0–3.4 V
    model fails, but that is a mismatch between training and
    inference, not the window length: train a model on the band and
-   the smallest band tried, 3.8–3.6 V, holds a pooled held-out MAE
-   under the same 3% budget (the window-trained table under
-   *Key Results*).
+   the pooled mean holds (every band tried stays under 3%), but
+   judged on three held-out numbers at once — pooled MAE,
+   random-load-only MAE and the worst single cell — no band, the
+   shipped 4.0–3.4 V band included, holds all three under budget. So
+   the stable claims are the noise robustness and the pooled mean;
+   the window-length question is not settled on every cell (the
+   window-trained table under *Key Results*).
 
 Accuracy is stated as measured, per cell and per held-out condition,
 in the tables in [`docs/RESULTS.md`](docs/RESULTS.md); it is not a

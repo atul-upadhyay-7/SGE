@@ -104,20 +104,30 @@ It does **not** survive a shorter window *at inference*: feeding a narrower band
 
 #### A model trained on its own window (held-out cells)
 
-The robustness test above feeds a shorter band to the *shipped* model, which is trained on the 4.0–3.4 V feature distribution, so its failure is a mismatch. This test removes the mismatch: each band gets its own model, with its cell-relative features recomputed from the raw traces over that band only, and is scored the same way the present model is — leave-one-cell-out within G1 and within G3, then train on every G1 and G3 cell and test B0053 and the four random-load cells. All thirteen scored cells are held out of their own training set, and a band's training rows never enter another band's model. The MAE is pooled over the held-out cells; the random-load columns are those four cells alone.
+The robustness test above feeds a shorter band to the *shipped* model, which is trained on the 4.0–3.4 V feature distribution, so its failure is a mismatch. This test removes the mismatch: each band gets its own model, with its cell-relative features recomputed from the raw traces over that band only, and is scored the same way the present model is — leave-one-cell-out within G1 and within G3, then train on every G1 and G3 cell and test B0053 and the four random-load cells. All thirteen scored cells are held out of their own training set, and a band's training rows never enter another band's model. The model is XGBoost, the shipped family; ElasticNet is not the model and appears only in the appendix. A band is judged on three numbers at once, not on the pool alone — the pooled held-out MAE, the MAE on the four random-load cells alone, and the worst single held-out cell — and passes only when all three are under 3%.
 
-| Window (V) | Span (V) | XGBoost MAE (%) | ElasticNet MAE (%) | window formula MAE (%) | Random-load XGBoost MAE (%) | Random-load ElasticNet MAE (%) |
-|---|---|---|---|---|---|---|
-| 4.0–3.4 | 0.60 | 1.57 | 1.81 | 9.22 | 2.18 | unstable |
-| 3.9–3.5 | 0.40 | 1.47 | 1.02 | 10.96 | 2.83 | unstable |
-| 3.8–3.6 | 0.20 | 1.56 | 1.34 | 10.92 | 3.33 | 7.78 |
-| 4.1–3.7 | 0.40 | 1.71 | 1.52 | 11.66 | 5.27 | 11.16 |
-| 3.7–3.4 | 0.30 | 2.22 | 1.37 | 8.74 | 3.23 | unstable |
+| Window (V) | Span (V) | Pooled MAE (%) | Random-load MAE (%) | Worst single-cell MAE (%) | Under 3% on all three |
+|---|---|---|---|---|---|
+| 4.0–3.4 | 0.60 | 1.70 | 2.18 | 3.64 | no |
+| 3.9–3.5 | 0.40 | 1.76 | 2.83 | 3.80 | no |
+| 3.8–3.6 | 0.20 | 1.94 | 3.33 | 5.50 | no |
+| 4.1–3.7 | 0.40 | 2.46 | 5.27 | 8.83 | no |
+| 3.7–3.4 | 0.30 | 2.43 | 3.23 | 6.86 | no |
 
-**Verdict.** A shorter window *does* work once the model is trained on it: with a model of its own, every band tried keeps the pooled held-out MAE under 3% (5 of 5 bands). The smallest is 3.8–3.6 V (span 0.20 V), at 1.56% pooled over the nine constant-current held-out cells and 1.94% over all thirteen, against 1.70% for the shipped 4.0–3.4 V band. The earlier failure was the shipped model being handed a different band, not the window length. The random-load cells are the stricter half of the test: there the smallest band sits just over budget at 3.33%, so the narrowest window that also stays under 3% on the random-load cells is 3.9–3.5 V at 2.83%.
+**Verdict.** No window tried passes all three tests with a model of its own. All 5 bands hold the pooled held-out MAE under 3% (5 of 5), and 2 of 5 also hold the random-load mean, but none keeps every single cell under budget (0 of 5). The shipped 4.0–3.4 V band is 1.70% pooled and 2.18% on the random-load cells, yet its worst cell is 3.64%, which is also the smallest worst-cell error of any band (3.64%). The reading that a shorter window works once the model is trained on it survives on the pooled and random-load numbers but not on the worst cell, so no band — the shipped band included — is settled once every single cell has to stay under 3%.
 
-ElasticNet is reported for comparison but is the fragile model here: its inputs are unbounded ratios, and a random-load cell whose opening discharges barely cross the band (B0039) gives a tiny five-discharge baseline, so its later window ratios run orders of magnitude past the training range. A linear fit extrapolates that to implausible SOH while the tree model stays bounded, which is why the 3% question is read against XGBoost, the shipped model family. A cell whose ElasticNet or window-formula score leaves the sane range (R2 below -1000 or MAE above 100%) is written as *unstable* rather than as a raw number: at that magnitude the digits are floating-point noise, not a measurement, and writing them would make the file change from one machine to the next.
 
+##### Appendix: ElasticNet and the window formula
+
+ElasticNet is not the model — XGBoost is, and the verdict above is read from XGBoost alone. ElasticNet is carried only as a comparison, and it is the fragile one here: its inputs are unbounded ratios, and a random-load cell whose opening discharges barely cross the band (B0039) gives a tiny five-discharge baseline, so its later window ratios run orders of magnitude past the training range. A linear fit extrapolates that to implausible SOH while the tree model stays bounded. A cell whose ElasticNet or window-formula score leaves the sane range (R2 below -1000 or MAE above 100%) is written as *unstable* rather than as a raw number: at that magnitude the digits are floating-point noise, not a measurement, and writing them would make the file change from one machine to the next.
+
+| Window (V) | ElasticNet MAE (%) | Random-load ElasticNet MAE (%) | window formula MAE (%) |
+|---|---|---|---|
+| 4.0–3.4 | 1.81 | unstable | 9.22 |
+| 3.9–3.5 | 1.02 | unstable | 10.96 |
+| 3.8–3.6 | 1.34 | 7.78 | 10.92 |
+| 4.1–3.7 | 1.52 | 11.16 | 11.66 |
+| 3.7–3.4 | 1.37 | unstable | 8.74 |
 
 #### Reference-window sensitivity (partial-discharge)
 

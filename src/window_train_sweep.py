@@ -20,6 +20,12 @@ four random-load cells the audit keeps (G5/G6). Every scored cell is
 held out of its own training set, and a window's training rows never
 enter another window's model.
 
+A window is judged on three held-out numbers at once, not on the pool
+alone: the pooled MAE, the MAE on the random-load cells alone, and the
+worst single held-out cell. It passes only when all three are under the
+failure budget. XGBoost is the model; ElasticNet is carried only as a
+comparison and is not part of the verdict.
+
 Outputs:
 
   data/processed/soh_window_train_sweep.csv          (per cell detail)
@@ -82,7 +88,10 @@ SUMMARY_OUT = PROC / "soh_window_train_sweep_summary.csv"
 LIMITS_OUT = PROC / "soh_window_train_sweep_limits.csv"
 
 # The failure budget, the same one the robustness stage is read
-# against: a pooled held-out MAE below it counts as still working.
+# against. A window passes only when all three held-out numbers its
+# verdict rests on are below it: the pooled MAE, the MAE on the
+# random-load cells alone, and the worst single held-out cell. The pool
+# alone can hide a band that loses one cell badly.
 MAE_LIMIT_PCT = 3.0
 
 # The shipped band is stated once in features.py; the other bands are
@@ -384,6 +393,36 @@ def _pooled(detail, window, model, subset):
     return stable_metric(pooled, high=MAE_UNSTABLE_ABOVE_PCT)
 
 
+def _worst_cell(detail, window, model):
+    """The single held-out cell with the largest MAE for this window.
+
+    The third number a window is judged on: a band can hold the pooled
+    and random-load means and still lose one cell badly. If any cell's
+    MAE is UNSTABLE the worst is UNSTABLE too -- a band that produced a
+    non-measurement has not earned a pass.
+    """
+
+    block = detail[(detail["window"] == window) & (detail["model"] == model)]
+
+    if block.empty:
+        return np.nan
+
+    values = block["mae_pct"]
+
+    if (values == UNSTABLE).any():
+        return UNSTABLE
+
+    return stable_metric(
+        float(values.astype(float).max()), high=MAE_UNSTABLE_ABOVE_PCT
+    )
+
+
+def _under(value):
+    """True only for a real, finite metric that sits below the budget."""
+
+    return bool(isinstance(value, float) and value < MAE_LIMIT_PCT)
+
+
 def _summarize(detail):
 
     rows = []
@@ -393,7 +432,9 @@ def _summarize(detail):
         subset = detail[detail["window"] == name]
         xgb = subset[subset["model"] == "XGBoost"]
 
-        xgb_all = _pooled(detail, name, "XGBoost", "all")
+        pooled = _pooled(detail, name, "XGBoost", "all")
+        random_load = _pooled(detail, name, "XGBoost", "random_load")
+        worst = _worst_cell(detail, name, "XGBoost")
 
         rows.append({
             "window": name,
@@ -409,18 +450,20 @@ def _summarize(detail):
             "window_formula_mae_pct": _pooled(
                 detail, name, "window_formula", "constant_current"
             ),
-            "xgb_mae_random_load_pct": _pooled(
-                detail, name, "XGBoost", "random_load"
-            ),
+            "xgb_mae_random_load_pct": random_load,
             "elasticnet_mae_random_load_pct": _pooled(
                 detail, name, "ElasticNet", "random_load"
             ),
-            "xgb_mae_all_pct": xgb_all,
+            "xgb_mae_all_pct": pooled,
             "elasticnet_mae_all_pct": _pooled(
                 detail, name, "ElasticNet", "all"
             ),
-            "under_limit": bool(
-                isinstance(xgb_all, float) and xgb_all < MAE_LIMIT_PCT
+            "xgb_mae_worst_cell_pct": worst,
+            "passes_pooled": _under(pooled),
+            "passes_random_load": _under(random_load),
+            "passes_worst_cell": _under(worst),
+            "under_limit": (
+                _under(pooled) and _under(random_load) and _under(worst)
             ),
         })
 
@@ -429,12 +472,13 @@ def _summarize(detail):
 
 def _limits(summary):
     """
-    The smallest window whose own model keeps the pooled held-out MAE
-    under MAE_LIMIT_PCT. `none` in the name means no attempted window
-    survived; the smallest window tried is reported either way.
+    The smallest window that holds all three held-out numbers -- pooled
+    MAE, random-load-only MAE and the worst single cell -- under
+    MAE_LIMIT_PCT. `none` in the name means no attempted window survived
+    all three; the smallest window tried is reported either way.
     """
 
-    ok = summary[summary["xgb_mae_all_pct"] < MAE_LIMIT_PCT]
+    ok = summary[summary["under_limit"]]
     smallest_ok = (
         ok.loc[ok["window_span_v"].idxmin()] if not ok.empty else None
     )
@@ -451,6 +495,12 @@ def _limits(summary):
         "n_under_limit": int(len(ok)),
         "trained_window": str(trained["window"]),
         "trained_window_mae_pct": float(trained["xgb_mae_all_pct"]),
+        "trained_window_random_load_mae_pct": float(
+            trained["xgb_mae_random_load_pct"]
+        ),
+        "trained_window_worst_cell_mae_pct": float(
+            trained["xgb_mae_worst_cell_pct"]
+        ),
         "smallest_under_limit_window": (
             str(smallest_ok["window"]) if smallest_ok is not None else "none"
         ),
@@ -470,9 +520,23 @@ def _limits(summary):
             _value(smallest_ok, "xgb_mae_all_pct")
             if smallest_ok is not None else np.nan
         ),
+        "smallest_under_limit_random_load_mae_pct": (
+            _value(smallest_ok, "xgb_mae_random_load_pct")
+            if smallest_ok is not None else np.nan
+        ),
+        "smallest_under_limit_worst_cell_mae_pct": (
+            _value(smallest_ok, "xgb_mae_worst_cell_pct")
+            if smallest_ok is not None else np.nan
+        ),
         "smallest_tried_window": str(smallest_tried["window"]),
         "smallest_tried_span_v": float(smallest_tried["window_span_v"]),
         "smallest_tried_mae_pct": float(smallest_tried["xgb_mae_all_pct"]),
+        "smallest_tried_random_load_mae_pct": float(
+            smallest_tried["xgb_mae_random_load_pct"]
+        ),
+        "smallest_tried_worst_cell_mae_pct": float(
+            smallest_tried["xgb_mae_worst_cell_pct"]
+        ),
     }])
 
 

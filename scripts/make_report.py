@@ -952,13 +952,17 @@ def _wt_tag(window):
 
 def build_window_train_sweep(summary, limits):
     """
-    docs/RESULTS.md: a model trained on each candidate window, scored
-    on the same held-out cells as the shipped model.
+    docs/RESULTS.md: a model trained on each candidate window, judged on
+    three held-out numbers -- pooled MAE, random-load-only MAE and the
+    worst single cell -- with the shipped model (XGBoost) as the headline
+    and ElasticNet kept only in an appendix.
     """
 
     lines = []
 
     limit = float(limits["mae_limit_pct"].iloc[0])
+    n_windows = int(limits["n_windows"].iloc[0])
+    n_pass = int(limits["n_under_limit"].iloc[0])
 
     lines.append(
         "#### A model trained on its own window (held-out cells)\n"
@@ -973,15 +977,19 @@ def build_window_train_sweep(summary, limits):
         "then train on every G1 and G3 cell and test B0053 and the four "
         "random-load cells. All thirteen scored cells are held out of their "
         "own training set, and a band's training rows never enter another "
-        "band's model. The MAE is pooled over the held-out cells; the "
-        "random-load columns are those four cells alone.\n"
+        "band's model. The model is XGBoost, the shipped family; ElasticNet "
+        "is not the model and appears only in the appendix. A band is judged "
+        "on three numbers at once, not on the pool alone — the pooled "
+        "held-out MAE, the MAE on the four random-load cells alone, and the "
+        "worst single held-out cell — and passes only when all three are "
+        f"under {ph('wts_limit', limit, '.0f')}%.\n"
     )
     lines.append(
-        "| Window (V) | Span (V) | XGBoost MAE (%) | ElasticNet MAE (%) | "
-        "window formula MAE (%) | Random-load XGBoost MAE (%) | "
-        "Random-load ElasticNet MAE (%) |"
+        "| Window (V) | Span (V) | Pooled MAE (%) | Random-load MAE (%) | "
+        "Worst single-cell MAE (%) | Under "
+        f"{ph('wts_limit', limit, '.0f')}% on all three |"
     )
-    lines.append("|---|---|---|---|---|---|---|")
+    lines.append("|---|---|---|---|---|---|")
 
     for _, row in summary.iterrows():
 
@@ -989,11 +997,9 @@ def build_window_train_sweep(summary, limits):
         source = REQUIRED["window_train_summary"]
 
         for metric, key in (
-            ("XGBoost MAE", "xgb_mae_pct"),
-            ("ElasticNet MAE", "elasticnet_mae_pct"),
-            ("window formula MAE", "window_formula_mae_pct"),
-            ("random-load XGBoost MAE", "xgb_mae_random_load_pct"),
-            ("random-load ElasticNet MAE", "elasticnet_mae_random_load_pct"),
+            ("pooled MAE", "xgb_mae_all_pct"),
+            ("random-load MAE", "xgb_mae_random_load_pct"),
+            ("worst single-cell MAE", "xgb_mae_worst_cell_pct"),
         ):
             record("SOH", "window train sweep", row["window"], metric,
                    row[key], "%", source)
@@ -1002,132 +1008,187 @@ def build_window_train_sweep(summary, limits):
             f"| {ph(tag + '_hi', float(row['window_high_v']), '.1f')}–"
             f"{ph(tag + '_lo', float(row['window_low_v']), '.1f')} | "
             f"{ph(tag + '_span', float(row['window_span_v']), '.2f')} | "
-            f"{metric_ph(tag + '_xgb', row['xgb_mae_pct'], '.2f')} | "
-            f"{metric_ph(tag + '_en', row['elasticnet_mae_pct'], '.2f')} | "
-            f"{metric_ph(tag + '_formula', row['window_formula_mae_pct'], '.2f')} | "
-            f"{metric_ph(tag + '_rl_xgb', row['xgb_mae_random_load_pct'], '.2f')} | "
-            f"{metric_ph(tag + '_rl_en', row['elasticnet_mae_random_load_pct'], '.2f')} |"
+            f"{metric_ph(tag + '_pooled', row['xgb_mae_all_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_rl', row['xgb_mae_random_load_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_worst', row['xgb_mae_worst_cell_pct'], '.2f')} | "
+            f"{'yes' if bool(row['under_limit']) else 'no'} |"
         )
 
-    smallest_name = str(limits["smallest_under_limit_window"].iloc[0])
-    n_windows = int(limits["n_windows"].iloc[0])
-    n_under = int(limits["n_under_limit"].iloc[0])
+    trained = summary[
+        summary["window"] == str(limits["trained_window"].iloc[0])
+    ].iloc[0]
 
-    window_ok = summary[
-        ~summary["xgb_mae_random_load_pct"].isna()
-        & (summary["xgb_mae_random_load_pct"] < limit)
-    ]
-    rl_ok = window_ok.sort_values("window_high_v").iloc[0]
+    if n_pass == 0:
 
-    def _row(name):
-        return summary[summary["window"] == name].iloc[0]
-
-    if smallest_name == "none":
+        n_pooled = int(summary["passes_pooled"].sum())
+        n_rl = int(summary["passes_random_load"].sum())
+        n_worst = int(summary["passes_worst_cell"].sum())
+        best_worst = float(summary["xgb_mae_worst_cell_pct"].astype(float).min())
 
         lines.append("")
         lines.append(
-            "**Verdict.** No window tried kept the pooled held-out MAE "
-            f"under {ph('wts_limit', limit, '.0f')}% with a model of its own; "
-            f"the smallest tried, span "
-            f"{ph('wts_small_tried_span', float(limits['smallest_tried_span_v'].iloc[0]), '.2f')} V, "
-            f"reaches {ph('wts_small_tried_mae', float(limits['smallest_tried_mae_pct'].iloc[0]), '.2f')}%.\n"
+            "**Verdict.** No window tried passes all three tests with a model "
+            f"of its own. All {ph('wts_n_windows', n_windows, 'd')} bands hold "
+            f"the pooled held-out MAE under "
+            f"{ph('wts_limit', limit, '.0f')}% "
+            f"({ph('wts_n_pooled_ok', n_pooled, 'd')} of "
+            f"{ph('wts_n_windows', n_windows, 'd')}), and "
+            f"{ph('wts_n_rl_ok', n_rl, 'd')} of "
+            f"{ph('wts_n_windows', n_windows, 'd')} also hold the random-load "
+            f"mean, but none keeps every single cell under budget "
+            f"({ph('wts_n_worst_ok', n_worst, 'd')} of "
+            f"{ph('wts_n_windows', n_windows, 'd')}). The shipped 4.0–3.4 V "
+            f"band is "
+            f"{metric_ph('wts_trained_pooled', trained['xgb_mae_all_pct'], '.2f')}% "
+            f"pooled and "
+            f"{metric_ph('wts_trained_rl', trained['xgb_mae_random_load_pct'], '.2f')}% "
+            f"on the random-load cells, yet its worst cell is "
+            f"{metric_ph('wts_trained_worst', trained['xgb_mae_worst_cell_pct'], '.2f')}%, "
+            f"which is also the smallest worst-cell error of any band "
+            f"({ph('wts_best_worst', best_worst, '.2f')}%). The reading that a "
+            "shorter window works once the model is trained on it survives on "
+            "the pooled and random-load numbers but not on the worst cell, so "
+            "no band — the shipped band included — is settled once every "
+            f"single cell has to stay under "
+            f"{ph('wts_limit', limit, '.0f')}%.\n"
         )
 
     else:
 
-        small = _row(smallest_name)
-        trained = _row(str(limits["trained_window"].iloc[0]))
-        tag = _wt_tag(smallest_name)
+        small = summary[
+            summary["window"] == str(limits["smallest_under_limit_window"].iloc[0])
+        ].iloc[0]
+        tag = _wt_tag(str(small["window"]))
 
         lines.append("")
         lines.append(
-            "**Verdict.** A shorter window *does* work once the model is "
-            "trained on it: with a model of its own, every band tried keeps "
-            f"the pooled held-out MAE under {ph('wts_limit', limit, '.0f')}% "
-            f"({ph('wts_n_under', n_under, 'd')} of "
-            f"{ph('wts_n_windows', n_windows, 'd')} bands). The smallest is "
+            "**Verdict.** A shorter window does work once the model is trained "
+            "on it, on all three held-out numbers at once: "
+            f"{ph('wts_n_pass', n_pass, 'd')} of "
+            f"{ph('wts_n_windows', n_windows, 'd')} bands hold the pooled MAE, "
+            f"the random-load MAE and the worst single cell under "
+            f"{ph('wts_limit', limit, '.0f')}%. The smallest is "
             f"{ph(tag + '_hi', float(small['window_high_v']), '.1f')}–"
             f"{ph(tag + '_lo', float(small['window_low_v']), '.1f')} V "
             f"(span {ph(tag + '_span', float(small['window_span_v']), '.2f')} V), "
-            f"at {ph(tag + '_xgb', float(small['xgb_mae_pct']), '.2f')}% "
-            f"pooled over the nine constant-current held-out cells and "
-            f"{ph('wts_small_all', float(limits['smallest_under_limit_mae_pct'].iloc[0]), '.2f')}% "
-            "over all thirteen, against "
-            f"{ph('wts_trained_all', float(limits['trained_window_mae_pct'].iloc[0]), '.2f')}% "
-            "for the shipped 4.0–3.4 V band. The earlier failure was the "
-            "shipped model being handed a different band, not the window "
-            "length. The random-load cells are the stricter half of the "
-            "test: there the smallest band sits just over budget at "
-            f"{ph(tag + '_rl_xgb', float(small['xgb_mae_random_load_pct']), '.2f')}%, "
-            "so the narrowest window that also stays under "
-            f"{ph('wts_limit', limit, '.0f')}% on the random-load cells is "
-            f"{ph('wts_rl_ok_hi', float(rl_ok['window_high_v']), '.1f')}–"
-            f"{ph('wts_rl_ok_lo', float(rl_ok['window_low_v']), '.1f')} V "
-            f"at {ph('wts_rl_ok_mae', float(rl_ok['xgb_mae_random_load_pct']), '.2f')}%.\n"
+            f"at {metric_ph(tag + '_pooled', small['xgb_mae_all_pct'], '.2f')}% "
+            f"pooled, "
+            f"{metric_ph(tag + '_rl', small['xgb_mae_random_load_pct'], '.2f')}% "
+            f"on the random-load cells and "
+            f"{metric_ph(tag + '_worst', small['xgb_mae_worst_cell_pct'], '.2f')}% "
+            "on its worst cell.\n"
         )
 
+    lines.append("")
+    lines.append("##### Appendix: ElasticNet and the window formula\n")
     lines.append(
-        "ElasticNet is reported for comparison but is the fragile model "
-        "here: its inputs are unbounded ratios, and a random-load cell whose "
-        "opening discharges barely cross the band (B0039) gives a tiny "
-        "five-discharge baseline, so its later window ratios run orders of "
-        "magnitude past the training range. A linear fit extrapolates that to "
-        "implausible SOH while the tree model stays bounded, which is why the "
-        "3% question is read against XGBoost, the shipped model family. A "
-        "cell whose ElasticNet or window-formula score leaves the sane range "
-        "(R2 below "
+        "ElasticNet is not the model — XGBoost is, and the verdict above is "
+        "read from XGBoost alone. ElasticNet is carried only as a comparison, "
+        "and it is the fragile one here: its inputs are unbounded ratios, and "
+        "a random-load cell whose opening discharges barely cross the band "
+        "(B0039) gives a tiny five-discharge baseline, so its later window "
+        "ratios run orders of magnitude past the training range. A linear fit "
+        "extrapolates that to implausible SOH while the tree model stays "
+        "bounded. A cell whose ElasticNet or window-formula score leaves the "
+        "sane range (R2 below "
         f"{ph('wts_r2_floor', R2_UNSTABLE_BELOW, '.0f')} or MAE above "
         f"{ph('wts_mae_ceiling', MAE_UNSTABLE_ABOVE_PCT, '.0f')}%) is written "
         "as *unstable* rather than as a raw number: at that magnitude the "
         "digits are floating-point noise, not a measurement, and writing them "
         "would make the file change from one machine to the next.\n"
     )
+    lines.append(
+        "| Window (V) | ElasticNet MAE (%) | Random-load ElasticNet MAE (%) | "
+        "window formula MAE (%) |"
+    )
+    lines.append("|---|---|---|---|")
+
+    for _, row in summary.iterrows():
+
+        tag = _wt_tag(str(row["window"]))
+        source = REQUIRED["window_train_summary"]
+
+        for metric, key in (
+            ("ElasticNet MAE", "elasticnet_mae_pct"),
+            ("random-load ElasticNet MAE", "elasticnet_mae_random_load_pct"),
+            ("window formula MAE", "window_formula_mae_pct"),
+        ):
+            record("SOH", "window train sweep", row["window"], metric,
+                   row[key], "%", source)
+
+        lines.append(
+            f"| {ph(tag + '_hi', float(row['window_high_v']), '.1f')}–"
+            f"{ph(tag + '_lo', float(row['window_low_v']), '.1f')} | "
+            f"{metric_ph(tag + '_en', row['elasticnet_mae_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_rl_en', row['elasticnet_mae_random_load_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_formula', row['window_formula_mae_pct'], '.2f')} |"
+        )
 
     return "\n".join(lines)
 
 
 def build_window_train_share(summary, limits, wr_limits):
     """
-    The one-line README limits-table cell: a shorter window works once
-    the model is trained on it, with the smallest surviving band.
+    The one-line README limits-table cell: judged on three held-out
+    numbers at once -- pooled MAE, random-load-only MAE and the worst
+    single cell -- no window, the shipped band included, holds all
+    three under budget.
     """
 
     limit = float(limits["mae_limit_pct"].iloc[0])
-    smallest_name = str(limits["smallest_under_limit_window"].iloc[0])
+    n_pass = int(limits["n_under_limit"].iloc[0])
+    n_windows = int(limits["n_windows"].iloc[0])
 
-    if smallest_name == "none":
-
-        return (
-            f"With Gaussian noise on the held-out cell's inputs the pooled "
-            f"MAE stays under {ph('wts_limit', limit, '.0f')}% up to "
-            f"{ph('wr_largest_mv', float(wr_limits['largest_voltage_noise_mv'].iloc[0]), '.0f')} mV "
-            f"of voltage noise and "
-            f"{ph('wr_largest_pct', float(wr_limits['largest_current_noise_pct'].iloc[0]), '.0f')}% "
-            f"of current noise, but no window shorter than the trained band "
-            f"held the budget with a model of its own "
-            f"(see *A model trained on its own window* under Key Results)."
-        )
-
-    small = summary[summary["window"] == smallest_name].iloc[0]
-    tag = _wt_tag(smallest_name)
-
-    return (
-        f"With Gaussian noise on the held-out cell's inputs the pooled MAE "
-        f"stays under {ph('wts_limit', limit, '.0f')}% up to "
+    noise = (
+        f"With Gaussian noise on the held-out cell's inputs the pooled "
+        f"MAE stays under {ph('wts_limit', limit, '.0f')}% up to "
         f"{ph('wr_largest_mv', float(wr_limits['largest_voltage_noise_mv'].iloc[0]), '.0f')} mV "
         f"of voltage noise and "
         f"{ph('wr_largest_pct', float(wr_limits['largest_current_noise_pct'].iloc[0]), '.0f')}% "
-        f"of current noise. A shorter window fails only when the "
+        f"of current noise. "
+    )
+
+    trained = summary[summary["window"] == "window_4.0_3.4"].iloc[0]
+
+    if n_pass == 0:
+
+        n_rl = int(summary["passes_random_load"].sum())
+
+        return noise + (
+            f"A shorter window fails only when the "
+            f"{ph('wp_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
+            f"{ph('wp_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V "
+            f"model is handed a band it was not trained on, but judged on "
+            f"three held-out numbers at once — pooled MAE, random-load-only "
+            f"MAE and the worst single cell — no window of the "
+            f"{ph('wts_n_windows', n_windows, 'd')} tried, the shipped band "
+            f"included, holds all three under "
+            f"{ph('wts_limit', limit, '.0f')}%. Only "
+            f"{ph('wts_share_n_rl', n_rl, 'd')} of "
+            f"{ph('wts_n_windows_share', n_windows, 'd')} otherwise hold the "
+            f"random-load mean, and the shipped 4.0–3.4 V band's worst cell is "
+            f"{ph('wts_share_trained_worst', float(trained['xgb_mae_worst_cell_pct']), '.2f')}% "
+            f"against {ph('wts_share_trained_pooled', float(trained['xgb_mae_all_pct']), '.2f')}% "
+            f"pooled (see *A model trained on its own window* under Key Results)."
+        )
+
+    small = summary[
+        summary["window"] == str(limits["smallest_under_limit_window"].iloc[0])
+    ].iloc[0]
+    tag = _wt_tag(str(small["window"]))
+
+    return noise + (
+        f"A shorter window fails only when the "
         f"{ph('wp_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
         f"{ph('wp_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V "
         f"model is handed a band it was not trained on: train a model on the "
-        f"band and it works down to a "
+        f"band and it holds the pooled MAE, the random-load MAE and the worst "
+        f"single cell all under {ph('wts_limit', limit, '.0f')}% down to a "
         f"{ph(tag + '_span', float(small['window_span_v']), '.2f')} V window "
         f"({ph(tag + '_hi', float(small['window_high_v']), '.1f')}–"
-        f"{ph(tag + '_lo', float(small['window_low_v']), '.1f')} V), which holds "
-        f"{ph('wts_small_all', float(limits['smallest_under_limit_mae_pct'].iloc[0]), '.2f')}% "
-        f"pooled held-out MAE (see *A model trained on its own window* under "
-        f"Key Results)."
+        f"{ph(tag + '_lo', float(small['window_low_v']), '.1f')} V), at "
+        f"{ph(tag + '_pooled', float(small['xgb_mae_all_pct']), '.2f')}% "
+        f"pooled (see *A model trained on its own window* under Key Results)."
     )
 
 
@@ -2620,14 +2681,14 @@ def build_model_card(partial_transfer, rul, clean, wr_summary, wr_limits,
     )
     wt_limit = float(wt_limits["mae_limit_pct"].iloc[0])
     wt_smallest = str(wt_limits["smallest_under_limit_window"].iloc[0])
+    wt_bands = ", ".join(
+        f"{ph(f'mc_wtband_{index}_hi', float(row['window_high_v']), '.1f')}–"
+        f"{ph(f'mc_wtband_{index}_lo', float(row['window_low_v']), '.1f')}"
+        for index, (_, row) in enumerate(wt_summary.iterrows())
+    )
     if wt_smallest != "none":
         wt_row = wt_summary[wt_summary["window"] == wt_smallest].iloc[0]
         wt_tag = _wt_tag(wt_smallest)
-        wt_bands = ", ".join(
-            f"{ph(f'mc_wtband_{index}_hi', float(row['window_high_v']), '.1f')}–"
-            f"{ph(f'mc_wtband_{index}_lo', float(row['window_low_v']), '.1f')}"
-            for index, (_, row) in enumerate(wt_summary.iterrows())
-        )
         lines.append(
             f"- A model trained on each candidate window ({wt_bands} V): the "
             f"smallest that holds the pooled held-out MAE under "
@@ -2636,6 +2697,21 @@ def build_model_card(partial_transfer, rul, clean, wr_summary, wr_limits,
             f"{ph(wt_tag + '_lo', float(wt_row['window_low_v']), '.1f')} V "
             f"(span {ph(wt_tag + '_span', float(wt_row['window_span_v']), '.2f')} V) "
             f"at {ph('wts_small_all', float(wt_limits['smallest_under_limit_mae_pct'].iloc[0]), '.2f')}%."
+        )
+    else:
+        trained = wt_summary[wt_summary["window"] == "window_4.0_3.4"].iloc[0]
+        lines.append(
+            f"- A model trained on each candidate window ({wt_bands} V): "
+            f"judged on three held-out numbers at once — pooled MAE, "
+            f"random-load MAE and the worst single cell — no band holds all "
+            f"three under {ph('wts_limit', wt_limit, '.0f')}%; the shipped "
+            f"{ph('mc_window_high', features.WINDOW_VOLTAGE_HIGH, '.1f')}–"
+            f"{ph('mc_window_low', features.WINDOW_VOLTAGE_LOW, '.1f')} V "
+            f"band's worst cell is "
+            f"{ph('mc_wt_trained_worst', float(trained['xgb_mae_worst_cell_pct']), '.2f')}% "
+            f"against "
+            f"{ph('mc_wt_trained_pooled', float(trained['xgb_mae_all_pct']), '.2f')}% "
+            f"pooled."
         )
 
     lines.append("")
