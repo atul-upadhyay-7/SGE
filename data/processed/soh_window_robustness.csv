@@ -170,7 +170,7 @@ voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,wi
 voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,6.5900194826,-19.5429448663
 voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,3.0026285126,-0.9949819774
 voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,7.3918178614,-9.8714336616
-voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,40.0004370965,-4418.2596608921
+voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,40.0004370965,unstable
 voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,XGBoost,2.8595615276,-1.0948325025
 voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,window_formula,4.4552440587,-4.1871525333
 current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,leave-one-cell-out: G3,B0031,40,ElasticNet,0.8099599721,0.8466160088

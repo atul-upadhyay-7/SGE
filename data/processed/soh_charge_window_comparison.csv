@@ -1,9 +1,9 @@
 protocol,model,n_cycles,charge_mae_pct,discharge_mae_pct,delta_mae_pct
-leave-one-cell-out: G1,XGBoost,633,3.2279725037,1.5696406127,1.658331891
+leave-one-cell-out: G1,XGBoost,633,3.2279725036,1.5696406127,1.6583318909
 leave-one-cell-out: G1,ElasticNet,633,3.0907231598,1.6774596324,1.4132635274
 leave-one-cell-out: G3,XGBoost,156,1.3450857418,1.0669168027,0.2781689391
 leave-one-cell-out: G3,ElasticNet,156,1.4069490789,1.7816329601,-0.3746838812
 "train G1+G3, test B0053",XGBoost,45,12.7217671319,2.9871276212,9.7346395107
 "train G1+G3, test B0053",ElasticNet,45,9.1661711128,3.4237845826,5.7423865302
 "train G1+G3, test random-load",XGBoost,220,8.0359727179,2.1751534679,5.86081925
-"train G1+G3, test random-load",ElasticNet,220,9.8098056203,605.0447288419,-595.2349232217
+"train G1+G3, test random-load",ElasticNet,220,9.8098056202,unstable,unstable

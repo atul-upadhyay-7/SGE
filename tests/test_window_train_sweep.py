@@ -51,6 +51,10 @@ WINDOWS = (
 TOL = 1e-6
 LIMIT = 3.0
 
+UNSTABLE = "unstable"
+R2_FLOOR = -1000.0
+MAE_CEILING = 100.0
+
 
 @pytest.fixture(scope="module")
 def detail():
@@ -135,7 +139,7 @@ def test_trained_band_reproduces_the_offline_feature_path(detail, offline):
 
     for _, row in offline.iterrows():
         assert np.isclose(
-            band.loc[row["test_cell"], "mae_pct"],
+            float(band.loc[row["test_cell"], "mae_pct"]),
             row["mae_pct"],
             rtol=0.0,
             atol=1e-6,
@@ -220,3 +224,105 @@ def test_readme_row_carries_the_smallest_window(summary, limits):
         f"{limits.iloc[0]['smallest_under_limit_mae_pct']:.2f}% pooled"
         in text
     )
+
+
+def test_no_unstable_metric_is_written_as_a_raw_number(detail, summary):
+    """A score that leaves the sane range is written as the word
+    `unstable`, not as the raw float, because at that magnitude the
+    digits are floating-point noise that a rerun can change."""
+
+    for column, floor, ceiling in (
+        ("mae_pct", None, MAE_CEILING),
+        ("r2", R2_FLOOR, None),
+    ):
+
+        for value in detail[column]:
+
+            if value == UNSTABLE:
+                continue
+
+            number = float(value)
+
+            if floor is not None:
+                assert number >= floor, (column, value)
+
+            if ceiling is not None:
+                assert number <= ceiling, (column, value)
+
+    # The flagged rows exist, so the guard is exercised and not vacuous.
+    assert (detail["mae_pct"] == UNSTABLE).any()
+    assert (detail["r2"] == UNSTABLE).any()
+
+    summary_metrics = (
+        "xgb_mae_pct",
+        "elasticnet_mae_pct",
+        "window_formula_mae_pct",
+        "xgb_mae_random_load_pct",
+        "elasticnet_mae_random_load_pct",
+        "xgb_mae_all_pct",
+        "elasticnet_mae_all_pct",
+    )
+
+    for column in summary_metrics:
+
+        for value in summary[column]:
+
+            if value == UNSTABLE:
+                continue
+
+            assert float(value) <= MAE_CEILING, (column, value)
+
+
+def test_results_document_explains_the_unstable_flag():
+    text = RESULTS.read_text()
+
+    assert "unstable*" in text or "as *unstable*" in text
+    assert "-1000" in text
+    assert "100%" in text
+
+
+def test_the_stage_writes_byte_identical_files_twice(tmp_path, monkeypatch):
+    """Run the stage twice and compare bytes: the fix for the clean-tree
+    failure is that every written float is a pure, rounded function of
+    the inputs, so two runs cannot differ in the last digits.
+
+    The workload is trimmed to one band and four constant-current cells
+    so the test stays affordable; the code path (sweep_table + the
+    rounded/stable write) is the stage's own.
+    """
+
+    import window_train_sweep as W
+
+    clean = pd.read_csv(CLEAN)
+    cells = ("B0005", "B0006", "B0029", "B0030")
+    trimmed = tmp_path / "clean.csv"
+    clean[clean["cell_id"].isin(cells)].to_csv(trimmed, index=False)
+
+    monkeypatch.setattr(W, "CLEAN", trimmed)
+    monkeypatch.setattr(W, "BANDS", (W.BANDS[0],))
+    monkeypatch.setattr(W, "RANDOM_LOAD_CELLS", ())
+
+    # Pass the raw directory by absolute path: resolve_raw_dir() uses
+    # paths relative to the cwd, and an unrelated test (train.py's
+    # driver) leaves the cwd elsewhere.
+    raw = REPO / "data" / "raw"
+
+    outputs = {
+        name: tmp_path / f"{name}.csv"
+        for name in ("detail", "summary", "limits")
+    }
+
+    monkeypatch.setattr(W, "DETAIL_OUT", outputs["detail"])
+    monkeypatch.setattr(W, "SUMMARY_OUT", outputs["summary"])
+    monkeypatch.setattr(W, "LIMITS_OUT", outputs["limits"])
+
+    def run():
+        detail, summary, limits = W.sweep_table(raw_dir=raw)
+        W.write_outputs(detail, summary, limits)
+        return {name: path.read_bytes() for name, path in outputs.items()}
+
+    first = run()
+    second = run()
+
+    assert first == second, "a second run changed the written bytes"
+    assert all(first.values()), "the stage wrote an empty file"

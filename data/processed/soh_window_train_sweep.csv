@@ -26,9 +26,9 @@ window_4.0_3.4,4.0,3.4,0.6,leave-one-cell-out: G3,B0032,G3,False,window_formula,
 window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,G9,False,ElasticNet,55,3.4237845826,-1.174577509
 window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,G9,False,XGBoost,55,2.9871276212,-0.8610080826
 window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test B0053",B0053,G9,False,window_formula,55,10.1483838651,-11.5430721885
-window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0039,G5,True,ElasticNet,35,3937.9574376538,-464498.0412167689
+window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0039,G5,True,ElasticNet,35,unstable,unstable
 window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0039,G5,True,XGBoost,35,3.6380890809,-0.2947439744
-window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0039,G5,True,window_formula,35,3225.4309158235,-295438.600386435
+window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0039,G5,True,window_formula,35,unstable,unstable
 window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0042,G6,True,ElasticNet,65,5.7847544493,-0.2929143351
 window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0042,G6,True,XGBoost,65,1.9137264573,0.8955709123
 window_4.0_3.4,4.0,3.4,0.6,"train G1+G3, test random-load",B0042,G6,True,window_formula,65,9.8824703423,-2.6648011305
@@ -65,9 +65,9 @@ window_3.9_3.5,3.9,3.5,0.4,leave-one-cell-out: G3,B0032,G3,False,window_formula,
 window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test B0053",B0053,G9,False,ElasticNet,55,3.1538540302,-1.2687859208
 window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test B0053",B0053,G9,False,XGBoost,55,2.8525284988,-0.8131210853
 window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test B0053",B0053,G9,False,window_formula,55,8.5435818525,-11.6517706877
-window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0039,G5,True,ElasticNet,35,4171.5198036329,-540630.2211995996
+window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0039,G5,True,ElasticNet,35,unstable,unstable
 window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0039,G5,True,XGBoost,35,3.0113524977,-0.2081174274
-window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0039,G5,True,window_formula,35,3324.1305471991,-321973.6216044238
+window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0039,G5,True,window_formula,35,unstable,unstable
 window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0042,G6,True,ElasticNet,65,6.7106789042,-1.0002141476
 window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0042,G6,True,XGBoost,65,2.4477201201,0.8186754654
 window_3.9_3.5,3.9,3.5,0.4,"train G1+G3, test random-load",B0042,G6,True,window_formula,65,8.398971648,-1.5473140017
@@ -182,9 +182,9 @@ window_3.7_3.4,3.7,3.4,0.3,leave-one-cell-out: G3,B0032,G3,False,window_formula,
 window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test B0053",B0053,G9,False,ElasticNet,55,3.555406947,-1.214569453
 window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test B0053",B0053,G9,False,XGBoost,55,6.8553340092,-5.9809362291
 window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test B0053",B0053,G9,False,window_formula,55,11.5111053915,-13.7001748965
-window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0039,G5,True,ElasticNet,35,2327.072992471,-158967.1191747358
+window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0039,G5,True,ElasticNet,35,unstable,unstable
 window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0039,G5,True,XGBoost,35,2.6828147225,-0.0020280207
-window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0039,G5,True,window_formula,35,1955.5024167101,-106624.9703115893
+window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0039,G5,True,window_formula,35,unstable,unstable
 window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0042,G6,True,ElasticNet,65,6.0831350196,-0.3529828953
 window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0042,G6,True,XGBoost,65,2.8932017046,0.7567599153
 window_3.7_3.4,3.7,3.4,0.3,"train G1+G3, test random-load",B0042,G6,True,window_formula,65,12.4041292626,-4.2491929258

@@ -65,7 +65,14 @@ from load_data import (  # noqa: E402
 )
 from random_load import clean_cell_frame  # noqa: E402
 from random_load_transfer import TRANSFER_CELLS  # noqa: E402
-from repro import rounded  # noqa: E402
+from repro import (  # noqa: E402
+    MAE_UNSTABLE_ABOVE_PCT,
+    R2_UNSTABLE_BELOW,
+    REPRO_DECIMALS,
+    UNSTABLE,
+    rounded,
+    stable_metric,
+)
 
 PROC = ROOT / "data" / "processed"
 CLEAN = PROC / "nasa_ml_dataset_clean.csv"
@@ -431,8 +438,12 @@ def _score(rows, protocol, test, train):
             "is_random_load": bool(test["cell_id"].iloc[0] in RANDOM_LOAD_CELLS),
             "model": model_name,
             "n_cycles": int(len(test)),
-            "mae_pct": _mae(test["soh"], predicted),
-            "r2": _r2(test["soh"], predicted),
+            "mae_pct": stable_metric(
+                _mae(test["soh"], predicted), high=MAE_UNSTABLE_ABOVE_PCT
+            ),
+            "r2": stable_metric(
+                _r2(test["soh"], predicted), low=R2_UNSTABLE_BELOW
+            ),
         })
 
     rows.append({
@@ -442,8 +453,13 @@ def _score(rows, protocol, test, train):
         "is_random_load": bool(test["cell_id"].iloc[0] in RANDOM_LOAD_CELLS),
         "model": "window_formula",
         "n_cycles": int(len(test)),
-        "mae_pct": _mae(test["soh"], test["_window_formula"]),
-        "r2": _r2(test["soh"], test["_window_formula"]),
+        "mae_pct": stable_metric(
+            _mae(test["soh"], test["_window_formula"]),
+            high=MAE_UNSTABLE_ABOVE_PCT,
+        ),
+        "r2": stable_metric(
+            _r2(test["soh"], test["_window_formula"]), low=R2_UNSTABLE_BELOW
+        ),
     })
 
 
@@ -492,14 +508,27 @@ def charge_table(raw_dir=None):
 
 
 def _pooled(detail, protocol, model):
+    """Cycle-weighted MAE for one protocol and model, UNSTABLE if any
+    contributing cell's MAE was flagged."""
+
     block = detail[
         (detail["protocol"] == protocol) & (detail["model"] == model)
     ]
     if block.empty:
         return np.nan
+
+    values = block["mae_pct"]
+
+    if (values == UNSTABLE).any():
+        return UNSTABLE
+
     weights = block["n_cycles"].to_numpy(dtype=float)
-    values = block["mae_pct"].to_numpy(dtype=float)
-    return float(np.sum(values * weights) / np.sum(weights))
+    numbers = values.astype(float).to_numpy(dtype=float)
+
+    return stable_metric(
+        float(np.sum(numbers * weights) / np.sum(weights)),
+        high=MAE_UNSTABLE_ABOVE_PCT,
+    )
 
 
 def comparison_table(charge_detail, discharge_detail):
@@ -544,9 +573,14 @@ def comparison_table(charge_detail, discharge_detail):
     comparison = pd.DataFrame(rows)
 
     if not comparison.empty:
-        comparison["delta_mae_pct"] = (
-            comparison["charge_mae_pct"] - comparison["discharge_mae_pct"]
-        )
+
+        def _delta(row):
+            charge, discharge = row["charge_mae_pct"], row["discharge_mae_pct"]
+            if charge == UNSTABLE or discharge == UNSTABLE:
+                return UNSTABLE
+            return round(float(charge) - float(discharge), REPRO_DECIMALS)
+
+        comparison["delta_mae_pct"] = comparison.apply(_delta, axis=1)
 
     return comparison
 

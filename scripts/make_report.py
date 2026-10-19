@@ -42,12 +42,18 @@ ROOT = Path(__file__).resolve().parent.parent
 PROC = ROOT / "data" / "processed"
 EXP = PROC / "experiments"
 
+sys.path.insert(0, str(ROOT / "src"))
+
+from repro import (  # noqa: E402
+    MAE_UNSTABLE_ABOVE_PCT,
+    R2_UNSTABLE_BELOW,
+    UNSTABLE,
+)
+
 # The BMS contract thresholds live in src/features.py, not in this
 # script. Importing the module (rather than copying the numbers) is
 # what keeps the README's "what a real BMS must provide" section and
 # the model's own contract from drifting apart.
-sys.path.insert(0, str(ROOT / "src"))
-
 import features  # noqa: E402
 
 SRC_FEATURES = ROOT / "src" / "features.py"
@@ -140,6 +146,20 @@ def ph(pid, value, spec=None):
         )
     _numbers[pid] = value
     return "{{" + pid + (f":{spec}" if spec else "") + "}}"
+
+
+def metric_ph(pid, value, spec):
+    """
+    Render a metric cell that may have been flagged UNSTABLE at the
+    source (repro.stable_metric). A float becomes the usual placeholder;
+    the flag is emitted as the bare word, since it carries no digits for
+    the number check to police and no format spec can be applied to it.
+    """
+
+    if isinstance(value, str) and value == UNSTABLE:
+        return UNSTABLE
+
+    return ph(pid, float(value), spec)
 
 
 def load(key):
@@ -982,11 +1002,11 @@ def build_window_train_sweep(summary, limits):
             f"| {ph(tag + '_hi', float(row['window_high_v']), '.1f')}–"
             f"{ph(tag + '_lo', float(row['window_low_v']), '.1f')} | "
             f"{ph(tag + '_span', float(row['window_span_v']), '.2f')} | "
-            f"{ph(tag + '_xgb', float(row['xgb_mae_pct']), '.2f')} | "
-            f"{ph(tag + '_en', float(row['elasticnet_mae_pct']), '.2f')} | "
-            f"{ph(tag + '_formula', float(row['window_formula_mae_pct']), '.2f')} | "
-            f"{ph(tag + '_rl_xgb', float(row['xgb_mae_random_load_pct']), '.2f')} | "
-            f"{ph(tag + '_rl_en', float(row['elasticnet_mae_random_load_pct']), '.2f')} |"
+            f"{metric_ph(tag + '_xgb', row['xgb_mae_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_en', row['elasticnet_mae_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_formula', row['window_formula_mae_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_rl_xgb', row['xgb_mae_random_load_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_rl_en', row['elasticnet_mae_random_load_pct'], '.2f')} |"
         )
 
     smallest_name = str(limits["smallest_under_limit_window"].iloc[0])
@@ -1053,7 +1073,14 @@ def build_window_train_sweep(summary, limits):
         "five-discharge baseline, so its later window ratios run orders of "
         "magnitude past the training range. A linear fit extrapolates that to "
         "implausible SOH while the tree model stays bounded, which is why the "
-        "3% question is read against XGBoost, the shipped model family.\n"
+        "3% question is read against XGBoost, the shipped model family. A "
+        "cell whose ElasticNet or window-formula score leaves the sane range "
+        "(R2 below "
+        f"{ph('wts_r2_floor', R2_UNSTABLE_BELOW, '.0f')} or MAE above "
+        f"{ph('wts_mae_ceiling', MAE_UNSTABLE_ABOVE_PCT, '.0f')}%) is written "
+        "as *unstable* rather than as a raw number: at that magnitude the "
+        "digits are floating-point noise, not a measurement, and writing them "
+        "would make the file change from one machine to the next.\n"
     )
 
     return "\n".join(lines)
@@ -1171,9 +1198,9 @@ def build_charge(comparison):
 
         lines.append(
             f"| {label_of[row['protocol']]} | {row['model']} | "
-            f"{ph(tag + '_charge', float(row['charge_mae_pct']), '.2f')} | "
-            f"{ph(tag + '_discharge', float(row['discharge_mae_pct']), '.2f')} | "
-            f"{ph(tag + '_delta', float(row['delta_mae_pct']), '.2f')} |"
+            f"{metric_ph(tag + '_charge', row['charge_mae_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_discharge', row['discharge_mae_pct'], '.2f')} | "
+            f"{metric_ph(tag + '_delta', row['delta_mae_pct'], '.2f')} |"
         )
 
     def _cell(protocol, model):

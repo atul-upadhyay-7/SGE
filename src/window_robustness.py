@@ -48,7 +48,13 @@ from load_data import (  # noqa: E402
     iter_discharge_traces,
     resolve_raw_dir,
 )
-from repro import rounded  # noqa: E402
+from repro import (  # noqa: E402
+    MAE_UNSTABLE_ABOVE_PCT,
+    R2_UNSTABLE_BELOW,
+    UNSTABLE,
+    rounded,
+    stable_metric,
+)
 from run_experiments import (  # noqa: E402
     TARGET,
     cell_relative_features,
@@ -310,15 +316,27 @@ def robustness_table(raw_dir=None):
                 rows.append({
                     **base,
                     "model": model_name,
-                    "mae_pct": _mae(scored[TARGET], predicted),
-                    "r2": _r2(scored[TARGET], predicted),
+                    "mae_pct": stable_metric(
+                        _mae(scored[TARGET], predicted),
+                        high=MAE_UNSTABLE_ABOVE_PCT,
+                    ),
+                    "r2": stable_metric(
+                        _r2(scored[TARGET], predicted),
+                        low=R2_UNSTABLE_BELOW,
+                    ),
                 })
 
             rows.append({
                 **base,
                 "model": "window_formula",
-                "mae_pct": _mae(scored[TARGET], scored["_window_formula"]),
-                "r2": _r2(scored[TARGET], scored["_window_formula"]),
+                "mae_pct": stable_metric(
+                    _mae(scored[TARGET], scored["_window_formula"]),
+                    high=MAE_UNSTABLE_ABOVE_PCT,
+                ),
+                "r2": stable_metric(
+                    _r2(scored[TARGET], scored["_window_formula"]),
+                    low=R2_UNSTABLE_BELOW,
+                ),
             })
 
     detail = pd.DataFrame(rows)
@@ -333,7 +351,11 @@ def robustness_table(raw_dir=None):
 
 
 def _pooled(detail, condition, model):
-    """Held-out MAE pooled over all nine cells, weighted by cycles."""
+    """Held-out MAE pooled over all nine cells, weighted by cycles.
+
+    A cell whose MAE is UNSTABLE makes the pooled value UNSTABLE too:
+    averaging a number that is not a measurement would invent one.
+    """
 
     block = detail[
         (detail["condition"] == condition) & (detail["model"] == model)
@@ -342,10 +364,18 @@ def _pooled(detail, condition, model):
     if block.empty:
         return np.nan
 
-    weights = block["n_cycles"].to_numpy(dtype=float)
-    values = block["mae_pct"].to_numpy(dtype=float)
+    values = block["mae_pct"]
 
-    return float(np.sum(values * weights) / np.sum(weights))
+    if (values == UNSTABLE).any():
+        return UNSTABLE
+
+    weights = block["n_cycles"].to_numpy(dtype=float)
+    numbers = values.astype(float).to_numpy(dtype=float)
+
+    return stable_metric(
+        float(np.sum(numbers * weights) / np.sum(weights)),
+        high=MAE_UNSTABLE_ABOVE_PCT,
+    )
 
 
 def _summarize(detail, levels):
@@ -362,6 +392,8 @@ def _summarize(detail, levels):
         # count the held-out discharges once, not once per method.
         xgb_block = block[block["model"] == "XGBoost"]
 
+        xgb_all = _pooled(detail, name, "XGBoost")
+
         rows.append({
             **{k: condition[k] for k in (
                 "condition", "kind", "voltage_noise_mv",
@@ -369,13 +401,13 @@ def _summarize(detail, levels):
                 "window_span_v",
             )},
             "n_cycles": int(xgb_block["n_cycles"].sum()),
-            "xgb_mae_pct": _pooled(detail, name, "XGBoost"),
+            "xgb_mae_pct": xgb_all,
             "elasticnet_mae_pct": _pooled(detail, name, "ElasticNet"),
             "window_formula_mae_pct": _pooled(
                 detail, name, "window_formula"
             ),
             "under_limit": bool(
-                _pooled(detail, name, "XGBoost") < MAE_LIMIT_PCT
+                isinstance(xgb_all, float) and xgb_all < MAE_LIMIT_PCT
             ),
         })
 

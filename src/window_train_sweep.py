@@ -66,7 +66,13 @@ from load_data import (  # noqa: E402
 )
 from random_load import clean_cell_frame  # noqa: E402
 from random_load_transfer import TRANSFER_CELLS  # noqa: E402
-from repro import rounded  # noqa: E402
+from repro import (  # noqa: E402
+    MAE_UNSTABLE_ABOVE_PCT,
+    R2_UNSTABLE_BELOW,
+    UNSTABLE,
+    rounded,
+    stable_metric,
+)
 
 PROC = ROOT / "data" / "processed"
 CLEAN = PROC / "nasa_ml_dataset_clean.csv"
@@ -252,8 +258,12 @@ def _score(rows, band, protocol, test, train):
             "is_random_load": bool(test["cell_id"].iloc[0] in RANDOM_LOAD_CELLS),
             "model": model_name,
             "n_cycles": int(len(test)),
-            "mae_pct": _mae(test["soh"], predicted),
-            "r2": _r2(test["soh"], predicted),
+            "mae_pct": stable_metric(
+                _mae(test["soh"], predicted), high=MAE_UNSTABLE_ABOVE_PCT
+            ),
+            "r2": stable_metric(
+                _r2(test["soh"], predicted), low=R2_UNSTABLE_BELOW
+            ),
         })
 
     rows.append({
@@ -264,8 +274,13 @@ def _score(rows, band, protocol, test, train):
         "is_random_load": bool(test["cell_id"].iloc[0] in RANDOM_LOAD_CELLS),
         "model": "window_formula",
         "n_cycles": int(len(test)),
-        "mae_pct": _mae(test["soh"], test["_window_formula"]),
-        "r2": _r2(test["soh"], test["_window_formula"]),
+        "mae_pct": stable_metric(
+            _mae(test["soh"], test["_window_formula"]),
+            high=MAE_UNSTABLE_ABOVE_PCT,
+        ),
+        "r2": stable_metric(
+            _r2(test["soh"], test["_window_formula"]), low=R2_UNSTABLE_BELOW
+        ),
     })
 
 
@@ -338,7 +353,13 @@ def sweep_table(raw_dir=None):
 
 
 def _pooled(detail, window, model, subset):
-    """Cycle-weighted MAE over a subset of the held-out cells."""
+    """Cycle-weighted MAE over a subset of the held-out cells.
+
+    If any contributing cell's MAE is UNSTABLE the pooled value is
+    UNSTABLE too: averaging a number that is not a measurement would
+    invent one. Rounding to the written precision keeps the pooled
+    float stable across machines the same way the per-cell rows are.
+    """
 
     block = detail[(detail["window"] == window) & (detail["model"] == model)]
 
@@ -350,10 +371,17 @@ def _pooled(detail, window, model, subset):
     if block.empty:
         return np.nan
 
-    weights = block["n_cycles"].to_numpy(dtype=float)
-    values = block["mae_pct"].to_numpy(dtype=float)
+    values = block["mae_pct"]
 
-    return float(np.sum(values * weights) / np.sum(weights))
+    if (values == UNSTABLE).any():
+        return UNSTABLE
+
+    weights = block["n_cycles"].to_numpy(dtype=float)
+    numbers = values.astype(float).to_numpy(dtype=float)
+
+    pooled = float(np.sum(numbers * weights) / np.sum(weights))
+
+    return stable_metric(pooled, high=MAE_UNSTABLE_ABOVE_PCT)
 
 
 def _summarize(detail):
@@ -364,6 +392,8 @@ def _summarize(detail):
 
         subset = detail[detail["window"] == name]
         xgb = subset[subset["model"] == "XGBoost"]
+
+        xgb_all = _pooled(detail, name, "XGBoost", "all")
 
         rows.append({
             "window": name,
@@ -385,12 +415,12 @@ def _summarize(detail):
             "elasticnet_mae_random_load_pct": _pooled(
                 detail, name, "ElasticNet", "random_load"
             ),
-            "xgb_mae_all_pct": _pooled(detail, name, "XGBoost", "all"),
+            "xgb_mae_all_pct": xgb_all,
             "elasticnet_mae_all_pct": _pooled(
                 detail, name, "ElasticNet", "all"
             ),
             "under_limit": bool(
-                _pooled(detail, name, "XGBoost", "all") < MAE_LIMIT_PCT
+                isinstance(xgb_all, float) and xgb_all < MAE_LIMIT_PCT
             ),
         })
 

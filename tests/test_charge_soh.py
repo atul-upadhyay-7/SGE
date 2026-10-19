@@ -46,6 +46,7 @@ PROTOCOLS = (
 
 TOL = 1e-6
 LIMIT = 3.0
+UNSTABLE = "unstable"
 
 
 @pytest.fixture(scope="module")
@@ -109,8 +110,12 @@ def test_charge_is_scored_for_both_models_on_all_cells(detail):
 
 def test_the_charge_window_matches_on_g3_and_loses_elsewhere(comparison):
     g3 = _cell(comparison, "leave-one-cell-out: G3", "XGBoost")
-    assert g3["charge_mae_pct"] < LIMIT
-    assert np.isclose(g3["charge_mae_pct"], g3["discharge_mae_pct"], atol=1.0)
+    assert float(g3["charge_mae_pct"]) < LIMIT
+    assert np.isclose(
+        float(g3["charge_mae_pct"]),
+        float(g3["discharge_mae_pct"]),
+        atol=1.0,
+    )
 
     for protocol in (
         "leave-one-cell-out: G1",
@@ -118,9 +123,11 @@ def test_the_charge_window_matches_on_g3_and_loses_elsewhere(comparison):
         "train G1+G3, test random-load",
     ):
         row = _cell(comparison, protocol, "XGBoost")
-        assert row["charge_mae_pct"] > LIMIT, protocol
-        assert row["charge_mae_pct"] > row["discharge_mae_pct"], protocol
-        assert row["delta_mae_pct"] > 0.0
+        assert float(row["charge_mae_pct"]) > LIMIT, protocol
+        assert (
+            float(row["charge_mae_pct"]) > float(row["discharge_mae_pct"])
+        ), protocol
+        assert float(row["delta_mae_pct"]) > 0.0
 
 
 def test_the_discharge_column_is_the_discharge_sweep(comparison):
@@ -137,14 +144,20 @@ def test_the_discharge_column_is_the_discharge_sweep(comparison):
         if block.empty:
             continue
 
+        values = block["mae_pct"]
+
+        if (values == UNSTABLE).any():
+            assert row["discharge_mae_pct"] == UNSTABLE, row["protocol"]
+            continue
+
         weights = block["n_cycles"].to_numpy(dtype=float)
         pooled = float(
-            (block["mae_pct"].to_numpy(dtype=float) * weights).sum()
+            (values.astype(float).to_numpy(dtype=float) * weights).sum()
             / weights.sum()
         )
 
         assert np.isclose(
-            row["discharge_mae_pct"], pooled, rtol=0.0, atol=TOL
+            float(row["discharge_mae_pct"]), pooled, rtol=0.0, atol=TOL
         ), row["protocol"]
 
 
@@ -156,4 +169,26 @@ def test_results_document_carries_the_charge_section(comparison):
 
     b0053 = _cell(comparison, "train G1+G3, test B0053", "XGBoost")
 
-    assert f"{b0053['charge_mae_pct']:.2f}" in text
+    assert f"{float(b0053['charge_mae_pct']):.2f}" in text
+
+
+def test_out_of_range_comparison_metrics_are_flagged(comparison):
+    """The discharge ElasticNet random-load MAE is the B0039 blow-up:
+    above the sane range, so it is written as `unstable` and the delta
+    derived from it is too, rather than as a raw number."""
+
+    assert (
+        comparison["discharge_mae_pct"] == UNSTABLE
+    ).any()
+
+    for _, row in comparison.iterrows():
+
+        for column in ("charge_mae_pct", "discharge_mae_pct", "delta_mae_pct"):
+
+            if row[column] == UNSTABLE:
+                continue
+
+            assert float(row[column]) <= 100.0, (row["protocol"], column)
+
+        if UNSTABLE in (row["charge_mae_pct"], row["discharge_mae_pct"]):
+            assert row["delta_mae_pct"] == UNSTABLE

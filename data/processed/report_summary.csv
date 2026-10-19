@@ -79,14 +79,14 @@ SOH,random-load transfer,held-out B0044,cell-relative XGBoost R2,0.7784765621,,d
 SOH,random-load transfer,mean,cell-relative XGBoost MAE,2.3066404361,%,data/processed/soh_random_load_transfer.csv
 SOH,random-load transfer,mean,cell-relative XGBoost R2,0.6152853903,,data/processed/soh_random_load_transfer.csv
 SOH,random-load transfer,mean,window formula MAE,8.0672492105,%,data/processed/soh_random_load_transfer.csv
-SOH,random-load transfer,verdict,cells where the model beats the formula,4.0,cells,data/processed/soh_random_load_transfer.csv
-SOH,random-load transfer,verdict,cells where the model R2 is positive,3.0,cells,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,verdict,cells where the model beats the formula,4,cells,data/processed/soh_random_load_transfer.csv
+SOH,random-load transfer,verdict,cells where the model R2 is positive,3,cells,data/processed/soh_random_load_transfer.csv
 SOH,window robustness,clean,Held-out XGBoost MAE,1.5667334163,%,data/processed/soh_window_robustness_summary.csv
 SOH,window robustness,clean,ElasticNet MAE,1.8099104012,%,data/processed/soh_window_robustness_summary.csv
 SOH,window robustness,clean,window formula MAE,9.2166033331,%,data/processed/soh_window_robustness_summary.csv
 SOH,window robustness,voltage_noise_5mv,Held-out XGBoost MAE,1.6510353773,%,data/processed/soh_window_robustness_summary.csv
 SOH,window robustness,voltage_noise_5mv,ElasticNet MAE,2.7596397961,%,data/processed/soh_window_robustness_summary.csv
-SOH,window robustness,voltage_noise_5mv,window formula MAE,9.8584947706,%,data/processed/soh_window_robustness_summary.csv
+SOH,window robustness,voltage_noise_5mv,window formula MAE,9.8584947705,%,data/processed/soh_window_robustness_summary.csv
 SOH,window robustness,voltage_noise_10mv,Held-out XGBoost MAE,1.9771896412,%,data/processed/soh_window_robustness_summary.csv
 SOH,window robustness,voltage_noise_10mv,ElasticNet MAE,2.7754749183,%,data/processed/soh_window_robustness_summary.csv
 SOH,window robustness,voltage_noise_10mv,window formula MAE,10.2811408177,%,data/processed/soh_window_robustness_summary.csv
@@ -120,13 +120,13 @@ SOH,window robustness,"train G1+G3, test B0053",XGBoost MAE (window_3.8_3.6),3.5
 SOH,window train sweep,window_4.0_3.4,XGBoost MAE,1.5667334163,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_4.0_3.4,ElasticNet MAE,1.8099104017,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_4.0_3.4,window formula MAE,9.2166033331,%,data/processed/soh_window_train_sweep_summary.csv
-SOH,window train sweep,window_4.0_3.4,random-load XGBoost MAE,2.1751534678,%,data/processed/soh_window_train_sweep_summary.csv
-SOH,window train sweep,window_4.0_3.4,random-load ElasticNet MAE,605.0447288419,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.0_3.4,random-load XGBoost MAE,2.1751534679,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_4.0_3.4,random-load ElasticNet MAE,unstable,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.9_3.5,XGBoost MAE,1.4719093676,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.9_3.5,ElasticNet MAE,1.020793421,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.9_3.5,window formula MAE,10.9597003749,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.9_3.5,random-load XGBoost MAE,2.8293494899,%,data/processed/soh_window_train_sweep_summary.csv
-SOH,window train sweep,window_3.9_3.5,random-load ElasticNet MAE,641.2164993192,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.9_3.5,random-load ElasticNet MAE,unstable,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.8_3.6,XGBoost MAE,1.5637612793,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.8_3.6,ElasticNet MAE,1.3393318657,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.8_3.6,window formula MAE,10.921265495,%,data/processed/soh_window_train_sweep_summary.csv
@@ -137,11 +137,11 @@ SOH,window train sweep,window_4.1_3.7,ElasticNet MAE,1.5225821956,%,data/process
 SOH,window train sweep,window_4.1_3.7,window formula MAE,11.6615423753,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_4.1_3.7,random-load XGBoost MAE,5.27413167,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_4.1_3.7,random-load ElasticNet MAE,11.1590973227,%,data/processed/soh_window_train_sweep_summary.csv
-SOH,window train sweep,window_3.7_3.4,XGBoost MAE,2.2186802617,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.7_3.4,XGBoost MAE,2.2186802616,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.7_3.4,ElasticNet MAE,1.3695031867,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.7_3.4,window formula MAE,8.7390876065,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,window train sweep,window_3.7_3.4,random-load XGBoost MAE,3.2292821707,%,data/processed/soh_window_train_sweep_summary.csv
-SOH,window train sweep,window_3.7_3.4,random-load ElasticNet MAE,359.7529286251,%,data/processed/soh_window_train_sweep_summary.csv
+SOH,window train sweep,window_3.7_3.4,random-load ElasticNet MAE,unstable,%,data/processed/soh_window_train_sweep_summary.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",window formula MAE,15.1573446147,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",ElasticNet MAE,1.4610524838,%,data/processed/experiments/soh_partial_reference_window.csv
 SOH,reference-window sensitivity,"Leave-one-cell-out (G1+G3), n=1",XGBoost MAE,1.8207054538,%,data/processed/experiments/soh_partial_reference_window.csv
@@ -211,22 +211,22 @@ SOH,D_vw_only,leave-one-cell-out (G1),ElasticNet MAE,1.8631860371,%,data/process
 SOH,D_vw_only,leave-one-cell-out (G1),XGBoost MAE,2.574361209,%,data/processed/experiments/ablation_features.csv
 RUL,trajectory,held-out B0005,MAE,7.1145833333,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0005,MAE,24.7708333333,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0005,EOL discharge,107.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0005,EOL discharge,107,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0005,reference-spread coverage,93.75,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0005,mean reference-spread width,25.7916666667,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0006,MAE,51.06,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0006,MAE,46.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0006,EOL discharge,61.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0006,EOL discharge,61,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0006,reference-spread coverage,0.0,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0006,mean reference-spread width,25.52,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0007,MAE,17.4736842105,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0007,MAE,37.5175438596,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0007,EOL discharge,125.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0007,EOL discharge,125,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0007,reference-spread coverage,17.5438596491,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0007,mean reference-spread width,14.6035087719,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,held-out B0018,MAE,6.4776119403,discharges,data/processed/rul_trajectory_results.csv
 RUL,fleet lifetime baseline,held-out B0018,MAE,29.0,discharges,data/processed/rul_trajectory_results.csv
-RUL,EOL,held-out B0018,EOL discharge,78.0,discharges,data/processed/rul_trajectory_results.csv
+RUL,EOL,held-out B0018,EOL discharge,78,discharges,data/processed/rul_trajectory_results.csv
 RUL,reference-spread coverage,held-out B0018,reference-spread coverage,82.0895522388,percent,data/processed/rul_trajectory_results.csv
 RUL,reference-spread width,held-out B0018,mean reference-spread width,20.3223880597,discharges,data/processed/rul_trajectory_results.csv
 RUL,trajectory,mean (G1),mean MAE,20.531469871025,discharges,data/processed/rul_trajectory_results.csv
@@ -256,18 +256,18 @@ RUL,calibrated band,calibration B0006,coverage,0.0,percent,data/processed/rul_ba
 RUL,calibrated band,calibration B0007,coverage,28.0701754386,percent,data/processed/rul_band_calibration.csv
 RUL,calibrated band,calibration B0018,coverage,100.0,percent,data/processed/rul_band_calibration.csv
 RUL,calibrated band,mean (G1),mean coverage,57.01754385965,percent,data/processed/rul_band_calibration.csv
-RUL,random-load check,B0038-B0044,cells checked,7.0,cells,data/processed/random_load_rul_check.csv
-RUL,random-load check,B0038-B0044,retirement threshold,80.0,percent SOH,data/processed/random_load_rul_check.csv
-RUL,random-load check,B0038-B0044,cells reaching 80%,5.0,cells,data/processed/random_load_rul_check.csv
-RUL,random-load check,B0038-B0044,cells reaching 80% and kept,4.0,cells,data/processed/random_load_rul_check.csv
-RUL,cross-group labels,B0039,EOL discharge,34.0,discharges,data/processed/rul_random_load_labels.csv
-RUL,cross-group labels,B0039,discharges,35.0,discharges,data/processed/rul_random_load_labels.csv
-RUL,cross-group labels,B0042,EOL discharge,60.0,discharges,data/processed/rul_random_load_labels.csv
-RUL,cross-group labels,B0042,discharges,65.0,discharges,data/processed/rul_random_load_labels.csv
-RUL,cross-group labels,B0043,EOL discharge,60.0,discharges,data/processed/rul_random_load_labels.csv
-RUL,cross-group labels,B0043,discharges,65.0,discharges,data/processed/rul_random_load_labels.csv
-RUL,cross-group labels,B0044,EOL discharge,57.0,discharges,data/processed/rul_random_load_labels.csv
-RUL,cross-group labels,B0044,discharges,65.0,discharges,data/processed/rul_random_load_labels.csv
+RUL,random-load check,B0038-B0044,cells checked,7,cells,data/processed/random_load_rul_check.csv
+RUL,random-load check,B0038-B0044,retirement threshold,80,percent SOH,data/processed/random_load_rul_check.csv
+RUL,random-load check,B0038-B0044,cells reaching 80%,5,cells,data/processed/random_load_rul_check.csv
+RUL,random-load check,B0038-B0044,cells reaching 80% and kept,4,cells,data/processed/random_load_rul_check.csv
+RUL,cross-group labels,B0039,EOL discharge,34,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0039,discharges,35,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0042,EOL discharge,60,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0042,discharges,65,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0043,EOL discharge,60,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0043,discharges,65,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0044,EOL discharge,57,discharges,data/processed/rul_random_load_labels.csv
+RUL,cross-group labels,B0044,discharges,65,discharges,data/processed/rul_random_load_labels.csv
 RUL,cross-group cg_a,held-out B0042,trajectory MAE,8.6530612245,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,cross-group cg_a,held-out B0042,extrapolation MAE,24.6318599238,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,cross-group cg_a,held-out B0042,fleet-lifetime baseline MAE,1.0,discharges,data/processed/rul_cross_group_g6_loco.csv
@@ -280,8 +280,8 @@ RUL,cross-group cg_a,held-out B0044,fleet-lifetime baseline MAE,3.0,discharges,d
 RUL,cross-group cg_a,mean,trajectory MAE,5.370896184566667,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,cross-group cg_a,mean,extrapolation MAE,13.353421082966667,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,cross-group cg_a,mean,fleet-lifetime baseline MAE,1.6666666666666667,discharges,data/processed/rul_cross_group_g6_loco.csv
-RUL,cross-group cg_a,verdict,cells where trajectory beats baseline,0.0,cells,data/processed/rul_cross_group_g6_loco.csv
-RUL,cross-group cg_a,verdict,cells where extrapolation beats baseline,0.0,cells,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,verdict,cells where trajectory beats baseline,0,cells,data/processed/rul_cross_group_g6_loco.csv
+RUL,cross-group cg_a,verdict,cells where extrapolation beats baseline,0,cells,data/processed/rul_cross_group_g6_loco.csv
 RUL,cross-group cg_b,held-out B0042,trajectory MAE,22.9183673469,discharges,data/processed/rul_cross_group_g1_to_g6.csv
 RUL,cross-group cg_b,held-out B0042,extrapolation MAE,24.6318599238,discharges,data/processed/rul_cross_group_g1_to_g6.csv
 RUL,cross-group cg_b,held-out B0042,fleet-lifetime baseline MAE,32.5,discharges,data/processed/rul_cross_group_g1_to_g6.csv
@@ -294,8 +294,8 @@ RUL,cross-group cg_b,held-out B0044,fleet-lifetime baseline MAE,35.5,discharges,
 RUL,cross-group cg_b,mean,trajectory MAE,20.56373853886667,discharges,data/processed/rul_cross_group_g1_to_g6.csv
 RUL,cross-group cg_b,mean,extrapolation MAE,13.353421082966667,discharges,data/processed/rul_cross_group_g1_to_g6.csv
 RUL,cross-group cg_b,mean,fleet-lifetime baseline MAE,33.5,discharges,data/processed/rul_cross_group_g1_to_g6.csv
-RUL,cross-group cg_b,verdict,cells where trajectory beats baseline,3.0,cells,data/processed/rul_cross_group_g1_to_g6.csv
-RUL,cross-group cg_b,verdict,cells where extrapolation beats baseline,3.0,cells,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,verdict,cells where trajectory beats baseline,3,cells,data/processed/rul_cross_group_g1_to_g6.csv
+RUL,cross-group cg_b,verdict,cells where extrapolation beats baseline,3,cells,data/processed/rul_cross_group_g1_to_g6.csv
 RUL,cross-group cg_c,held-out B0005,trajectory MAE,15.3229166667,discharges,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,held-out B0005,extrapolation MAE,76.9078718407,discharges,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,held-out B0005,fleet-lifetime baseline MAE,35.7395833333,discharges,data/processed/rul_cross_group_g6_to_g1.csv
@@ -311,16 +311,16 @@ RUL,cross-group cg_c,held-out B0018,fleet-lifetime baseline MAE,15.7164179104,di
 RUL,cross-group cg_c,mean,trajectory MAE,13.931582793275,discharges,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,mean,extrapolation MAE,45.98878588605,discharges,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,cross-group cg_c,mean,fleet-lifetime baseline MAE,24.80259680215,discharges,data/processed/rul_cross_group_g6_to_g1.csv
-RUL,cross-group cg_c,verdict,cells where trajectory beats baseline,3.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
-RUL,cross-group cg_c,verdict,cells where extrapolation beats baseline,1.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,verdict,cells where trajectory beats baseline,3,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,cross-group cg_c,verdict,cells where extrapolation beats baseline,1,cells,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,shipped range,leave-one-cell-out: G6,fleet-lifetime average MAE low,1.0,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,shipped range,leave-one-cell-out: G6,fleet-lifetime average MAE high,3.0,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,shipped range,leave-one-cell-out: G6,trajectory MAE low,3.1739130435,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,shipped range,leave-one-cell-out: G6,trajectory MAE high,8.6530612245,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,shipped range,leave-one-cell-out: G6,early-fade extrapolation MAE low,5.9127449557,discharges,data/processed/rul_cross_group_g6_loco.csv
 RUL,shipped range,leave-one-cell-out: G6,early-fade extrapolation MAE high,24.6318599238,discharges,data/processed/rul_cross_group_g6_loco.csv
-RUL,shipped range,"train G6, test G1",cells where trajectory beats the average,3.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
-RUL,shipped range,"train G6, test G1",held-out cells,4.0,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,shipped range,"train G6, test G1",cells where trajectory beats the average,3,cells,data/processed/rul_cross_group_g6_to_g1.csv
+RUL,shipped range,"train G6, test G1",held-out cells,4,cells,data/processed/rul_cross_group_g6_to_g1.csv
 RUL,shipped range,held-out G1 cells,mean indicative-range width,91.19567250937851,discharges,data/processed/rul_prediction_bands.csv
 RUL,fade-rate window sweep,B0005,MAE at window 20,76.9078718407,discharges,data/processed/rul_extrapolation_window_sweep.csv
 RUL,fade-rate window sweep,B0005,MAE at window 30,301.0054981146,discharges,data/processed/rul_extrapolation_window_sweep.csv
@@ -354,16 +354,16 @@ RUL,fade-rate window sweep,Median,MAE at window 30,26.08446916585,discharges,dat
 RUL,fade-rate window sweep,Median,MAE at window 40,18.31674026175,discharges,data/processed/rul_extrapolation_window_sweep.csv
 degradation,slope,B0005,fade,0.2139387007,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0005,early fade,0.0579203844,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0005,EOL discharge,107.0,discharges,data/processed/cell_audit.csv
+degradation,slope,B0005,EOL discharge,107,discharges,data/processed/cell_audit.csv
 degradation,slope,B0006,fade,0.3089817024,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0006,early fade,0.2841525273,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0006,EOL discharge,61.0,discharges,data/processed/cell_audit.csv
+degradation,slope,B0006,EOL discharge,61,discharges,data/processed/cell_audit.csv
 degradation,slope,B0007,fade,0.1877299411,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0007,early fade,0.0666800252,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0007,EOL discharge,125.0,discharges,data/processed/cell_audit.csv
+degradation,slope,B0007,EOL discharge,125,discharges,data/processed/cell_audit.csv
 degradation,slope,B0018,fade,0.2477519759,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0018,early fade,0.3190977349,%/discharge,data/processed/cell_audit.csv
-degradation,slope,B0018,EOL discharge,78.0,discharges,data/processed/cell_audit.csv
+degradation,slope,B0018,EOL discharge,78,discharges,data/processed/cell_audit.csv
 degradation,slope,B0029,fade,0.2806182397,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0029,early fade,0.2806182397,%/discharge,data/processed/cell_audit.csv
 degradation,slope,B0030,fade,0.2790005507,%/discharge,data/processed/cell_audit.csv
@@ -404,41 +404,41 @@ degradation,re-reference BOL peak,B0055,soh max,100.0,percent,data/processed/dat
 degradation,re-reference first-5 median,B0056,soh max,103.6219622429,percent,data/processed/data_reference_sensitivity.csv
 degradation,re-reference median 3-8,B0056,soh max,105.6642320652,percent,data/processed/data_reference_sensitivity.csv
 degradation,re-reference BOL peak,B0056,soh max,100.0,percent,data/processed/data_reference_sensitivity.csv
-dataset,summary,B0005,discharges,168.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0005,discharges,168,rows,data/processed/cell_audit.csv
 dataset,summary,B0005,initial SOH,101.1517277838,%,data/processed/cell_audit.csv
 dataset,summary,B0005,final SOH,72.1976685847,%,data/processed/cell_audit.csv
-dataset,summary,B0005,EOL discharge,107.0,discharges,data/processed/cell_audit.csv
-dataset,summary,B0006,discharges,168.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0005,EOL discharge,107,discharges,data/processed/cell_audit.csv
+dataset,summary,B0006,discharges,168,rows,data/processed/cell_audit.csv
 dataset,summary,B0006,initial SOH,101.0932762822,%,data/processed/cell_audit.csv
 dataset,summary,B0006,final SOH,58.8913575912,%,data/processed/cell_audit.csv
-dataset,summary,B0006,EOL discharge,61.0,discharges,data/processed/cell_audit.csv
-dataset,summary,B0007,discharges,168.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0006,EOL discharge,61,discharges,data/processed/cell_audit.csv
+dataset,summary,B0007,discharges,168,rows,data/processed/cell_audit.csv
 dataset,summary,B0007,initial SOH,100.55244483,%,data/processed/cell_audit.csv
 dataset,summary,B0007,final SOH,76.1675814411,%,data/processed/cell_audit.csv
-dataset,summary,B0007,EOL discharge,125.0,discharges,data/processed/cell_audit.csv
-dataset,summary,B0018,discharges,132.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0007,EOL discharge,125,discharges,data/processed/cell_audit.csv
+dataset,summary,B0018,discharges,132,rows,data/processed/cell_audit.csv
 dataset,summary,B0018,initial SOH,100.8372832667,%,data/processed/cell_audit.csv
 dataset,summary,B0018,final SOH,72.8990050831,%,data/processed/cell_audit.csv
-dataset,summary,B0018,EOL discharge,78.0,discharges,data/processed/cell_audit.csv
-dataset,summary,B0029,discharges,40.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0018,EOL discharge,78,discharges,data/processed/cell_audit.csv
+dataset,summary,B0029,discharges,40,rows,data/processed/cell_audit.csv
 dataset,summary,B0029,initial SOH,93.4879212609,%,data/processed/cell_audit.csv
 dataset,summary,B0029,final SOH,88.7831160689,%,data/processed/cell_audit.csv
-dataset,summary,B0030,discharges,40.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0030,discharges,40,rows,data/processed/cell_audit.csv
 dataset,summary,B0030,initial SOH,94.5377966349,%,data/processed/cell_audit.csv
 dataset,summary,B0030,final SOH,89.2122686073,%,data/processed/cell_audit.csv
-dataset,summary,B0031,discharges,40.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0031,discharges,40,rows,data/processed/cell_audit.csv
 dataset,summary,B0031,initial SOH,92.3652969452,%,data/processed/cell_audit.csv
 dataset,summary,B0031,final SOH,92.3998553477,%,data/processed/cell_audit.csv
-dataset,summary,B0032,discharges,40.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0032,discharges,40,rows,data/processed/cell_audit.csv
 dataset,summary,B0032,initial SOH,91.3893826975,%,data/processed/cell_audit.csv
 dataset,summary,B0032,final SOH,87.687200144,%,data/processed/cell_audit.csv
-dataset,summary,B0053,discharges,55.0,rows,data/processed/cell_audit.csv
+dataset,summary,B0053,discharges,55,rows,data/processed/cell_audit.csv
 dataset,summary,B0053,initial SOH,94.5652452928,%,data/processed/cell_audit.csv
 dataset,summary,B0053,final SOH,89.358409127,%,data/processed/cell_audit.csv
-dataset,summary,kept cells,discharges,851.0,rows,data/processed/cell_audit.csv
-SOH,charge window,leave-one-cell-out: G1,XGBoost charge-window MAE,3.2279725037,%,data/processed/soh_charge_window_comparison.csv
+dataset,summary,kept cells,discharges,851,rows,data/processed/cell_audit.csv
+SOH,charge window,leave-one-cell-out: G1,XGBoost charge-window MAE,3.2279725036,%,data/processed/soh_charge_window_comparison.csv
 SOH,charge window,leave-one-cell-out: G1,XGBoost discharge-window MAE,1.5696406127,%,data/processed/soh_charge_window_comparison.csv
-SOH,charge window,leave-one-cell-out: G1,XGBoost charge minus discharge MAE,1.658331891,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,leave-one-cell-out: G1,XGBoost charge minus discharge MAE,1.6583318909,%,data/processed/soh_charge_window_comparison.csv
 SOH,charge window,leave-one-cell-out: G1,ElasticNet charge-window MAE,3.0907231598,%,data/processed/soh_charge_window_comparison.csv
 SOH,charge window,leave-one-cell-out: G1,ElasticNet discharge-window MAE,1.6774596324,%,data/processed/soh_charge_window_comparison.csv
 SOH,charge window,leave-one-cell-out: G1,ElasticNet charge minus discharge MAE,1.4132635274,%,data/processed/soh_charge_window_comparison.csv
@@ -457,25 +457,25 @@ SOH,charge window,"train G1+G3, test B0053",ElasticNet charge minus discharge MA
 SOH,charge window,"train G1+G3, test random-load",XGBoost charge-window MAE,8.0359727179,%,data/processed/soh_charge_window_comparison.csv
 SOH,charge window,"train G1+G3, test random-load",XGBoost discharge-window MAE,2.1751534679,%,data/processed/soh_charge_window_comparison.csv
 SOH,charge window,"train G1+G3, test random-load",XGBoost charge minus discharge MAE,5.86081925,%,data/processed/soh_charge_window_comparison.csv
-SOH,charge window,"train G1+G3, test random-load",ElasticNet charge-window MAE,9.8098056203,%,data/processed/soh_charge_window_comparison.csv
-SOH,charge window,"train G1+G3, test random-load",ElasticNet discharge-window MAE,605.0447288419,%,data/processed/soh_charge_window_comparison.csv
-SOH,charge window,"train G1+G3, test random-load",ElasticNet charge minus discharge MAE,-595.2349232217,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",ElasticNet charge-window MAE,9.8098056202,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",ElasticNet discharge-window MAE,unstable,%,data/processed/soh_charge_window_comparison.csv
+SOH,charge window,"train G1+G3, test random-load",ElasticNet charge minus discharge MAE,unstable,%,data/processed/soh_charge_window_comparison.csv
 pack,cell_sag,synthetic injection,rule detection,75.0,%,data/processed/pack_detection_summary.csv
 pack,cell_sag,synthetic injection,iforest detection,25.0,%,data/processed/pack_detection_summary.csv
-pack,cell_sag,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
+pack,cell_sag,synthetic injection,injected,24,cases,data/processed/pack_detection_summary.csv
 pack,resistance_spike,synthetic injection,rule detection,100.0,%,data/processed/pack_detection_summary.csv
 pack,resistance_spike,synthetic injection,iforest detection,100.0,%,data/processed/pack_detection_summary.csv
-pack,resistance_spike,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
+pack,resistance_spike,synthetic injection,injected,24,cases,data/processed/pack_detection_summary.csv
 pack,thermal,synthetic injection,rule detection,100.0,%,data/processed/pack_detection_summary.csv
 pack,thermal,synthetic injection,iforest detection,70.83333333,%,data/processed/pack_detection_summary.csv
-pack,thermal,synthetic injection,injected,24.0,cases,data/processed/pack_detection_summary.csv
-pack,clean packs,no injected fault,discharges,564.0,discharges,data/processed/pack_false_alarms.csv
-pack,clean packs,no injected fault,false resistance spikes,0.0,alarms,data/processed/pack_false_alarms.csv
-pack,clean packs,no injected fault,false thermal alarms,0.0,alarms,data/processed/pack_false_alarms.csv
+pack,thermal,synthetic injection,injected,24,cases,data/processed/pack_detection_summary.csv
+pack,clean packs,no injected fault,discharges,564,discharges,data/processed/pack_false_alarms.csv
+pack,clean packs,no injected fault,false resistance spikes,0,alarms,data/processed/pack_false_alarms.csv
+pack,clean packs,no injected fault,false thermal alarms,0,alarms,data/processed/pack_false_alarms.csv
 bms_contract,partial-window model,trained band,window_voltage_high,4.0,V,src/features.py
 bms_contract,partial-window model,trained band,window_voltage_low,3.4,V,src/features.py
-bms_contract,partial-window model,reference baseline,min_reference_discharges,3.0,discharges,src/features.py
-bms_contract,partial-window model,reference baseline,reference_discharges,5.0,discharges,src/features.py
+bms_contract,partial-window model,reference baseline,min_reference_discharges,3,discharges,src/features.py
+bms_contract,partial-window model,reference baseline,reference_discharges,5,discharges,src/features.py
 bms_contract,partial-window model,trained band,train_current_low,2.0,A,src/features.py
 bms_contract,partial-window model,trained band,train_current_high,4.0,A,src/features.py
 SOH,partial-window share,all kept discharges,mean capacity inside window,55.66644721701111,%,data/processed/soh_window_partial.csv

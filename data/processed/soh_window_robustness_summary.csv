@@ -1,6 +1,6 @@
 condition,kind,voltage_noise_mv,current_noise_pct,window_high_v,window_low_v,window_span_v,n_cycles,xgb_mae_pct,elasticnet_mae_pct,window_formula_mae_pct,under_limit
 clean,clean,0.0,0.0,4.0,3.4,0.6,851,1.5667334163,1.8099104012,9.2166033331,True
-voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,851,1.6510353773,2.7596397961,9.8584947706,True
+voltage_noise_5mv,voltage,5.0,0.0,4.0,3.4,0.6,851,1.6510353773,2.7596397961,9.8584947705,True
 voltage_noise_10mv,voltage,10.0,0.0,4.0,3.4,0.6,851,1.9771896412,2.7754749183,10.2811408177,True
 voltage_noise_20mv,voltage,20.0,0.0,4.0,3.4,0.6,851,2.5258011129,4.3400492733,11.3376444783,True
 current_noise_1pct,current,0.0,1.0,4.0,3.4,0.6,851,1.5713512762,1.8094927794,9.2056145486,True

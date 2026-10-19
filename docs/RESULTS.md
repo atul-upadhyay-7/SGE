@@ -108,15 +108,15 @@ The robustness test above feeds a shorter band to the *shipped* model, which is 
 
 | Window (V) | Span (V) | XGBoost MAE (%) | ElasticNet MAE (%) | window formula MAE (%) | Random-load XGBoost MAE (%) | Random-load ElasticNet MAE (%) |
 |---|---|---|---|---|---|---|
-| 4.0–3.4 | 0.60 | 1.57 | 1.81 | 9.22 | 2.18 | 605.04 |
-| 3.9–3.5 | 0.40 | 1.47 | 1.02 | 10.96 | 2.83 | 641.22 |
+| 4.0–3.4 | 0.60 | 1.57 | 1.81 | 9.22 | 2.18 | unstable |
+| 3.9–3.5 | 0.40 | 1.47 | 1.02 | 10.96 | 2.83 | unstable |
 | 3.8–3.6 | 0.20 | 1.56 | 1.34 | 10.92 | 3.33 | 7.78 |
 | 4.1–3.7 | 0.40 | 1.71 | 1.52 | 11.66 | 5.27 | 11.16 |
-| 3.7–3.4 | 0.30 | 2.22 | 1.37 | 8.74 | 3.23 | 359.75 |
+| 3.7–3.4 | 0.30 | 2.22 | 1.37 | 8.74 | 3.23 | unstable |
 
 **Verdict.** A shorter window *does* work once the model is trained on it: with a model of its own, every band tried keeps the pooled held-out MAE under 3% (5 of 5 bands). The smallest is 3.8–3.6 V (span 0.20 V), at 1.56% pooled over the nine constant-current held-out cells and 1.94% over all thirteen, against 1.70% for the shipped 4.0–3.4 V band. The earlier failure was the shipped model being handed a different band, not the window length. The random-load cells are the stricter half of the test: there the smallest band sits just over budget at 3.33%, so the narrowest window that also stays under 3% on the random-load cells is 3.9–3.5 V at 2.83%.
 
-ElasticNet is reported for comparison but is the fragile model here: its inputs are unbounded ratios, and a random-load cell whose opening discharges barely cross the band (B0039) gives a tiny five-discharge baseline, so its later window ratios run orders of magnitude past the training range. A linear fit extrapolates that to implausible SOH while the tree model stays bounded, which is why the 3% question is read against XGBoost, the shipped model family.
+ElasticNet is reported for comparison but is the fragile model here: its inputs are unbounded ratios, and a random-load cell whose opening discharges barely cross the band (B0039) gives a tiny five-discharge baseline, so its later window ratios run orders of magnitude past the training range. A linear fit extrapolates that to implausible SOH while the tree model stays bounded, which is why the 3% question is read against XGBoost, the shipped model family. A cell whose ElasticNet or window-formula score leaves the sane range (R2 below -1000 or MAE above 100%) is written as *unstable* rather than as a raw number: at that magnitude the digits are floating-point noise, not a measurement, and writing them would make the file change from one machine to the next.
 
 
 #### Reference-window sensitivity (partial-discharge)
@@ -209,7 +209,7 @@ The discharge loader keeps discharge cycles only: `load_data.iter_discharge_trac
 | G1+G3 → B0053 | XGBoost | 12.72 | 2.99 | 9.73 |
 | G1+G3 → B0053 | ElasticNet | 9.17 | 3.42 | 5.74 |
 | G1+G3 → random-load | XGBoost | 8.04 | 2.18 | 5.86 |
-| G1+G3 → random-load | ElasticNet | 9.81 | 605.04 | -595.23 |
+| G1+G3 → random-load | ElasticNet | 9.81 | unstable | unstable |
 
 **Verdict.** Charging carries a real SOH signal — on the G3 cells a model over the charge window matches the discharge model, 1.35% against 1.07% — but it transfers worse everywhere else and is not a replacement for the discharge window. On the warm G1 cells it is 3.23% (discharge 1.57%), on the cold G9 cell B0053, a condition the charge model never saw, it is 12.72% (discharge 2.99%), and on the random-load cells it is 8.04% (discharge 2.18%). So the answer is: partly, on the cells and conditions the charge model is trained on, but the charge window is a weaker held-out estimator than the discharge window, and only the G3 protocol stays under the 3% budget.
 <!-- make_report:charge:end -->
