@@ -120,9 +120,7 @@ async def anomaly_hourly(
 ) -> AnomalyHourly:
     """Anomaly counts per hour, with a per-hour severity breakdown."""
     start, end = _range(from_, to)
-    repository = AnomalyRepository(session)
-    rows = await repository.hourly(device_id=device_id, start=start, end=end)
-    breakdown = await repository.severity_by_hour(
+    rows = await AnomalyRepository(session).hourly_activity(
         device_id=device_id, start=start, end=end
     )
     return AnomalyHourly(
@@ -134,7 +132,7 @@ async def anomaly_hourly(
                 total=row["total"],
                 open=row["open"],
                 resolved=row["resolved"],
-                by_severity=breakdown.get(row["hour"], {}),
+                by_severity=row["by_severity"],
             )
             for row in rows
         ],
@@ -143,6 +141,7 @@ async def anomaly_hourly(
 
 @router.get("/anomalies/recurrence", response_model=RecurrenceReport)
 async def anomaly_recurrence(
+    device_id: str | None = Query(None),
     from_: datetime | None = Query(None, alias="from"),
     to: datetime | None = Query(None),
     limit: int = Query(100, ge=1, le=_MAX_PAGE),
@@ -151,7 +150,7 @@ async def anomaly_recurrence(
     """Repeated anomalies grouped by device/type/cell (CR §6)."""
     start, end = _range(from_, to)
     entries = await AnomalyRepository(session).recurrence(
-        start=start, end=end, limit=limit
+        device_id=device_id, start=start, end=end, limit=limit
     )
     return RecurrenceReport(**{"from": start, "to": end}, entries=entries)
 

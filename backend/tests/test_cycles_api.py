@@ -185,3 +185,78 @@ def test_finite_rejects_non_numbers() -> None:
     assert _finite(None) is None
     assert _finite(float("nan")) is None
     assert _finite(float("inf")) is None
+
+
+def test_predictions_latest_unknown_device_is_404(client, require_db) -> None:
+    assert client.get("/api/v1/predictions/latest/NOPE_XYZ").status_code == 404
+
+
+def test_prediction_history_paginates_with_a_cursor(client, require_db) -> None:
+    """The CR history endpoint is cursor-paginated, not OFFSET slice."""
+    device_id = f"CYC_{uuid4().hex[:8]}"
+    _register(client, device_id)
+    _seed(client, device_id, cycles=4)
+    aggregate = client.post(f"/api/v1/devices/{device_id}/cycles/aggregate")
+    assert aggregate.status_code == 200, aggregate.text
+    assert aggregate.json()["predictions"] == 4
+
+    first = client.get(
+        f"/api/v1/predictions/history/{device_id}",
+        params={"limit": 2, "order": "asc"},
+    ).json()
+    assert first["count"] == 2
+    assert first["order"] == "asc"
+    assert first["next_cursor"] is not None
+
+    second = client.get(
+        f"/api/v1/predictions/history/{device_id}",
+        params={"limit": 2, "order": "asc", "cursor": first["next_cursor"]},
+    ).json()
+    assert second["count"] == 2
+    # No overlap between pages, and the union is every prediction.
+    first_ids = {item["id"] for item in first["items"]}
+    second_ids = {item["id"] for item in second["items"]}
+    assert first_ids.isdisjoint(second_ids)
+    assert first_ids | second_ids == {
+        item["id"]
+        for item in client.get(
+            f"/api/v1/predictions/history/{device_id}", params={"limit": 100}
+        ).json()["items"]
+    }
+    # Ascending order is honoured across the whole set.
+    stamps = [
+        item["predicted_at"] for item in first["items"] + second["items"]
+    ]
+    assert stamps == sorted(stamps)
+
+
+def test_prediction_history_rejects_inverted_window(client, seeded_device) -> None:
+    response = client.get(
+        f"/api/v1/predictions/history/{seeded_device}",
+        params={"from": "2026-03-01T00:00:00Z", "to": "2026-02-01T00:00:00Z"},
+    )
+    assert response.status_code == 400
+    assert "from" in response.json()["detail"]
+
+
+def test_active_models_names_the_served_artifact(client, require_db) -> None:
+    """``GET /models/active`` attributes a prediction to a concrete version."""
+    device_id = f"CYC_{uuid4().hex[:8]}"
+    _register(client, device_id)
+    _seed(client, device_id, cycles=4)
+    aggregate = client.post(f"/api/v1/devices/{device_id}/cycles/aggregate")
+    assert aggregate.status_code == 200, aggregate.text
+
+    body = client.get("/api/v1/models/active").json()
+    assert body["count"] >= 1
+    served = next(
+        m for m in body["items"] if m["model_name"] == "soh_window_all"
+    )
+    assert served["is_active"] is True
+    assert served["feature_schema_version"] == "window-v1"
+    assert served["artifact_path"].endswith("soh_window_all.ubj")
+
+    # Every prediction on the device carries that same version, so a score is
+    # reproducible from the registry alone (CR §7).
+    latest = client.get(f"/api/v1/predictions/latest/{device_id}").json()
+    assert latest["model_version"] == served["model_version"]

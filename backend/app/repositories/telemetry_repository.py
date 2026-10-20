@@ -172,6 +172,70 @@ class TelemetryRepository:
         )
         return {reason: int(count) for reason, count in result.all()}
 
+    async def window_stats(
+        self,
+        device_id: str,
+        *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> dict:
+        """Aggregate sample statistics over a time window (report §4.7 items 3-4).
+
+        Reduced in SQL — count, coverage bounds and the voltage/current/
+        temperature min/max/mean — so a report over a large history never loads
+        the readings themselves.
+        """
+        filters = [TelemetrySample.device_id == device_id]
+        if start is not None:
+            filters.append(TelemetrySample.measured_at >= start)
+        if end is not None:
+            filters.append(TelemetrySample.measured_at <= end)
+
+        def agg(column):
+            return (
+                func.min(column).label("min"),
+                func.max(column).label("max"),
+                func.avg(column).label("mean"),
+            )
+
+        result = (
+            await self._session.execute(
+                select(
+                    func.count().label("count"),
+                    func.min(TelemetrySample.measured_at).label("first"),
+                    func.max(TelemetrySample.measured_at).label("last"),
+                    *[
+                        stat
+                        for column in (
+                            TelemetrySample.pack_voltage,
+                            TelemetrySample.current,
+                            TelemetrySample.temperature,
+                        )
+                        for stat in agg(column)
+                    ],
+                ).where(*filters)
+            )
+        ).one()
+
+        def block(offset: int) -> dict:
+            lo = result[3 + offset * 3]
+            hi = result[4 + offset * 3]
+            mean = result[5 + offset * 3]
+            return {
+                "min": float(lo) if lo is not None else None,
+                "max": float(hi) if hi is not None else None,
+                "mean": float(mean) if mean is not None else None,
+            }
+
+        return {
+            "sample_count": int(result[0]),
+            "first_measured_at": result[1],
+            "last_measured_at": result[2],
+            "pack_voltage": block(0),
+            "current": block(1),
+            "temperature": block(2),
+        }
+
     async def insert_rejections(self, records: list[RejectionRecord]) -> int:
         if not records:
             return 0

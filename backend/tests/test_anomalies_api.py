@@ -164,18 +164,181 @@ def test_hourly_buckets_include_severity_breakdown(client, seeded) -> None:
     assert sum(b["total"] for b in body["buckets"]) == 3
 
 
+def test_hourly_counts_open_events_in_every_active_hour(client) -> None:
+    """A sustained open event reads as persistent, hour by hour (CR §6)."""
+    require = client.get("/api/v1/health/database")
+    if require.status_code != 200:  # pragma: no cover - infra guard
+        pytest.skip("database not reachable")
+
+    device_id = f"ANOM_H_{uuid4().hex[:8]}"
+
+    async def _seed_span() -> tuple[int, int]:
+        async with SessionLocal() as session:
+            await DeviceRepository(session).create(
+                device_id=device_id,
+                name="hourly span test",
+                cell_count=3,
+                sampling_frequency_hz=1.0,
+                chemistry="li_ion",
+                status="active",
+            )
+            repository = AnomalyRepository(session)
+            base = datetime(2026, 10, 15, 3, 0, tzinfo=UTC)
+            # Open event detected at 03:xx, last seen at 06:xx → active in
+            # hours 03, 04, 05, 06.
+            open_event = await repository.open_or_extend(
+                {
+                    "device_id": device_id,
+                    "anomaly_type": "temperature_out_of_range",
+                    "affected_cell": None,
+                    "severity": "warning",
+                    "detected_at": base + timedelta(minutes=10),
+                    "last_detected_at": base + timedelta(hours=3, minutes=5),
+                    "duration_seconds": 11100.0,
+                    "observed_value": 60.0,
+                    "expected_value": 45.0,
+                    "threshold": 45.0,
+                    "diagnostic_evidence": {"limit": "max"},
+                    "likely_causes": [],
+                    "recommended_actions": [],
+                    "rule_version": "rules-v1",
+                }
+            )
+            # Resolved event in a single hour (01:xx) that must not bleed into
+            # later hours, because its activity after detection was the close.
+            resolved = await repository.open_or_extend(
+                {
+                    "device_id": device_id,
+                    "anomaly_type": "cell_voltage_out_of_range",
+                    "affected_cell": 1,
+                    "severity": "critical",
+                    "detected_at": base - timedelta(hours=2),
+                    "last_detected_at": base - timedelta(hours=2),
+                    "duration_seconds": 0.0,
+                    "observed_value": 4.3,
+                    "expected_value": 4.0,
+                    "threshold": 4.0,
+                    "diagnostic_evidence": {"limit": "max", "cell": 1},
+                    "likely_causes": [],
+                    "recommended_actions": [],
+                    "rule_version": "rules-v1",
+                }
+            )
+            await repository.close_event(resolved, base - timedelta(hours=1))
+            await session.commit()
+            return open_event.id, resolved.id
+
+    import asyncio
+
+    asyncio.run(_seed_span())
+
+    body = client.get(
+        "/api/v1/anomalies/hourly", params={"device_id": device_id}
+    ).json()
+    buckets = {b["hour"][:13]: b for b in body["buckets"]}
+    # 03, 04, 05, 06 carry the still-open event; 01 carries the resolved one.
+    assert {"2026-10-15T01", "2026-10-15T03", "2026-10-15T04",
+            "2026-10-15T05", "2026-10-15T06"} <= set(buckets)
+    assert "2026-10-15T02" not in buckets  # gap: no event active that hour
+    for hour in ("03", "04", "05", "06"):
+        bucket = buckets[f"2026-10-15T{hour}"]
+        assert bucket["total"] == 1
+        assert bucket["open"] == 1
+        assert bucket["by_severity"]["warning"] == 1
+    # The resolved event appears only in its detection hour.
+    assert buckets["2026-10-15T01"]["resolved"] == 1
+    assert buckets["2026-10-15T01"]["total"] == 1
+
+
 def test_recurrence_counts_repeats_per_key(client, seeded) -> None:
-    body = client.get("/api/v1/anomalies/recurrence").json()
+    device_id, _ = seeded
+    body = client.get(
+        "/api/v1/anomalies/recurrence", params={"device_id": device_id}
+    ).json()
     entries = [
-        e
-        for e in body["entries"]
-        if e["anomaly_type"] == "cell_voltage_out_of_range"
-        and e["device_id"].startswith("ANOM_")
+        e for e in body["entries"] if e["anomaly_type"] == "cell_voltage_out_of_range"
     ]
-    assert entries
-    # The same cell-1 and cell-2 voltage trips on one device are one recurrence
-    # bucket across cells, and the unresolved count excludes the resolved one.
-    assert sum(e["occurrences"] for e in entries) == 2
+    # Each (device, type, cell) is its own bucket: cell 1 (open) and cell 2
+    # (resolved) are one occurrence each, not merged across cells.
+    by_cell = {e["affected_cell"]: e for e in entries}
+    assert set(by_cell) == {1, 2}
+    assert by_cell[1]["occurrences"] == 1
+    assert by_cell[1]["unresolved"] == 1
+    assert by_cell[2]["occurrences"] == 1
+    assert by_cell[2]["unresolved"] == 0
+    # Every entry is scoped to the device the filter named.
+    assert all(e["device_id"] == device_id for e in body["entries"])
+
+
+def test_recurrence_counts_repeated_episodes(client) -> None:
+    """Two closed episodes plus one open on the same key = 3 occurrences."""
+    if client.get("/api/v1/health/database").status_code != 200:  # pragma: no cover
+        pytest.skip("database not reachable")
+
+    device_id = f"ANOM_R_{uuid4().hex[:8]}"
+
+    async def _seed_repeats() -> None:
+        async with SessionLocal() as session:
+            await DeviceRepository(session).create(
+                device_id=device_id,
+                name="recurrence test",
+                cell_count=3,
+                sampling_frequency_hz=1.0,
+                chemistry="li_ion",
+                status="active",
+            )
+            repository = AnomalyRepository(session)
+            base = datetime(2026, 10, 14, 0, 0, tzinfo=UTC)
+
+            def payload(detected: datetime) -> dict:
+                return {
+                    "device_id": device_id,
+                    "anomaly_type": "temperature_out_of_range",
+                    "affected_cell": None,
+                    "severity": "warning",
+                    "detected_at": detected,
+                    "last_detected_at": detected,
+                    "duration_seconds": 0.0,
+                    "observed_value": 58.0,
+                    "expected_value": 45.0,
+                    "threshold": 45.0,
+                    "diagnostic_evidence": {"limit": "max"},
+                    "likely_causes": [],
+                    "recommended_actions": [],
+                    "rule_version": "rules-v1",
+                }
+
+            # Episode 1: opens and closes.
+            first = await repository.open_or_extend(payload(base))
+            await repository.close_event(first, base + timedelta(minutes=20))
+            # Episode 2: opens and closes.
+            second = await repository.open_or_extend(payload(base + timedelta(hours=5)))
+            await repository.close_event(second, base + timedelta(hours=5, minutes=10))
+            # Episode 3: still open.
+            await repository.open_or_extend(payload(base + timedelta(hours=10)))
+            await session.commit()
+
+    import asyncio
+
+    asyncio.run(_seed_repeats())
+
+    body = client.get(
+        "/api/v1/anomalies/recurrence", params={"device_id": device_id}
+    ).json()
+    assert len(body["entries"]) == 1
+    entry = body["entries"][0]
+    assert entry["anomaly_type"] == "temperature_out_of_range"
+    assert entry["affected_cell"] is None
+    assert entry["occurrences"] == 3
+    assert entry["unresolved"] == 1
+    assert entry["first_detected_at"] < entry["last_detected_at"]
+
+    # A different device's recurrence report never leaks this one in.
+    other = client.get(
+        "/api/v1/anomalies/recurrence",
+        params={"device_id": "ANOM_R_nonexistent"},
+    ).json()
+    assert other["entries"] == []
 
 
 def test_get_anomaly_and_history(client, seeded) -> None:

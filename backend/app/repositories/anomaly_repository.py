@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AnomalyAction, AnomalyEvent
@@ -211,72 +211,95 @@ class AnomalyRepository:
             "total": sum(status_counts.values()),
         }
 
-    async def hourly(
+    async def hourly_activity(
         self,
         *,
         device_id: str | None = None,
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> list[dict]:
-        """Event counts grouped by hour of ``detected_at`` (CR §6)."""
+        """Anomaly counts per hour, counting both detection and ongoing activity.
+
+        Every event contributes to the hour it was first detected. A *still
+        open* event additionally contributes to each later hour up to its
+        ``last_detected_at``, so a sustained anomaly reads as persistent rather
+        than as a single spike (CR §6). Resolved events appear only in their
+        detection hour, because their activity after that hour was the closing
+        pass, not a re-detection.
+
+        The volume here is anomaly episodes, not telemetry, so the per-hour
+        expansion is done in the query with ``generate_series`` over each open
+        event's span, then aggregated in one pass.
+        """
         filters = _range_filters(device_id, start, end)
-        bucket = func.date_trunc("hour", AnomalyEvent.detected_at).label("hour")
+        # Truncate in UTC explicitly: ``date_trunc`` on a timestamptz would
+        # otherwise follow the server's session TimeZone, so the same event
+        # would land in a different hour depending on how Postgres is deployed.
+        utc = func.timezone(text("'UTC'"), AnomalyEvent.detected_at)
+        hour = func.date_trunc("hour", utc)
+        last_hour = func.date_trunc(
+            "hour", func.timezone(text("'UTC'"), AnomalyEvent.last_detected_at)
+        )
+        # The detection-hour row for every event in range.
+        detected = select(
+            hour.label("hour"),
+            AnomalyEvent.severity.label("severity"),
+            AnomalyEvent.status.label("status"),
+        ).where(*filters)
+        # The extra active hours for events that are still open.
+        span = func.generate_series(
+            hour + text("interval '1 hour'"),
+            last_hour,
+            text("interval '1 hour'"),
+        ).label("hour")
+        ongoing = (
+            select(
+                span,
+                AnomalyEvent.severity.label("severity"),
+                AnomalyEvent.status.label("status"),
+            )
+            .where(*filters, AnomalyEvent.status == "open")
+            .where(last_hour > hour)
+        )
+        activity = detected.union_all(ongoing).subquery()
+
         result = await self._session.execute(
             select(
-                bucket,
-                func.count().label("total"),
-                func.count().filter(AnomalyEvent.status == "open").label("open"),
-                func.count().filter(AnomalyEvent.status == "resolved").label(
-                    "resolved"
-                ),
+                activity.c.hour,
+                activity.c.severity,
+                activity.c.status,
+                func.count(),
             )
-            .where(*filters)
-            .group_by(bucket)
-            .order_by(bucket)
+            .group_by(activity.c.hour, activity.c.severity, activity.c.status)
+            .order_by(activity.c.hour)
         )
-        return [
-            {
-                "hour": row.hour,
-                "total": int(row.total),
-                "open": int(row.open),
-                "resolved": int(row.resolved),
-            }
-            for row in result.all()
-        ]
 
-    async def severity_by_hour(
-        self,
-        *,
-        device_id: str | None = None,
-        start: datetime | None = None,
-        end: datetime | None = None,
-    ) -> dict[datetime, dict[str, int]]:
-        """Per-hour severity breakdown, keyed for merging into :meth:`hourly`."""
-        filters = _range_filters(device_id, start, end)
-        bucket = func.date_trunc("hour", AnomalyEvent.detected_at).label("hour")
-        result = await self._session.execute(
-            select(bucket, AnomalyEvent.severity, func.count())
-            .where(*filters)
-            .group_by(bucket, AnomalyEvent.severity)
-        )
-        breakdown: dict[datetime, dict[str, int]] = {}
-        for hour, severity, count in result.all():
-            breakdown.setdefault(hour, {})[severity] = int(count)
-        return breakdown
+        buckets: dict[datetime, dict] = {}
+        for row_hour, severity, status, count in result.all():
+            bucket = buckets.setdefault(
+                row_hour,
+                {"hour": row_hour, "total": 0, "open": 0, "resolved": 0, "by_severity": {}},
+            )
+            bucket["total"] += int(count)
+            if status == "open":
+                bucket["open"] += int(count)
+            elif status == "resolved":
+                bucket["resolved"] += int(count)
+            bucket["by_severity"][severity] = (
+                bucket["by_severity"].get(severity, 0) + int(count)
+            )
+        return [buckets[key] for key in sorted(buckets)]
 
     async def recurrence(
         self,
         *,
+        device_id: str | None = None,
         start: datetime | None = None,
         end: datetime | None = None,
         limit: int = 100,
     ) -> list[dict]:
         """Repeated events by ``(device, type, cell)`` (CR §6)."""
-        filters = []
-        if start is not None:
-            filters.append(AnomalyEvent.detected_at >= start)
-        if end is not None:
-            filters.append(AnomalyEvent.detected_at <= end)
+        filters = _range_filters(device_id, start, end)
         result = await self._session.execute(
             select(
                 AnomalyEvent.device_id,

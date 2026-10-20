@@ -21,6 +21,7 @@ from app.api import (
     health,
     models,
     predictions,
+    reports,
     rul,
     stream,
     telemetry,
@@ -122,4 +123,5 @@ app.include_router(models.router, prefix=settings.api_prefix)
 app.include_router(rul.router, prefix=settings.api_prefix)
 app.include_router(alerts.router, prefix=settings.api_prefix)
 app.include_router(anomalies.router, prefix=settings.api_prefix)
+app.include_router(reports.router, prefix=settings.api_prefix)
 app.include_router(stream.router, prefix=settings.api_prefix)

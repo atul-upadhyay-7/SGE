@@ -7,7 +7,7 @@ and evaluates alert rules against the stored state. Built alongside the
 repo's offline ML pipeline, and it reuses that pipeline's own cycle/feature
 code (no private copy) so training and serving cannot drift.
 
-## Status: Phases 1–8 complete
+## Status: Phases 1–8 complete; Frontend & Grafana Integration change request (CR) complete
 
 **Phase 1 — Foundation**
 
@@ -199,6 +199,125 @@ code (no private copy) so training and serving cannot drift.
   in a poll-only deployment.
 - SSE rather than WebSockets because the traffic is one-directional and plain
   HTTP: it needs no handshake, no client library, and traverses proxies.
+
+## Frontend & Grafana Integration (change request)
+
+The CR reshapes the read surface around what the React frontend and Grafana
+need, adds a versioned anomaly subsystem, and adds report generation. Ingestion
+is unchanged: MQTT and `POST /api/v1/devices/{device_id}/telemetry` still work
+exactly as in Phases 2–8.
+
+### Read API paths (CR §2)
+
+The device-scoped reads are replaced by paths the frontend consumes directly:
+
+| Purpose | Path |
+| --- | --- |
+| Latest sample | `GET /api/v1/telemetry/latest/{device_id}` |
+| History (keyset paged) | `GET /api/v1/telemetry/history/{device_id}` |
+| Data-quality summary | `GET /api/v1/telemetry/summary/{device_id}` |
+| Device fleet | `GET /api/v1/devices` · `GET /api/v1/devices/{device_id}` |
+| Latest / history SoH | `GET /api/v1/predictions/latest/{device_id}` · `GET /api/v1/predictions/history/{device_id}` |
+| Active models | `GET /api/v1/models/active` |
+
+`GET /api/v1/models/active` returns the active `model_registry` rows newest
+first, so the frontend can attribute every prediction to a served artifact.
+
+### Anomaly subsystem (CR §3, §4, §6)
+
+- **Detection** (`app/services/anomaly_detection_service.py`) runs after each
+  ingestion flush, in its own session and transaction. It reconciles the recent
+  window against the rule catalog (`app/services/anomaly_rules.py`,
+  `RULES_VERSION = "rules-v1"`) and persists episodes to `anomaly_events`. A
+  detector fault is isolated: raw samples are already committed, so detection
+  can never drop telemetry (CR §10).
+- **Rules** cover per-cell voltage min/max, cell-voltage spread, temperature
+  min/max, voltage and current jumps, telemetry gaps and staleness. Each rule's
+  severity is `severity_for(ratio)` with warning/critical bands.
+- **Thresholds are layered**: every chemistry has a profile
+  (`li_ion`, `lifepo4`, `nimh`, `lead_acid`) and a device may override any
+  column (`cell_voltage_max_v`, `cell_spread_max_v`, `temperature_max_c`, …).
+  `resolve_thresholds(device, settings)` is the single place device overrides
+  are combined with the chemistry default, so every rule reads one resolved set.
+- **Episodes, not rows**: recurrence extends the open episode for the same
+  `(device_id, anomaly_type, affected_cell)`; a `resolve` closes it and a later
+  recurrence opens a new row. A partial unique index
+  (`uq_anomaly_open_per_key`, `status = 'open'`) guarantees at most one open
+  episode per key. Every change writes an `anomaly_actions` row, so the audit
+  trail (`GET /api/v1/anomalies/{id}/history`) is complete.
+- **Endpoints**: `GET /api/v1/anomalies` (filter `device_id`, `severity`,
+  `anomaly_type`, `status`, `from`, `to`), `GET /api/v1/anomalies/{id}`,
+  its `/history`, `POST /api/v1/anomalies/{id}/acknowledge`,
+  `POST /api/v1/anomalies/{id}/actions`, `POST /api/v1/anomalies/{id}/resolve`.
+  Aggregates: `GET /api/v1/anomalies/summary` (by severity/type),
+  `GET /api/v1/anomalies/hourly`, `GET /api/v1/anomalies/recurrence`.
+- **Status flow**: `open → acknowledged`, `open|acknowledged → investigating`,
+  `→ resolved`. Acknowledging a resolved anomaly is `409`; `POST .../actions`
+  rejects `action_type = resolve` (`400`). Anomalies are **never created by the
+  API** — only the detector opens an episode.
+- **Hourly aggregation (CR §6)** counts an event in its `detected_at` hour; a
+  **still-open** event also counts in every later hour up to
+  `last_detected_at`. Buckets are truncated in **UTC** (the session timezone
+  must not shift them) and serialized as naive UTC hours.
+- Literal `/summary`, `/hourly` and `/recurrence` paths are declared *before*
+  `/anomalies/{anomaly_id}` so the path parameter never captures them.
+
+### Reports (CR §7)
+
+- `POST /api/v1/reports` builds a **synchronous, persisted** snapshot
+  (`reports.payload`, `format_version = "report-v1"`). One configurable
+  **full** report with include-flags (`sections.telemetry/soh/anomalies/actions`,
+  all on by default) and filters (`device_id`, `from`/`to`, `severity`,
+  `anomaly_type`). A device-scoped report uses `"scope": "device"`; no
+  `device_id` produces a fleet report.
+- The snapshot has an `executive` summary, `device`, `data_availability`,
+  `model_metadata` (including `anomaly_rules.RULES_VERSION`) and the selected
+  sections. SoH comes from stored predictions; anomalies from stored episodes —
+  a report never runs a model and never invents a value.
+- `GET /api/v1/reports` (filter `device_id`, `report_type`),
+  `GET /api/v1/reports/{id}`, and
+  `GET /api/v1/reports/{id}/download?format=json|csv`. **CSV is the primary
+  table only** (the anomaly list, one header row); JSON is the complete
+  multi-section report. Unknown report → `404`; unsupported format → `400`;
+  an inverted `from > to` window → `422`. The download sets
+  `Content-Disposition: attachment; filename="report-{id}.{ext}"`.
+- Formats are **JSON and CSV only** (no PDF in scope).
+
+### Grafana (CR §4.2–4.7) — configuration only
+
+Grafana is **not a required service**; the repository ships provisioning
+artifacts under `docker/grafana/` and the stack runs without them. See
+`docker/grafana/README.md` for the read-only role SQL and mount points.
+
+- `docker/grafana/provisioning/dashboards/bms-live.json` — the `bms-live`
+  dashboard the frontend embeds by UID: a rolling `now-24h`→`now` window with
+  auto-refresh and the seven PRD graphs (pack voltage, current, individual cell
+  voltages, temperature, cell-voltage spread, anomaly indicator, anomalies
+  overlaid on telemetry) plus a data-freshness stat. All panels are PostgreSQL
+  queries; line panels set `spanNulls=false`, so gaps are **not** drawn as
+  fabricated lines.
+- `docker/grafana/provisioning/datasources/bms-datasource.yml` — a
+  `postgres` datasource backed by a **read-only** account
+  (`BMS_GRAFANA_PG_USER` / `BMS_GRAFANA_PG_PASSWORD`); no write credentials or
+  admin password are committed. The legacy battery-pdm datasources/panels are
+  left untouched.
+- `docker/grafana/grafana.ini` — embedding enabled (`allow_embedding`,
+  `cookie_samesite = none`, `cookie_secure`) with no secrets; the frontend
+  bundle never carries Grafana admin or DB credentials.
+
+The frontend points at Grafana via `VITE_GRAFANA_URL` and
+`VITE_GRAFANA_DASHBOARD_UID=bms-live` and embeds the dashboard as an
+authenticated iframe.
+
+### Security and reliability notes for the CR surface (CR §10)
+
+- A device credential (or its digest) appears in **no** read surface — device,
+  telemetry, alert, anomaly or report responses were machine-checked for leaks.
+- Diagnoses, corrective actions, SoH and recurrence originate from stored rows
+  or the rule catalog (PRD §8); a cause is always a hypothesis
+  (`confirmed: false`), never an asserted failed component.
+- A report over an empty window returns honest zeros and `null`s rather than
+  fabricated numbers.
 
 ## Run with Docker (recommended)
 

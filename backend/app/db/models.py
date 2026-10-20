@@ -342,3 +342,55 @@ class AnomalyAction(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class Report(Base):
+    """A generated historical report, stored as an immutable snapshot (CR §8).
+
+    A report is a *reproducible artifact*, not a live view: generation reads
+    persisted telemetry, cycles, SoH and anomaly state once and stores the
+    rendered ``payload``, so re-reading a report later returns exactly what was
+    generated even as the underlying data changes. ``table_name`` names the
+    section the CSV download exports (the PRD's "raw tabular export"), and
+    ``sections`` records which optional parts were included so a reader knows
+    what the snapshot deliberately omitted.
+    """
+
+    __tablename__ = "reports"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    report_type: Mapped[str] = mapped_column(String(32), default="full", index=True)
+    # NULL device_id means a fleet-wide report (the PRD "Device" filter left open).
+    device_id: Mapped[str | None] = mapped_column(
+        ForeignKey("devices.device_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    period_start: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(16), default="ready", index=True)
+    # The filter set the report was generated with, echoed back verbatim.
+    filters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Which optional sections were included (telemetry/soh/anomalies/actions).
+    sections: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Bumped only when the meaning of a section changes, so an old report can
+    # be told apart from a newer one with a different shape.
+    format_version: Mapped[str] = mapped_column(String(32), default="report-v1")
+    # The complete rendered report (JSON export; source of GET /reports/{id}).
+    payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Primary tabular section the CSV download renders, and its row count, so
+    # the caller can size the export without reading the full payload.
+    table_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    row_count: Mapped[int] = mapped_column(Integer, default=0)
+    generated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_report_device_created", "device_id", "created_at"),
+    )
