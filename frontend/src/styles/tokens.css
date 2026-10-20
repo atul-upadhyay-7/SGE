@@ -1,0 +1,41 @@
+/*
+ * Design tokens.
+ *
+ * Dark monitoring theme (PRD §5). Severity colours are defined here and are
+ * always paired with a text label + glyph in the components (PRD §7), so the
+ * palette is never the only signal.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #14171c;
+  --bg-elevated: #1b2027;
+  --bg-panel: #212832;
+  --bg-inset: #171b21;
+  --border: #2c3541;
+  --border-strong: #3a4552;
+
+  --text: #e6ebf2;
+  --text-muted: #97a3b4;
+  --text-dim: #6b7686;
+
+  --accent: #3b82f6;
+
+  --normal: #22c55e;
+  --warning: #eab308;
+  --high: #f97316;
+  --critical: #ef4444;
+  --info: #3b82f6;
+
+  --normal-bg: rgba(34, 197, 94, 0.14);
+  --warning-bg: rgba(234, 179, 8, 0.14);
+  --high-bg: rgba(249, 115, 22, 0.14);
+  --critical-bg: rgba(239, 68, 68, 0.14);
+  --info-bg: rgba(59, 130, 246, 0.14);
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  --gap: 16px;
+  --font-mono: "Cascadia Mono", "Consolas", "SFMono-Regular", monospace;
+  --sidebar-width: 220px;
+}

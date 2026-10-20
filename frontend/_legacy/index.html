@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BMS Monitor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>BMS Monitor</h1>
+      <div class="status">
+        <label>
+          API base
+          <input id="api-base" type="text" spellcheck="false" />
+        </label>
+        <span id="live-dot" class="dot dot--off" title="live stream"></span>
+        <span id="live-label" class="muted">live: connecting…</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <div class="panel__head">
+          <h2>Devices</h2>
+          <button id="refresh-devices" class="btn">Refresh</button>
+        </div>
+        <ul id="device-list" class="device-list"></ul>
+        <p id="device-empty" class="muted">No devices yet.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head"><h2>Register device</h2></div>
+        <form id="register-form" class="form">
+          <label>Device ID <input name="device_id" required placeholder="BMS_001" /></label>
+          <label>Name <input name="name" placeholder="Pack 1" /></label>
+          <label>Cell count <input name="cell_count" type="number" min="1" value="3" required /></label>
+          <label>Nominal capacity (Ah) <input name="nominal_capacity_ah" type="number" step="0.1" value="2.5" required /></label>
+          <label>Chemistry
+            <select name="chemistry">
+              <option value="li_ion">li_ion</option>
+              <option value="lifepo4">lifepo4</option>
+              <option value="nimh">nimh</option>
+              <option value="lead_acid">lead_acid</option>
+            </select>
+          </label>
+          <label>Credential (optional) <input name="credential" autocomplete="off" placeholder="min 8 chars" /></label>
+          <label>Admin key (if set) <input name="admin_key" autocomplete="off" placeholder="X-Admin-Key" /></label>
+          <button class="btn btn--primary" type="submit">Register</button>
+        </form>
+        <p id="register-msg" class="msg"></p>
+      </section>
+
+      <section class="panel panel--wide" id="detail" hidden>
+        <div class="panel__head">
+          <h2 id="detail-title">Device</h2>
+          <button id="refresh-detail" class="btn">Refresh</button>
+        </div>
+
+        <div class="cards">
+          <div class="card"><div class="card__label">Status</div><div class="card__value" id="c-status">—</div></div>
+          <div class="card"><div class="card__label">Last seen</div><div class="card__value" id="c-soh">—</div></div>
+          <div class="card"><div class="card__label">RUL (discharges)</div><div class="card__value" id="c-rul">—</div></div>
+          <div class="card"><div class="card__label">Open alerts</div><div class="card__value" id="c-alerts">—</div></div>
+        </div>
+
+        <h3>Latest telemetry</h3>
+        <pre id="detail-telemetry" class="code">—</pre>
+
+        <h3>Alerts</h3>
+        <ul id="detail-alerts" class="alert-list"><li class="muted">none</li></ul>
+      </section>
+
+      <section class="panel panel--wide">
+        <div class="panel__head"><h2>Live event log</h2><button id="clear-log" class="btn">Clear</button></div>
+        <ul id="event-log" class="event-log"></ul>
+      </section>
+    </main>
+
+    <footer class="muted">
+      Default API base assumes the backend on <code>http://localhost:8000</code>.
+      Start it with <code>uvicorn app.main:app</code> from <code>backend/</code>.
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
