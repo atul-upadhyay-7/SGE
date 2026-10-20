@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     alerts,
+    anomalies,
     cycles,
     devices,
     health,
@@ -120,4 +121,5 @@ app.include_router(predictions.router, prefix=settings.api_prefix)
 app.include_router(models.router, prefix=settings.api_prefix)
 app.include_router(rul.router, prefix=settings.api_prefix)
 app.include_router(alerts.router, prefix=settings.api_prefix)
+app.include_router(anomalies.router, prefix=settings.api_prefix)
 app.include_router(stream.router, prefix=settings.api_prefix)
