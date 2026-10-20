@@ -1,13 +1,20 @@
-"""Telemetry ingestion (FR-02) and historical queries (Phase 3).
+"""Telemetry ingestion (FR-02) and historical queries (Phase 3, CR §1).
 
-The POST reuses :meth:`IngestionService.ingest_now`, which shares the exact
-validation and persistence code with the MQTT path, so HTTP can never become a
-second, divergent ingestion implementation. It is intended for testing and
-constrained devices that cannot hold an MQTT session.
+Ingestion (``POST /devices/{device_id}/telemetry``) reuses
+:meth:`IngestionService.ingest_now`, which shares the exact validation and
+persistence code with the MQTT path, so HTTP can never become a second,
+divergent ingestion implementation.
 
-The GET endpoints read persisted samples only. History is fetched with keyset
-(``cursor``) pagination bounded by ``(measured_at, id)`` rather than OFFSET, so
-pages stay stable while new samples arrive between requests.
+The read endpoints are device-scoped on the *telemetry* resource, matching the
+frontend/Grafana contract:
+
+* ``GET /telemetry/latest/{device_id}``
+* ``GET /telemetry/history/{device_id}`` — time filters + keyset pagination
+* ``GET /telemetry/summary/{device_id}``
+
+History uses keyset (``cursor``) pagination bounded by ``(measured_at, id)``
+rather than OFFSET, so pages stay stable while new samples arrive between
+requests. All timestamps are UTC.
 """
 
 from __future__ import annotations
@@ -40,12 +47,14 @@ from app.schemas.telemetry_read import (
 )
 from app.services.ingestion_service import REASON_BAD_CREDENTIAL
 
-router = APIRouter(prefix="/devices/{device_id}/telemetry", tags=["telemetry"])
+router = APIRouter(tags=["telemetry"])
 
 _MAX_PAGE = 1000
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/devices/{device_id}/telemetry", status_code=status.HTTP_201_CREATED
+)
 async def ingest_telemetry(
     device_id: str,
     request: Request,
@@ -90,13 +99,28 @@ async def ingest_telemetry(
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=body)
 
 
-@router.get("", response_model=TelemetryPage)
+@router.get("/telemetry/latest/{device_id}", response_model=TelemetrySampleRead)
+async def latest_telemetry(
+    device_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> TelemetrySampleRead:
+    device = await _require_device(session, device_id)
+    sample = await TelemetryRepository(session).latest_sample(device.device_id)
+    if sample is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"no telemetry stored for device '{device.device_id}'",
+        )
+    return TelemetrySampleRead.model_validate(sample)
+
+
+@router.get("/telemetry/history/{device_id}", response_model=TelemetryPage)
 async def query_telemetry(
     device_id: str,
     from_: datetime | None = Query(
-        None, alias="from", description="Inclusive lower bound on measured_at."
+        None, alias="from", description="Inclusive lower bound on measured_at (UTC)."
     ),
-    to: datetime | None = Query(None, description="Inclusive upper bound."),
+    to: datetime | None = Query(None, description="Inclusive upper bound (UTC)."),
     limit: int = Query(100, ge=1, le=_MAX_PAGE),
     order: Literal["asc", "desc"] = Query("desc"),
     cursor: str | None = Query(None, description="Opaque token from a previous page"),
@@ -143,22 +167,7 @@ async def query_telemetry(
     )
 
 
-@router.get("/latest", response_model=TelemetrySampleRead)
-async def latest_telemetry(
-    device_id: str,
-    session: AsyncSession = Depends(get_session),
-) -> TelemetrySampleRead:
-    device = await _require_device(session, device_id)
-    sample = await TelemetryRepository(session).latest_sample(device.device_id)
-    if sample is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"no telemetry stored for device '{device.device_id}'",
-        )
-    return TelemetrySampleRead.model_validate(sample)
-
-
-@router.get("/summary", response_model=TelemetrySummary)
+@router.get("/telemetry/summary/{device_id}", response_model=TelemetrySummary)
 async def telemetry_summary(
     device_id: str,
     session: AsyncSession = Depends(get_session),

@@ -37,6 +37,10 @@ class Device(Base):
     name: Mapped[str] = mapped_column(String(255))
     cell_count: Mapped[int] = mapped_column(Integer)
     sampling_frequency_hz: Mapped[float] = mapped_column(Float, default=1.0)
+    # Chemistry selects the default anomaly-threshold profile (CR §5); the
+    # nominal capacity is the reference for a capacity-based SoH, if any.
+    chemistry: Mapped[str] = mapped_column(String(32), default="li_ion")
+    nominal_capacity_ah: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="active", index=True)
     credential_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -51,6 +55,21 @@ class Device(Base):
     last_aggregated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # --- Per-device anomaly thresholds (CR §5) ---------------------------
+    # Battery-specific limits for the target hardware and chemistry. Every
+    # value is nullable: ``None`` falls back to the chemistry default in
+    # :mod:`app.services.anomaly_rules`, so a device carries only the
+    # overrides that differ from its chemistry profile. No universal safety
+    # limit is hardcoded as a device value.
+    cell_voltage_min_v: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cell_voltage_max_v: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cell_spread_max_v: Mapped[float | None] = mapped_column(Float, nullable=True)
+    temperature_min_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    temperature_max_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    current_delta_max_a: Mapped[float | None] = mapped_column(Float, nullable=True)
+    voltage_delta_max_v: Mapped[float | None] = mapped_column(Float, nullable=True)
+    stale_after_s: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
 class TelemetrySample(Base):
@@ -234,4 +253,92 @@ class DeviceAlert(Base):
             unique=True,
             postgresql_where=text("status <> 'resolved'"),
         ),
+    )
+
+
+class AnomalyEvent(Base):
+    """A diagnosed anomaly against a device (CR §3, §5).
+
+    An event is the *episode*, not the reading: a rule that keeps firing for
+    the same ``(device_id, anomaly_type, affected_cell)`` extends the open
+    event (``last_detected_at`` and ``duration_seconds`` advance) instead of
+    stacking a row per 1 Hz sample. Closing it resolves the row; the same
+    condition recurring later opens a new event, which is what makes
+    recurrence counts meaningful (CR §6).
+    """
+
+    __tablename__ = "anomaly_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    device_id: Mapped[str] = mapped_column(
+        ForeignKey("devices.device_id", ondelete="CASCADE"), index=True
+    )
+    anomaly_type: Mapped[str] = mapped_column(String(64), index=True)
+    severity: Mapped[str] = mapped_column(String(16), index=True)
+    # 1-based cell index, or NULL for pack-level/whole-device anomalies.
+    affected_cell: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    observed_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    expected_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
+    duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    # Evidence is a structured record of *why* the rule fired; the cause and
+    # action lists come from the diagnostic mapping and are labelled
+    # confirmed/unconfirmed so an unproven explanation is never presented as
+    # fact (CR §5).
+    diagnostic_evidence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    likely_causes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    recommended_actions: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # The rule/model identity that produced the event, so a detection is
+    # reproducible after the rules change (CR §5).
+    rule_version: Mapped[str] = mapped_column(String(32), default="rules-v1")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_anomaly_device_detected", "device_id", "detected_at"),
+        Index("ix_anomaly_device_type_cell", "device_id", "anomaly_type", "affected_cell"),
+        # One open event per (device, type, cell): the partial unique index is
+        # what lets the detector extend an episode instead of double-opening,
+        # and what stops a 1 Hz condition from minting one row per sample.
+        Index(
+            "uq_anomaly_open_per_key",
+            "device_id",
+            "anomaly_type",
+            "affected_cell",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
+        ),
+    )
+
+
+class AnomalyAction(Base):
+    """The audit trail for an anomaly: acks, notes, corrective and resolve (CR §3, §4).
+
+    Append-only. The denormalized ``action_type`` plus ``actor`` make the
+    history readable without joining, and the row keeps the note that was
+    recorded at the time even if the event is later edited.
+    """
+
+    __tablename__ = "anomaly_actions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    anomaly_id: Mapped[int] = mapped_column(
+        ForeignKey("anomaly_events.id", ondelete="CASCADE"), index=True
+    )
+    action_type: Mapped[str] = mapped_column(String(32), index=True)
+    actor: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    evidence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )

@@ -52,6 +52,8 @@ class DeviceCreate(DeviceCredentialMixin):
     name: str = Field(min_length=1, max_length=255)
     cell_count: int = Field(ge=1, le=64)
     sampling_frequency_hz: float = Field(default=1.0, gt=0, le=100.0)
+    chemistry: str = Field(default="li_ion", max_length=32)
+    nominal_capacity_ah: float | None = Field(default=None, gt=0)
     status: str = Field(default="active", pattern="^(active|inactive|retired)$")
 
 
@@ -72,6 +74,8 @@ class DeviceRead(BaseModel):
     name: str
     cell_count: int
     sampling_frequency_hz: float
+    chemistry: str
+    nominal_capacity_ah: float | None = None
     status: str
     created_at: datetime | None = None
     last_seen_at: datetime | None = None

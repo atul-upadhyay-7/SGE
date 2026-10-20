@@ -9,7 +9,9 @@ duplicate history on every run.
 
 from __future__ import annotations
 
-from sqlalchemy import delete, func, select
+from datetime import datetime
+
+from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,17 +92,39 @@ class CycleRepository:
         await self._session.execute(pg_insert(SohPrediction).values(rows))
 
     async def list_predictions(
-        self, device_id: str, *, offset: int = 0, limit: int = 100
+        self,
+        device_id: str,
+        *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        descending: bool = False,
+        limit: int = 100,
+        cursor: tuple[datetime, int] | None = None,
     ) -> list[SohPrediction]:
-        result = await self._session.execute(
-            select(SohPrediction)
-            .where(SohPrediction.device_id == device_id)
-            .order_by(
+        """A page of predictions, optionally bounded by time and resume cursor.
+
+        Ordering is by ``(predicted_at, id)``; the cursor is an exclusive bound
+        on that pair, so a page never repeats or skips rows while new
+        predictions land between requests.
+        """
+        query = select(SohPrediction).where(SohPrediction.device_id == device_id)
+        if start is not None:
+            query = query.where(SohPrediction.predicted_at >= start)
+        if end is not None:
+            query = query.where(SohPrediction.predicted_at <= end)
+        if cursor is not None:
+            pair = tuple_(SohPrediction.predicted_at, SohPrediction.id)
+            query = query.where(pair < cursor if descending else pair > cursor)
+
+        if descending:
+            query = query.order_by(
+                SohPrediction.predicted_at.desc(), SohPrediction.id.desc()
+            )
+        else:
+            query = query.order_by(
                 SohPrediction.predicted_at.asc(), SohPrediction.id.asc()
             )
-            .offset(offset)
-            .limit(limit)
-        )
+        result = await self._session.execute(query.limit(limit))
         return list(result.scalars().all())
 
     async def count_predictions(self, device_id: str) -> int:

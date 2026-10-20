@@ -27,6 +27,18 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     log_level: str = "INFO"
 
+    # --- CORS -------------------------------------------------------------
+    # Browser origins allowed to call the API. The default is the common
+    # local frontend dev servers; set ``BMS_CORS_ALLOW_ORIGINS`` (comma
+    # separated, or "*" for any) before exposing the API beyond localhost.
+    cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
+    cors_allow_credentials: bool = False
+
+    def cors_origins(self) -> list[str]:
+        """Parse the comma-separated origin list (``*`` passes through)."""
+        origins = [part.strip() for part in self.cors_allow_origins.split(",")]
+        return [origin for origin in origins if origin]
+
     # --- Database ---------------------------------------------------------
     # Async SQLAlchemy URL. The Alembic migration environment reads this
     # same value, so the app and migrations can never drift apart.

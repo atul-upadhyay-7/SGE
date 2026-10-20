@@ -87,3 +87,51 @@ async def test_unknown_device_is_quarantined(require_db) -> None:
             )
         )
     assert reasons == ["unknown_device"]
+
+
+async def test_anomalous_sample_opens_an_event(require_db) -> None:
+    """A stored reading past a device's own limit opens a versioned event (CR §5)."""
+    from app.db.models import AnomalyEvent
+
+    device_id = f"BMS_{uuid4().hex[:8]}"
+    async with SessionLocal() as session:
+        # A stricter-than-global device limit so the reading stores (passes the
+        # ingestion range check) yet still breaches the anomaly rule.
+        await DeviceRepository(session).create(
+            device_id=device_id,
+            name="anomaly test",
+            cell_count=3,
+            sampling_frequency_hz=1.0,
+            chemistry="li_ion",
+            cell_voltage_max_v=4.0,
+            status="active",
+        )
+        await session.commit()
+
+    cache = DeviceCache()
+    cache.load([_Device(device_id, 3)])
+    service = IngestionService(SessionLocal, cache, Settings())
+
+    await service.ingest(device_id, _payload(device_id, f"{device_id}-0001"))
+    await service.flush_pending()
+    assert service.stats()["stored"] == 1
+
+    async with SessionLocal() as session:
+        events = list(
+            await session.scalars(
+                select(AnomalyEvent).where(AnomalyEvent.device_id == device_id)
+            )
+        )
+
+    # All three cells sit above the device's 4.0 V limit; each opens its own
+    # per-cell event (the rule key includes the cell index).
+    cell_events = sorted(
+        (e for e in events if e.anomaly_type == "cell_voltage_out_of_range"),
+        key=lambda e: e.affected_cell or 0,
+    )
+    assert [e.affected_cell for e in cell_events] == [1, 2, 3]
+    for event in cell_events:
+        assert event.status == "open"
+        assert event.rule_version == "rules-v1"
+        assert event.diagnostic_evidence["limit"] == "max"
+        assert event.likely_causes and event.recommended_actions

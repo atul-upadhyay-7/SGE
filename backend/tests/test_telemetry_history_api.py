@@ -64,7 +64,7 @@ def test_history_defaults_to_newest_first_and_latest_matches(
     _register(client, device_id)
     _seed(client, device_id, 5)
 
-    page = client.get(f"/api/v1/devices/{device_id}/telemetry")
+    page = client.get(f"/api/v1/telemetry/history/{device_id}")
     assert page.status_code == 200, page.text
     body = page.json()
     assert body["order"] == "desc"
@@ -73,7 +73,7 @@ def test_history_defaults_to_newest_first_and_latest_matches(
     stamps = [item["measured_at"] for item in body["items"]]
     assert stamps == sorted(stamps, reverse=True)
 
-    latest = client.get(f"/api/v1/devices/{device_id}/telemetry/latest")
+    latest = client.get(f"/api/v1/telemetry/latest/{device_id}")
     assert latest.status_code == 200, latest.text
     assert latest.json()["measured_at"] == body["items"][0]["measured_at"]
 
@@ -90,7 +90,7 @@ def test_history_keyset_pagination_covers_every_row_once(client, require_db) -> 
         if cursor:
             params["cursor"] = cursor
         page = client.get(
-            f"/api/v1/devices/{device_id}/telemetry", params=params
+            f"/api/v1/telemetry/history/{device_id}", params=params
         ).json()
         seen.extend(item["id"] for item in page["items"])
         cursor = page["next_cursor"]
@@ -108,7 +108,7 @@ def test_history_ascending_order(client, require_db) -> None:
     _seed(client, device_id, 4)
 
     body = client.get(
-        f"/api/v1/devices/{device_id}/telemetry", params={"order": "asc"}
+        f"/api/v1/telemetry/history/{device_id}", params={"order": "asc"}
     ).json()
     stamps = [item["measured_at"] for item in body["items"]]
     assert stamps == sorted(stamps)
@@ -120,7 +120,7 @@ def test_history_time_range_is_inclusive(client, require_db) -> None:
     _seed(client, device_id, 5)
 
     body = client.get(
-        f"/api/v1/devices/{device_id}/telemetry",
+        f"/api/v1/telemetry/history/{device_id}",
         params={
             "from": (BASE + timedelta(minutes=1)).isoformat(),
             "to": (BASE + timedelta(minutes=3)).isoformat(),
@@ -134,7 +134,7 @@ def test_history_time_range_is_inclusive(client, require_db) -> None:
 
 
 def test_history_rejects_unknown_device(client, require_db) -> None:
-    response = client.get("/api/v1/devices/NOPE_XYZ/telemetry")
+    response = client.get("/api/v1/telemetry/history/NOPE_XYZ")
     assert response.status_code == 404, response.text
 
 
@@ -142,7 +142,7 @@ def test_history_rejects_bad_cursor(client, require_db) -> None:
     device_id = f"HIST_{uuid4().hex[:8]}"
     _register(client, device_id)
     response = client.get(
-        f"/api/v1/devices/{device_id}/telemetry", params={"cursor": "not-a-cursor"}
+        f"/api/v1/telemetry/history/{device_id}", params={"cursor": "not-a-cursor"}
     )
     assert response.status_code == 400, response.text
 
@@ -151,7 +151,7 @@ def test_history_rejects_from_after_to(client, require_db) -> None:
     device_id = f"HIST_{uuid4().hex[:8]}"
     _register(client, device_id)
     response = client.get(
-        f"/api/v1/devices/{device_id}/telemetry",
+        f"/api/v1/telemetry/history/{device_id}",
         params={
             "from": (BASE + timedelta(minutes=5)).isoformat(),
             "to": BASE.isoformat(),
@@ -163,7 +163,7 @@ def test_history_rejects_from_after_to(client, require_db) -> None:
 def test_latest_is_404_when_device_has_no_samples(client, require_db) -> None:
     device_id = f"HIST_{uuid4().hex[:8]}"
     _register(client, device_id)
-    response = client.get(f"/api/v1/devices/{device_id}/telemetry/latest")
+    response = client.get(f"/api/v1/telemetry/latest/{device_id}")
     assert response.status_code == 404, response.text
 
 
@@ -178,7 +178,7 @@ def test_summary_reports_coverage_and_rejections(client, require_db) -> None:
     )
     assert rejected.status_code == 422, rejected.text
 
-    summary = client.get(f"/api/v1/devices/{device_id}/telemetry/summary")
+    summary = client.get(f"/api/v1/telemetry/summary/{device_id}")
     assert summary.status_code == 200, summary.text
     body = summary.json()
     assert body["device_id"] == device_id

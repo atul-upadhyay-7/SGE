@@ -119,14 +119,14 @@ def test_aggregate_produces_cycles_and_predictions(client, seeded_device) -> Non
         assert item["end_time"] is not None
         assert item["start_time"] < item["end_time"]
 
-    soh = client.get(f"/api/v1/devices/{device_id}/soh").json()
+    soh = client.get(f"/api/v1/predictions/history/{device_id}").json()
     assert soh["count"] == 4
     for item in soh["items"]:
         assert item["feature_schema_version"] == "window-v1"
         assert isinstance(item["predicted_soh"], float)
         assert item["cycle_id"] is not None
 
-    latest = client.get(f"/api/v1/devices/{device_id}/soh/latest")
+    latest = client.get(f"/api/v1/predictions/latest/{device_id}")
     assert latest.status_code == 200, latest.text
     assert latest.json()["predicted_soh"] == soh["items"][-1]["predicted_soh"]
 
@@ -160,7 +160,7 @@ def test_too_few_cycles_are_refused_not_guessed(client, require_db) -> None:
     assert body["predictions"] == 0
     assert body["refused"] == 2
 
-    latest = client.get(f"/api/v1/devices/{device_id}/soh/latest")
+    latest = client.get(f"/api/v1/predictions/latest/{device_id}")
     assert latest.status_code == 404, latest.text
 
 
@@ -171,7 +171,7 @@ def test_aggregate_rejects_unknown_device(client, require_db) -> None:
 
 def test_cycles_and_soh_reject_unknown_device(client, require_db) -> None:
     assert client.get("/api/v1/devices/NOPE_XYZ/cycles").status_code == 404
-    assert client.get("/api/v1/devices/NOPE_XYZ/soh").status_code == 404
+    assert client.get("/api/v1/predictions/history/NOPE_XYZ").status_code == 404
 
 
 def test_representative_cell_is_the_weakest() -> None:

@@ -36,7 +36,8 @@ from app.schemas.telemetry import (
     looks_like_legacy,
 )
 from app.services.device_cache import DeviceCache
-from app.services.event_bus import EVENT_TELEMETRY, EventBus
+from app.services.anomaly_detection_service import AnomalyDetector
+from app.services.event_bus import EVENT_ALERT, EVENT_TELEMETRY, EventBus
 
 logger = get_logger(__name__)
 
@@ -453,6 +454,10 @@ class IngestionService:
                     self.rejected += len(rejections)
                 await session.commit()
                 self._publish_stored(samples)
+                # Detection runs *after* the commit and never rolls it back:
+                # raw ingestion must survive a detector fault (CR §10).
+                if samples:
+                    await self._detect_anomalies(samples)
             except Exception:  # noqa: BLE001 - a bad batch must not kill the writer
                 await session.rollback()
                 self.write_errors += 1
@@ -483,6 +488,41 @@ class IngestionService:
                     "measured_at": sample.measured_at.isoformat(),
                 },
             )
+
+    async def _detect_anomalies(self, samples: list[ValidatedSample]) -> None:
+        """Best-effort anomaly detection for the devices that just reported.
+
+        Runs in its own session and transaction so a detector error can never
+        affect the stored samples (CR §10). One pass per device, not per
+        sample: the detector reads the recent window itself.
+        """
+        device_ids = sorted({sample.device_id for sample in samples})
+        if not device_ids:
+            return
+        async with self._session_factory() as session:
+            try:
+                repository = DeviceRepository(session)
+                detector = AnomalyDetector(session, self._settings)
+                published: list[dict] = []
+                for device_id in device_ids:
+                    device = await repository.get_by_device_id(device_id)
+                    if device is None:
+                        continue
+                    result = await detector.reconcile(device)
+                    for anomaly_id in result.opened + result.extended:
+                        published.append(
+                            {"device_id": device_id, "anomaly_id": anomaly_id}
+                        )
+                await session.commit()
+                if self._events is not None:
+                    for payload in published:
+                        self._events.publish(EVENT_ALERT, payload)
+            except Exception:  # noqa: BLE001 - detection must not break ingestion
+                await session.rollback()
+                logger.exception(
+                    "Anomaly detection failed for %d device(s); samples kept",
+                    len(device_ids),
+                )
 
     async def _touch_devices(
         self, session: AsyncSession, samples: list[ValidatedSample]

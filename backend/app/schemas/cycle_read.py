@@ -47,9 +47,44 @@ class SohPage(BaseModel):
     items: list[SohPredictionRead]
 
 
+class SohHistoryPage(BaseModel):
+    """A cursor-paginated page of predictions (CR §7).
+
+    ``next_cursor`` is opaque; pass it back verbatim as ``cursor``. It is
+    ``null`` on the last page.
+    """
+
+    device_id: str
+    order: str
+    limit: int
+    count: int
+    next_cursor: str | None
+    items: list[SohPredictionRead]
+
+
 class AggregationResult(BaseModel):
     device_id: str
     samples: int
     cycles: int
     predictions: int
     refused: int
+
+
+class ModelRead(BaseModel):
+    """A versioned model artifact and its active state (CR §7)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    model_name: str
+    model_version: str
+    artifact_path: str
+    feature_schema_version: str
+    training_dataset_version: str | None = None
+    metrics: dict | None = None
+    is_active: bool
+    created_at: datetime
+
+
+class ActiveModels(BaseModel):
+    count: int
+    items: list[ModelRead]

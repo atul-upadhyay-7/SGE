@@ -11,8 +11,19 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import alerts, cycles, devices, health, rul, stream, telemetry
+from app.api import (
+    alerts,
+    cycles,
+    devices,
+    health,
+    models,
+    predictions,
+    rul,
+    stream,
+    telemetry,
+)
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import SessionLocal, engine
@@ -88,10 +99,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS for a browser frontend on another origin. Credentials are off by
+# default because the API authenticates devices with headers, not cookies;
+# turning them on with a wildcard origin would be rejected by the browser
+# anyway (the CORS spec forbids the pair), so the two are set independently.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins(),
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(devices.router, prefix=settings.api_prefix)
 app.include_router(telemetry.router, prefix=settings.api_prefix)
 app.include_router(cycles.router, prefix=settings.api_prefix)
+app.include_router(predictions.router, prefix=settings.api_prefix)
+app.include_router(models.router, prefix=settings.api_prefix)
 app.include_router(rul.router, prefix=settings.api_prefix)
 app.include_router(alerts.router, prefix=settings.api_prefix)
 app.include_router(stream.router, prefix=settings.api_prefix)

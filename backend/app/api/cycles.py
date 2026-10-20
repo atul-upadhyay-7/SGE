@@ -1,9 +1,12 @@
-"""Cycle history and SoH inference endpoints (FR-06, FR-07).
+"""Cycle aggregation and cycle history (FR-06).
 
 Aggregation is explicit and idempotent: ``POST .../cycles/aggregate`` replays
 the device's stored telemetry through the shared cycle tracker and the partial
-window model, then persists cycles and predictions. The GET endpoints read the
-persisted results and never run inference.
+window model, then persists cycles and predictions. The GET endpoint reads the
+persisted results and never runs inference.
+
+SoH prediction reads live on the ``/predictions`` resource (CR §7); this router
+owns cycles only.
 """
 
 from __future__ import annotations
@@ -19,8 +22,6 @@ from app.schemas.cycle_read import (
     AggregationResult,
     CyclePage,
     CycleRead,
-    SohPage,
-    SohPredictionRead,
 )
 from app.services.cycle_service import CycleAggregationService
 
@@ -56,42 +57,6 @@ async def list_cycles(
         count=len(items),
         items=[CycleRead.model_validate(item) for item in items],
     )
-
-
-@router.get("/soh", response_model=SohPage)
-async def list_soh(
-    device_id: str,
-    offset: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=_MAX_PAGE),
-    session: AsyncSession = Depends(get_session),
-) -> SohPage:
-    await _require_device(session, device_id)
-    repository = CycleRepository(session)
-    items = await repository.list_predictions(
-        device_id, offset=offset, limit=limit
-    )
-    return SohPage(
-        device_id=device_id,
-        count=len(items),
-        items=[SohPredictionRead.model_validate(item) for item in items],
-    )
-
-
-@router.get("/soh/latest", response_model=SohPredictionRead)
-async def latest_soh(
-    device_id: str,
-    session: AsyncSession = Depends(get_session),
-) -> SohPredictionRead:
-    await _require_device(session, device_id)
-    prediction = await CycleRepository(session).latest_prediction(device_id)
-    if prediction is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=(
-                f"no SoH prediction for device '{device_id}'"
-            ),
-        )
-    return SohPredictionRead.model_validate(prediction)
 
 
 async def _require_device(session: AsyncSession, device_id: str) -> Device:
