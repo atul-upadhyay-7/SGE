@@ -84,6 +84,54 @@ class Settings(BaseSettings):
     ingest_batch_size: int = 500
     ingest_flush_interval_s: float = 0.5
 
+    # --- Monitoring loop and alert rules (Phase 5) -----------------------
+    # The loop is one asyncio task in the app lifespan: it aggregates any
+    # device that gained samples since the last tick, then evaluates the
+    # alert rules against the persisted state. Disabled by default in tests
+    # so the background task never races a per-test event loop.
+    monitor_enabled: bool = True
+    monitor_interval_s: float = 60.0
+    auto_aggregate: bool = True
+    # A device with no sample for this long is flagged "device_stale"
+    # (offline), matching the offline exporter's staleness notion.
+    device_stale_after_s: float = 900.0
+
+    # Rule thresholds. The SoH retirement bound is the value the offline
+    # alert rules use (scripts/make_alert_rules.py: RETIRE_SOH_PCT); the
+    # temperature bound is the maximum peak temperature the SoH model trained
+    # on (data/processed/nasa_ml_dataset_clean.csv, column temperature_max),
+    # so "out of range" means "outside the model's operational range".
+    alert_soh_retire_pct: float = 80.0
+    alert_temperature_max_c: float = 63.0242156686
+
+    # --- Security (Phase 6) ----------------------------------------------
+    # Optional admin key guarding device registration and credential
+    # rotation. Unset (the default) keeps those endpoints open, which is what
+    # local development and the compose stack expect; set it before exposing
+    # the API beyond a trusted network.
+    admin_api_key: str | None = None
+    # Reject device secrets shorter than this at registration time. Long
+    # enough to force a random value, short enough for a QR-code sticker.
+    min_credential_length: int = 8
+
+    # --- RUL / EOL (Phase 7) ---------------------------------------------
+    # How many of a device's newest predicted SoH values feed the
+    # reference-trajectory match. Matches SMOOTH_WINDOW in
+    # src/rul_trajectory.py, so serving and evaluation use the same window.
+    rul_history_window: int = 10
+    # Reference SoH-versus-discharge curves exported by src/train_rul.py.
+    # Resolved relative to the repo root, like the SoH model artifacts.
+    rul_reference_path: str | None = None
+
+    # --- Live stream (Phase 8) -------------------------------------------
+    # The SSE endpoint and the in-process event bus behind it. On by
+    # default; a deployment that only polls the REST API can turn it off to
+    # avoid holding subscriber connections open.
+    stream_enabled: bool = True
+    # Per-subscriber buffer for live events. A slow reader drops its oldest
+    # events rather than applying back-pressure to ingestion.
+    stream_queue_max: int = 256
+
     @property
     def mqtt_telemetry_topic(self) -> str:
         """Wildcard subscription for all device telemetry (FR-02)."""

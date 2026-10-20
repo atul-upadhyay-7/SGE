@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
 from app.core.logging import get_logger
+from app.core.security import verify_device_credential
 from app.repositories.device_repository import DeviceRepository
 from app.repositories.telemetry_repository import InsertOutcome, TelemetryRepository
 from app.schemas.telemetry import (
@@ -35,6 +36,7 @@ from app.schemas.telemetry import (
     looks_like_legacy,
 )
 from app.services.device_cache import DeviceCache
+from app.services.event_bus import EVENT_TELEMETRY, EventBus
 
 logger = get_logger(__name__)
 
@@ -42,6 +44,7 @@ logger = get_logger(__name__)
 REASON_UNKNOWN_DEVICE = "unknown_device"
 REASON_DEVICE_INACTIVE = "device_inactive"
 REASON_DEVICE_ID_MISMATCH = "device_id_mismatch"
+REASON_BAD_CREDENTIAL = "device_credential_mismatch"
 REASON_UNSUPPORTED_SCHEMA = "unsupported_schema_version"
 REASON_MISSING_FIELD = "missing_field"
 REASON_INVALID_TIMESTAMP = "invalid_timestamp"
@@ -71,10 +74,13 @@ class IngestionService:
         session_factory: async_sessionmaker[AsyncSession],
         cache: DeviceCache,
         settings: Settings,
+        *,
+        events: EventBus | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._cache = cache
         self._settings = settings
+        self._events = events
         self._queue: asyncio.Queue[ValidatedSample | RejectionRecord] = asyncio.Queue(
             maxsize=settings.ingest_queue_max
         )
@@ -119,8 +125,23 @@ class IngestionService:
         *,
         source: str = "mqtt",
         topic: str | None = None,
+        presented_credential: str | None = None,
     ) -> ValidatedSample | RejectionRecord:
-        """Validate a decoded payload; never raises."""
+        """Validate a decoded payload; never raises.
+
+        ``presented_credential`` is the secret a device sent (HTTP header or
+        the payload's optional ``credential`` field). A payload may also carry
+        the secret inline; that copy is stripped before schema validation so
+        it can never be persisted into ``additional_data``.
+        """
+        # Work on a copy so the caller's dict is left intact, and pull the
+        # credential out before Pydantic sees the payload — extras are
+        # persisted verbatim, and a secret must not become telemetry.
+        raw = dict(raw)
+        inline_credential = raw.pop("credential", None)
+        if presented_credential is None and isinstance(inline_credential, str):
+            presented_credential = inline_credential
+
         original = raw
         if looks_like_legacy(raw):
             try:
@@ -177,6 +198,20 @@ class IngestionService:
             return self._reject(
                 REASON_UNKNOWN_DEVICE,
                 "device is not registered",
+                device_id,
+                payload.message_id,
+                topic,
+                source,
+                original,
+            )
+        # Authenticate before revealing anything else about the device, so a
+        # caller without the secret cannot probe status or configuration.
+        if not verify_device_credential(
+            device.credential_ref, presented_credential
+        ):
+            return self._reject(
+                REASON_BAD_CREDENTIAL,
+                "device credential missing or does not match",
                 device_id,
                 payload.message_id,
                 topic,
@@ -283,10 +318,21 @@ class IngestionService:
     # -- transports --------------------------------------------------------
 
     async def ingest(
-        self, device_id: str, raw: dict[str, Any], *, topic: str | None = None
+        self,
+        device_id: str,
+        raw: dict[str, Any],
+        *,
+        topic: str | None = None,
+        presented_credential: str | None = None,
     ) -> None:
         """MQTT path: validate and hand off without touching the database."""
-        item = self.build_item(device_id, raw, source="mqtt", topic=topic)
+        item = self.build_item(
+            device_id,
+            raw,
+            source="mqtt",
+            topic=topic,
+            presented_credential=presented_credential,
+        )
         try:
             self._queue.put_nowait(item)
         except asyncio.QueueFull:
@@ -311,10 +357,20 @@ class IngestionService:
             logger.error("Ingestion queue full; dropped malformed payload record")
 
     async def ingest_now(
-        self, device_id: str, raw: dict[str, Any], *, source: str = "http"
+        self,
+        device_id: str,
+        raw: dict[str, Any],
+        *,
+        source: str = "http",
+        presented_credential: str | None = None,
     ) -> IngestOutcome:
         """HTTP path: validate and persist synchronously so the caller gets a verdict."""
-        item = self.build_item(device_id, raw, source=source)
+        item = self.build_item(
+            device_id,
+            raw,
+            source=source,
+            presented_credential=presented_credential,
+        )
         if isinstance(item, RejectionRecord):
             await self._flush([item])
             return IngestOutcome(
@@ -396,6 +452,7 @@ class IngestionService:
                     await TelemetryRepository(session).insert_rejections(rejections)
                     self.rejected += len(rejections)
                 await session.commit()
+                self._publish_stored(samples)
             except Exception:  # noqa: BLE001 - a bad batch must not kill the writer
                 await session.rollback()
                 self.write_errors += 1
@@ -403,6 +460,29 @@ class IngestionService:
                     "Ingestion flush failed for %d item(s); batch dropped", len(items)
                 )
         return outcome
+
+    def _publish_stored(self, samples: list[ValidatedSample]) -> None:
+        """Tell live subscribers which devices gained a sample.
+
+        Fired after the commit, once per device, so a burst of samples from
+        one device is a single "re-read this device" hint rather than one
+        event per row. The caller only learns about rows that were actually
+        inserted; duplicates leave no visible change.
+        """
+        if self._events is None:
+            return
+        seen: set[str] = set()
+        for sample in samples:
+            if sample.device_id in seen:
+                continue
+            seen.add(sample.device_id)
+            self._events.publish(
+                EVENT_TELEMETRY,
+                {
+                    "device_id": sample.device_id,
+                    "measured_at": sample.measured_at.isoformat(),
+                },
+            )
 
     async def _touch_devices(
         self, session: AsyncSession, samples: list[ValidatedSample]

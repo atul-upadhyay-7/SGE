@@ -1,12 +1,13 @@
 # BMS Backend
 
 FastAPI service that ingests ESP32/BMS telemetry over MQTT, persists raw
-measurements in PostgreSQL, aggregates discharge cycles, and serves
-State-of-Health predictions from the existing trained partial-window model.
-Built alongside the repo's offline ML pipeline, and it reuses that pipeline's
-own cycle/feature code (no private copy) so training and serving cannot drift.
+measurements in PostgreSQL, aggregates discharge cycles, serves
+State-of-Health predictions from the existing trained partial-window model,
+and evaluates alert rules against the stored state. Built alongside the
+repo's offline ML pipeline, and it reuses that pipeline's own cycle/feature
+code (no private copy) so training and serving cannot drift.
 
-## Status: Phases 1–4 complete
+## Status: Phases 1–8 complete
 
 **Phase 1 — Foundation**
 
@@ -74,6 +75,130 @@ own cycle/feature code (no private copy) so training and serving cannot drift.
 - CLI equivalent: `python backend/scripts/aggregate_cycles.py --all`
   (or `--device-id <id>`).
 - Unknown device → `404` on every endpoint.
+
+**Phase 5 — Monitoring loop and alerts**
+
+- Background monitor (`app/services/monitor_service.py`, one asyncio task in
+  the lifespan): each tick it re-aggregates any device that has gained a
+  sample since the last aggregation (`devices.last_aggregated_at`), then
+  evaluates the alert rules for every registered device.
+- Alert rules (`app/services/alert_service.py`), evaluated against the
+  *persisted* state (newest sample, newest SoH prediction, `last_seen_at`):
+  - `soh_below_retirement` — latest predicted SoH < `BMS_ALERT_SOH_RETIRE_PCT`
+    (default 80.0, matching `scripts/make_alert_rules.py`). Critical.
+  - `temperature_out_of_range` — newest sample temperature >
+    `BMS_ALERT_TEMPERATURE_MAX_C` (default 63.0242 C, the maximum peak
+    temperature in `nasa_ml_dataset_clean.csv`, so "out of range" means
+    "outside the model's trained operational range"). Warning.
+  - `device_stale` — no sample for `BMS_DEVICE_STALE_AFTER_S` (default 900 s).
+    Warning.
+  - `cell_imbalance` — the `cell_imbalance_high` quality flag the ingestion
+    path already computes. Warning.
+- Reconciliation is idempotent: a rule that is already open bumps
+  `last_seen_at` instead of stacking a row (enforced by a partial unique
+  index on `(device_id, rule_code)` where `status <> 'resolved'`). A cleared
+  condition resolves the row; a still-firing *acked* alert stays acked.
+- Endpoints: `GET /api/v1/alerts` (filter by `device_id`, `status`,
+  `severity`; paginated), `GET /api/v1/alerts/{id}`,
+  `POST /api/v1/alerts/{id}/ack`, `GET /api/v1/devices/{id}/alerts`, and
+  `POST /api/v1/devices/{id}/alerts/evaluate` (force a pass, mirrors
+  `/cycles/aggregate`). Loop health: `GET /api/v1/health/monitor`.
+- CLI equivalent: `python backend/scripts/evaluate_alerts.py --all`
+  (or `--device-id <id>`).
+- The loop is disabled in tests (`BMS_MONITOR_ENABLED=false` in conftest), so
+  it never races a per-test event loop.
+
+**Phase 6 — Security hardening**
+
+- Per-device shared secrets. `POST /api/v1/devices` accepts an optional
+  write-only `credential` (8–128 chars). It is hashed with SHA-256 before
+  storage (`devices.credential_ref`) and never appears in any response, so a
+  leaked API payload cannot leak a secret. Devices without a credential stay
+  open, which keeps local development and the compose stack unchanged.
+- Ingestion authenticates the device. A protected device's telemetry must
+  carry the secret: as an `X-Device-Credential` header on the HTTP path, or
+  in the payload's optional top-level `credential` field (the MQTT
+  convention). The inline copy is stripped before schema validation, so it
+  can never be persisted into `additional_data`. A mismatch is quarantined
+  with reason `device_credential_mismatch` and answered `401` over HTTP.
+  The check runs before the status check, so an unauthenticated caller
+  cannot probe whether a device is retired.
+- Credential rotation: `PUT /api/v1/devices/{device_id}/credential` with
+  `{"credential": "<new>"}`. While a secret is still set the caller must
+  present it in `X-Device-Credential`; sending `{"credential": null}` clears
+  it and re-opens the device.
+- Optional admin key. Setting `BMS_ADMIN_API_KEY` guards device registration
+  and credential rotation behind an `X-Admin-Key` header (401 when missing
+  or wrong). Unset — the default — those endpoints stay open for local use.
+- Comparison uses `hmac.compare_digest`, so a timing probe cannot recover
+  the stored digest byte by byte.
+- Broker-side security is configuration, not code: run Mosquitto with a TLS
+  listener, a `password_file`, and per-device ACLs that map the MQTT
+  username to a topic prefix, e.g.
+
+  ```
+  listener 8883
+  cafile /etc/mosquitto/certs/ca.crt
+  certfile /etc/mosquitto/certs/server.crt
+  keyfile /etc/mosquitto/certs/server.key
+  require_certificate false
+  password_file /etc/mosquitto/passwd
+  acl_file /etc/mosquitto/acl
+  ```
+
+  with an ACL granting each device `write` to `bms/${username}/telemetry`
+  only, and the backend a `read` on `bms/+/telemetry`. The backend then
+  connects with its own username/password (`BMS_MQTT_USERNAME` /
+  `BMS_MQTT_PASSWORD`) rather than anonymously.
+
+**Phase 7 — Remaining useful life (EOL prediction)**
+
+- `GET /api/v1/devices/{device_id}/rul` — estimates how many **discharges**
+  remain before retirement (SoH < 80%, the project-wide `EOL_SOH_THRESHOLD`).
+- Method is *reference-trajectory matching*, not a regressor: the device's
+  recent predicted SoH values are matched against the offline reference
+  curves (`models/rul_reference_curves.json`) and the median remaining
+  discharges across references is reported, with the p10/p90 spread across
+  references as a band. The offline analysis (`src/rul_trajectory.py`)
+  documents why a cycle-level RUL regressor cannot beat a constant on four
+  cells, and why a fade-rate extrapolation overshoots the knee.
+- `status` tells the caller what to expect: `ok` (numbers meaningful),
+  `retired` (already at/below threshold → `rul_discharges: 0`),
+  `no_predictions` (device has no SoH yet), `no_references` (no reference
+  curve reached the threshold). Unknown device → `404`; missing artifact →
+  `503`.
+- RUL is **derived, not stored**: it is recomputed from the current
+  predictions on each request, so re-aggregating a device (or updating the
+  reference curves) is reflected immediately. The estimator imports the
+  offline `TrajectoryRul` class rather than reimplementing it, and a test
+  pins the point estimate to the offline `remaining()`.
+- CLI equivalent: `python backend/scripts/estimate_rul.py --all`
+  (or `--device-id <id>`).
+- Honest limits (carried from the offline module): four reference cells of
+  one chemistry and one load; the band is a spread across references, not a
+  calibrated predictive interval.
+
+**Phase 8 — Live push and dashboard glue**
+
+- `GET /api/v1/stream` is a Server-Sent Events (SSE) channel. The dashboard's
+  `EventSource` opens one long-lived request and receives a small JSON frame
+  when telemetry is stored, a discharge cycle completes, an alert opens/changes
+  or resolves, a device is registered, or a monitor tick runs. Panels then
+  re-read the REST endpoints they care about.
+- The events are produced by an in-process bus (`app/services/event_bus.py`)
+  that ingestion, the monitor loop, alert reconciliation and registration
+  publish to. It is a lossy "something changed" hint, not a durable log: a
+  subscriber that misses an event still sees the truth on its next read, which
+  is why a broker is deliberately not used.
+- A slow subscriber never applies back-pressure: each subscriber has a bounded
+  queue (`BMS_STREAM_QUEUE_MAX`) and the oldest event is dropped when it fills
+  (counted, not silent). `GET /api/v1/stream/status` reports the subscriber
+  count and total published events.
+- Filter with `?kinds=telemetry,alert` (kinds: `telemetry`, `cycle`, `alert`,
+  `monitor`, `device`). Set `BMS_STREAM_ENABLED=false` to turn the channel off
+  in a poll-only deployment.
+- SSE rather than WebSockets because the traffic is one-directional and plain
+  HTTP: it needs no handshake, no client library, and traverses proxies.
 
 ## Run with Docker (recommended)
 

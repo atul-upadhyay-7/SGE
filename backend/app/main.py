@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import cycles, devices, health, telemetry
+from app.api import alerts, cycles, devices, health, rul, stream, telemetry
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import SessionLocal, engine
@@ -20,7 +20,9 @@ from app.mqtt.client import MqttClientManager
 from app.mqtt.consumer import build_telemetry_handler
 from app.repositories.device_repository import DeviceRepository
 from app.services.device_cache import DeviceCache
+from app.services.event_bus import EventBus
 from app.services.ingestion_service import IngestionService
+from app.services.monitor_service import MonitorService
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -50,7 +52,9 @@ async def lifespan(app: FastAPI):
     )
 
     cache = DeviceCache()
-    ingestion = IngestionService(SessionLocal, cache, settings)
+    events = EventBus(queue_max=settings.stream_queue_max)
+    app.state.events = events
+    ingestion = IngestionService(SessionLocal, cache, settings, events=events)
     app.state.device_cache = cache
     app.state.ingestion = ingestion
 
@@ -64,9 +68,14 @@ async def lifespan(app: FastAPI):
     app.state.mqtt = manager
     await manager.start()
 
+    monitor = MonitorService(SessionLocal, settings, events=events)
+    app.state.monitor = monitor
+    await monitor.start()
+
     try:
         yield
     finally:
+        await monitor.stop()
         await manager.stop()
         await ingestion.stop()
         await engine.dispose()
@@ -83,3 +92,6 @@ app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(devices.router, prefix=settings.api_prefix)
 app.include_router(telemetry.router, prefix=settings.api_prefix)
 app.include_router(cycles.router, prefix=settings.api_prefix)
+app.include_router(rul.router, prefix=settings.api_prefix)
+app.include_router(alerts.router, prefix=settings.api_prefix)
+app.include_router(stream.router, prefix=settings.api_prefix)

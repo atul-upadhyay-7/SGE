@@ -12,6 +12,7 @@ import asyncio
 import os
 
 os.environ.setdefault("BMS_MQTT_ENABLED", "false")
+os.environ.setdefault("BMS_MONITOR_ENABLED", "false")
 os.environ.setdefault(
     "BMS_DATABASE_URL", "postgresql+asyncpg://bms:bms@localhost:5433/bms"
 )

@@ -21,6 +21,9 @@ class DeviceInfo:
     cell_count: int
     sampling_frequency_hz: float
     status: str = "active"
+    # sha256 digest of the device secret, or None for an open device. Cached
+    # so the hot path can authenticate without a database round trip.
+    credential_ref: str | None = None
 
 
 class DeviceCache:
@@ -60,4 +63,5 @@ def _to_info(device: object) -> DeviceInfo | None:
         cell_count=cell_count,
         sampling_frequency_hz=float(getattr(device, "sampling_frequency_hz", 1.0)),
         status=getattr(device, "status", "active"),
+        credential_ref=getattr(device, "credential_ref", None),
     )

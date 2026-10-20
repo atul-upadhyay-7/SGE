@@ -15,7 +15,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +38,7 @@ from app.schemas.telemetry_read import (
     TelemetrySampleRead,
     TelemetrySummary,
 )
+from app.services.ingestion_service import REASON_BAD_CREDENTIAL
 
 router = APIRouter(prefix="/devices/{device_id}/telemetry", tags=["telemetry"])
 
@@ -40,11 +50,31 @@ async def ingest_telemetry(
     device_id: str,
     request: Request,
     payload: dict[str, Any] = Body(...),
+    x_device_credential: str | None = Header(default=None),
 ) -> JSONResponse:
+    """Synchronous ingestion for devices that cannot hold an MQTT session.
+
+    The credential is taken from the ``X-Device-Credential`` header; a
+    payload may instead carry it in a top-level ``credential`` field (the
+    same convention the MQTT path uses). The ingestion service strips that
+    field before validation, so it is never persisted as telemetry.
+    """
     ingestion = request.app.state.ingestion
-    outcome = await ingestion.ingest_now(device_id, payload, source="http")
+    outcome = await ingestion.ingest_now(
+        device_id,
+        payload,
+        source="http",
+        presented_credential=x_device_credential,
+    )
 
     if outcome.status == "rejected":
+        # A credential failure is an authentication problem, not a data
+        # problem: answer 401 so clients and monitors treat it as such.
+        if outcome.reason == REASON_BAD_CREDENTIAL:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"reason": outcome.reason, "detail": outcome.detail},
+            )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"reason": outcome.reason, "detail": outcome.detail},

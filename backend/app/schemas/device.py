@@ -1,13 +1,47 @@
-"""Device registration schemas (FR-01)."""
+"""Device registration and credential schemas (FR-01, NFR: Security)."""
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.core.security import (
+    MAX_CREDENTIAL_LENGTH,
+    MIN_CREDENTIAL_LENGTH,
+)
 
 
-class DeviceCreate(BaseModel):
+class DeviceCredentialMixin(BaseModel):
+    """Write-only device secret.
+
+    The plaintext is accepted here and only here; it is hashed before storage
+    and never appears in any response schema, so a leaked API response can
+    never leak a secret.
+    """
+
+    credential: str | None = Field(
+        default=None,
+        min_length=MIN_CREDENTIAL_LENGTH,
+        max_length=MAX_CREDENTIAL_LENGTH,
+        description=(
+            "Optional shared secret for the device. Stored only as a SHA-256 "
+            "digest; never returned by the API. Leave null for an open device."
+        ),
+    )
+
+    @field_validator("credential")
+    @classmethod
+    def _reject_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            return None
+        return stripped
+
+
+class DeviceCreate(DeviceCredentialMixin):
     """Request body for registering a device.
 
     ``cell_count`` is required and authoritative: it is the parameter the
@@ -19,7 +53,15 @@ class DeviceCreate(BaseModel):
     cell_count: int = Field(ge=1, le=64)
     sampling_frequency_hz: float = Field(default=1.0, gt=0, le=100.0)
     status: str = Field(default="active", pattern="^(active|inactive|retired)$")
-    credential_ref: str | None = Field(default=None, max_length=255)
+
+
+class DeviceCredentialUpdate(DeviceCredentialMixin):
+    """Body for rotating (or clearing) a device's secret.
+
+    ``credential: null`` removes the secret and re-opens the device. The
+    caller must present the *current* secret in the
+    ``X-Device-Credential`` header when one is still set.
+    """
 
 
 class DeviceRead(BaseModel):
@@ -33,3 +75,5 @@ class DeviceRead(BaseModel):
     status: str
     created_at: datetime | None = None
     last_seen_at: datetime | None = None
+    # ``credential_ref`` is deliberately absent: digests are as sensitive as
+    # the secrets they replace for an attacker doing offline cracking.

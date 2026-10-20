@@ -121,3 +121,21 @@ class CycleRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def recent_predictions(
+        self, device_id: str, *, limit: int = 10
+    ) -> list[SohPrediction]:
+        """The newest ``limit`` predictions, oldest first.
+
+        Ordered like the offline trajectory: the RUL estimator wants the SoH
+        series in discharge order with the most recent value last.
+        """
+        result = await self._session.execute(
+            select(SohPrediction)
+            .where(SohPrediction.device_id == device_id)
+            .order_by(
+                SohPrediction.predicted_at.desc(), SohPrediction.id.desc()
+            )
+            .limit(limit)
+        )
+        return list(reversed(list(result.scalars().all())))

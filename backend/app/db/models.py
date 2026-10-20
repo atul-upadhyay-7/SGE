@@ -19,6 +19,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -42,6 +43,12 @@ class Device(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # When the monitoring loop last replayed this device's telemetry into
+    # cycles/predictions; the loop skips a device that has not gained a sample
+    # since then, so an idle device costs no work each tick (Phase 5).
+    last_aggregated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
@@ -179,4 +186,52 @@ class ModelRegistry(Base):
 
     __table_args__ = (
         UniqueConstraint("model_name", "model_version", name="uq_model_name_version"),
+    )
+
+
+class DeviceAlert(Base):
+    """A rule breach raised against a device (Phase 5).
+
+    Alerts are keyed on ``(device_id, rule_code)`` while they are open: a
+    rule that keeps firing updates ``last_seen_at`` instead of stacking a
+    new row per evaluation, so a 60-second monitor loop cannot flood the
+    table. Closing a condition resolves the row; the same rule opening again
+    later creates a fresh row.
+    """
+
+    __tablename__ = "device_alerts"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    device_id: Mapped[str] = mapped_column(
+        ForeignKey("devices.device_id", ondelete="CASCADE"), index=True
+    )
+    rule_code: Mapped[str] = mapped_column(String(64))
+    severity: Mapped[str] = mapped_column(String(16), default="warning")
+    message: Mapped[str] = mapped_column(String(512))
+    details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    acked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    acked_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_alert_device_rule", "device_id", "rule_code"),
+        # One open (active or acked) alert per device and rule; the partial
+        # index is what lets the evaluator upsert without double-opening.
+        Index(
+            "uq_alert_open_per_device_rule",
+            "device_id",
+            "rule_code",
+            unique=True,
+            postgresql_where=text("status <> 'resolved'"),
+        ),
     )

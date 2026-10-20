@@ -56,3 +56,26 @@ async def health_ingestion(request: Request) -> dict:
     if service is None:
         return {"status": "error", "ingestion": "not_started"}
     return {"status": "ok", "ingestion": "running", **service.stats()}
+
+
+@router.get("/health/monitor", summary="Monitoring loop status")
+async def health_monitor(request: Request, response: Response) -> dict:
+    service = getattr(request.app.state, "monitor", None)
+    if service is None:
+        response.status_code = 503
+        return {"status": "error", "monitor": "not_started"}
+    enabled = _settings.monitor_enabled
+    payload = {
+        "status": "ok",
+        "monitor": "running" if enabled else "disabled",
+        "enabled": enabled,
+        "interval_s": _settings.monitor_interval_s,
+        "auto_aggregate": _settings.auto_aggregate,
+        "runs": service.runs,
+        "last_run_at": service.last_run_at,
+        "last_error": service.last_error,
+    }
+    if service.last_error is not None:
+        response.status_code = 503
+        payload["status"] = "error"
+    return payload
