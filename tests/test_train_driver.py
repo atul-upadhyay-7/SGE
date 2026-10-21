@@ -36,7 +36,7 @@ def test_optimistic_fold_does_not_fit_held_out_rows(monkeypatch):
             seen.append(self.indices)
             return np.full(len(x), 90.)
     monkeypatch.setattr(train_soh, "search_best_params", lambda *a, **k: ({}, -1))
-    monkeypatch.setattr(train_soh, "build_model", lambda *a, **k: Model())
+    monkeypatch.setattr(train_soh, "BlendRegressor", lambda **k: Model())
     assert len(train_soh.optimistic_loco(df, ["x"])) == 2
     assert seen == [{2, 3}, {0, 1}]
 

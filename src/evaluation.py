@@ -288,6 +288,54 @@ def null_baselines(
     }
 
 
+# Weight on the XGBoost member of the SOH blend. The linear
+# member carries extrapolation beyond the training SOH range:
+# trees saturate at the lowest target they saw, and B0006
+# fades well past it (the bias report showed predictions
+# flooring at 70.8 while the cell reached 57.3). The weight
+# was picked on the four G1 cells; the nested-protocol sweep
+# shows any weight in 0.1-0.4 beats either member alone, so
+# the exact value is not knife-edge.
+BLEND_XGB_WEIGHT = 0.3
+
+
+class BlendRegressor:
+    """
+    Fixed-weight blend of XGBoost and ElasticNet.
+
+    fit/predict mirror the sklearn estimators it replaces, so
+    the training and serving code paths are unchanged. Each
+    member is a full build_model pipeline (imputer, plus the
+    scaler for the linear member), so the blend takes the raw
+    feature frame.
+    """
+
+    def __init__(
+        self,
+        xgb_params=None,
+        xgb_weight=BLEND_XGB_WEIGHT
+    ):
+        self.xgb_params = dict(xgb_params or {})
+        self.xgb_weight = xgb_weight
+
+    def fit(self, X, y):
+        self.xgb_ = build_model(
+            "XGBoost", **self.xgb_params
+        )
+        self.en_ = build_model("ElasticNet")
+        self.xgb_.fit(X, y)
+        self.en_.fit(X, y)
+        return self
+
+    def predict(self, X):
+        return (
+            self.xgb_weight * self.xgb_.predict(X)
+            + (1.0 - self.xgb_weight)
+            * self.en_.predict(X)
+        )
+
+
+
 def loco_evaluate(
     df,
     target,

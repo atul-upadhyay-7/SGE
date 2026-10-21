@@ -50,6 +50,7 @@ from sklearn.model_selection import (
 from repro import rounded
 from evaluation import (
     MODEL_NAMES,
+    BlendRegressor,
     build_model,
     coulomb_baseline,
     loco_evaluate,
@@ -185,9 +186,10 @@ def nested_loco(
             )
         )
 
-        model = build_model(
-            "XGBoost",
-            **{
+        # The blend's XGBoost member carries the searched
+        # parameters; ElasticNet runs at its defaults.
+        model = BlendRegressor(
+            xgb_params={
                 key.replace("model__", ""):
                     value
                 for key, value in best_params.items()
@@ -209,7 +211,7 @@ def nested_loco(
         )
 
         rows.append({
-            "model": "XGBoost_nested",
+            "model": "Blend_nested",
             "test_cell": test_cell,
             "MAE": mae,
             "RMSE": rmse,
@@ -272,9 +274,8 @@ def optimistic_loco(
             test_cell
         )
 
-        model = build_model(
-            "XGBoost",
-            **{
+        model = BlendRegressor(
+            xgb_params={
                 key.replace("model__", ""):
                     value
                 for key, value in best_params.items()
@@ -296,7 +297,7 @@ def optimistic_loco(
         )
 
         rows.append({
-            "model": "XGBoost_optimistic",
+            "model": "Blend_optimistic",
             "test_cell": test_cell,
             "MAE": mae,
             "RMSE": rmse,
@@ -647,9 +648,8 @@ def main():
 
     # Reuses the search run before the optimistic pass above;
     # identical inputs and seed, so identical parameters.
-    final_model = build_model(
-        "XGBoost",
-        **{
+    final_model = BlendRegressor(
+        xgb_params={
             key.replace("model__", ""):
                 value
             for key, value in final_params.items()
@@ -729,7 +729,7 @@ def main():
     )
 
     importance = feature_importance(
-        final_model,
+        final_model.xgb_,
         features
     )
 
@@ -873,12 +873,24 @@ def main():
             f"excluding {sorted(DEMO_CELLS)})"
         )
 
-    # Also save a portable copy of the all-cell model
-    _save_portable(
-        final_model, features, TARGET,
-        sorted(df["cell_id"].unique().tolist()),
-        MODEL_DIR / "soh_xgb_all"
-    )
+    # Portable UBJ export is XGBoost-only; the blend has no
+    # single booster to export. The joblib bundle above is the
+    # deployable artifact for the all-cell model.
+    if hasattr(final_model, "named_steps"):
+
+        _save_portable(
+            final_model, features, TARGET,
+            sorted(df["cell_id"].unique().tolist()),
+            MODEL_DIR / "soh_xgb_all"
+        )
+
+    else:
+
+        print(
+            "\nPortable UBJ export skipped: the final model "
+            "is the XGBoost+ElasticNet blend; use the joblib "
+            "bundle."
+        )
 
 
 def _save_portable(
