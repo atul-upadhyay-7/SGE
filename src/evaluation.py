@@ -32,6 +32,8 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from joblib import Parallel, delayed
+
 from xgboost import XGBRegressor
 
 import features as _features
@@ -74,6 +76,9 @@ DEFAULT_PARAMS = {
 }
 
 MODEL_NAMES = list(DEFAULT_PARAMS)
+
+# Models whose per-cell fits are worth running in parallel.
+_PARALLEL_MODELS = {"RandomForest", "XGBoost"}
 
 # Models that benefit from feature scaling: linear family.
 _SCALED_MODELS = {"Linear", "Ridge", "ElasticNet"}
@@ -306,56 +311,96 @@ def loco_evaluate(
         leaky_columns
     )
 
-    rows = []
-    predictions = []
-    baselines = []
+    # Per-cell fits are independent, so the heavy models are
+    # evaluated one cell per worker. XGBoost and RandomForest
+    # are deterministic in their thread count (fixed data,
+    # fixed random_state), so the rows, predictions and
+    # baselines are identical to the sequential pass; only the
+    # wall-clock time changes. Light linear models stay
+    # sequential: their fits are milliseconds and process
+    # dispatch would cost more than the fit.
+    cells = sorted(df["cell_id"].unique())
 
-    for test_cell in sorted(
-        df["cell_id"].unique()
-    ):
+    n_jobs = -1 if model_name in _PARALLEL_MODELS else 1
 
-        train_df, test_df = split_by_cell(
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_loco_one_cell)(
             df,
-            test_cell
+            test_cell,
+            target,
+            features,
+            model_name,
+            prediction_column,
+            with_baselines
         )
+        for test_cell in cells
+    )
 
-        model = build_model(
-            model_name
-        )
+    rows = [row for row, _, _ in results]
+    predictions = [frame for _, frame, _ in results]
+    baselines = [
+        record
+        for _, _, cell_baselines in results
+        for record in cell_baselines
+    ]
 
-        model.fit(
-            train_df[features],
-            train_df[target]
-        )
+    return rows, predictions, baselines
 
-        prediction = model.predict(
-            test_df[features]
-        )
 
-        mae, rmse, r2 = score(
-            test_df[target],
-            prediction
-        )
+def _loco_one_cell(
+    df,
+    test_cell,
+    target,
+    features,
+    model_name,
+    prediction_column,
+    with_baselines
+):
+    """
+    The loco_evaluate work for one held-out cell, kept as a
+    module-level function so joblib can pickle it to workers.
+    """
 
-        rows.append({
-            "model": model_name,
-            "test_cell": test_cell,
-            "MAE": mae,
-            "RMSE": rmse,
-            "R2": r2
-        })
+    train_df, test_df = split_by_cell(
+        df,
+        test_cell
+    )
 
-        frame = test_df.copy()
+    model = build_model(
+        model_name
+    )
 
-        frame[prediction_column] = (
-            prediction
-        )
+    model.fit(
+        train_df[features],
+        train_df[target]
+    )
 
-        predictions.append(frame)
+    prediction = model.predict(
+        test_df[features]
+    )
 
-        if not with_baselines:
+    mae, rmse, r2 = score(
+        test_df[target],
+        prediction
+    )
 
-            continue
+    row = {
+        "model": model_name,
+        "test_cell": test_cell,
+        "MAE": mae,
+        "RMSE": rmse,
+        "R2": r2
+    }
+
+    frame = test_df.copy()
+
+    frame[prediction_column] = (
+        prediction
+    )
+
+    cell_baselines = []
+
+    if with_baselines:
 
         for name, (
             baseline_mae,
@@ -367,14 +412,14 @@ def loco_evaluate(
             test_df
         ).items():
 
-            baselines.append({
+            cell_baselines.append({
                 "test_cell": test_cell,
                 "baseline": name,
                 "MAE": baseline_mae,
                 "value": value
             })
 
-    return rows, predictions, baselines
+    return row, frame, cell_baselines
 
 
 def coulomb_baseline(df, target="soh"):
@@ -535,5 +580,6 @@ def logo_evaluate(
             })
 
     return rows, predictions, baselines
+
 
 

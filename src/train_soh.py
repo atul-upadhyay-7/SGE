@@ -139,7 +139,7 @@ def search_best_params(
         cv=LeaveOneGroupOut(),
         scoring="neg_mean_absolute_error",
         random_state=RANDOM_STATE,
-        n_jobs=1,
+        n_jobs=-1,
         refit=True
     )
 
@@ -235,7 +235,8 @@ def nested_loco(
 def optimistic_loco(
     df,
     features,
-    n_iter=N_ITERATIONS
+    n_iter=N_ITERATIONS,
+    search_result=None
 ):
     """
     Search scored on the folds it tuned against.
@@ -243,14 +244,22 @@ def optimistic_loco(
     Reported only to quantify the optimism in the nested
     score. These numbers are not a valid generalisation
     estimate.
+
+    search_result lets the caller pass an already-run search
+    over the same data (the final all-cells model needs the
+    same one), so the search runs once instead of twice.
     """
 
-    best_params, best_score = search_best_params(
-        df[features],
-        df[TARGET],
-        df["cell_id"],
-        n_iter=n_iter
-    )
+    if search_result is None:
+
+        search_result = search_best_params(
+            df[features],
+            df[TARGET],
+            df["cell_id"],
+            n_iter=n_iter
+        )
+
+    best_params, best_score = search_result
 
     rows = []
 
@@ -514,9 +523,20 @@ def main():
         "Running the optimistic comparison."
     )
 
+    # One search, two consumers: the optimistic estimate below
+    # and the final all-cells model further down need the same
+    # parameters (same data, same LOCO folds, same seed). It
+    # used to run twice; that cost one full extra search.
+    final_params, final_score = search_best_params(
+        df[features],
+        df[TARGET],
+        df["cell_id"]
+    )
+
     optimistic_rows = optimistic_loco(
         df,
-        features
+        features,
+        search_result=(final_params, final_score)
     )
 
     nested_frame = pd.DataFrame(
@@ -625,12 +645,8 @@ def main():
         "\n\n========== FINAL MODEL (all cells) =========="
     )
 
-    final_params, final_score = search_best_params(
-        df[features],
-        df[TARGET],
-        df["cell_id"]
-    )
-
+    # Reuses the search run before the optimistic pass above;
+    # identical inputs and seed, so identical parameters.
     final_model = build_model(
         "XGBoost",
         **{
@@ -925,3 +941,4 @@ def _save_portable(
 if __name__ == "__main__":
 
     main()
+

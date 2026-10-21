@@ -31,6 +31,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -230,6 +231,74 @@ def held_out_frame(clean, features, cell_id):
     return aligned.sort_values("discharge_index").reset_index(drop=True)
 
 
+
+def _scenario_rows(traces, clean, protocol_fold, cell, condition, seed):
+    """All model rows for one (cell, condition) robustness scenario."""
+
+    protocol, fold = protocol_fold
+
+    features = perturbed_cell_frame(traces, condition, seed)
+
+    aligned = held_out_frame(clean, features, cell)
+
+    scored = window_formula(cell_relative_features(aligned))
+    scored = scored.dropna(
+        subset=list(WINDOW_MODEL_FEATURES)
+    ).reset_index(drop=True)
+
+    if scored.empty:
+        return []
+
+    base = {
+        "condition": condition["condition"],
+        "kind": condition["kind"],
+        "voltage_noise_mv": condition["voltage_noise_mv"],
+        "current_noise_pct": condition["current_noise_pct"],
+        "window_high_v": condition["window_high_v"],
+        "window_low_v": condition["window_low_v"],
+        "window_span_v": condition["window_span_v"],
+        "protocol": protocol,
+        "test_cell": cell,
+        "n_cycles": int(len(scored)),
+    }
+
+    rows = []
+
+    for model_name in ("ElasticNet", "XGBoost"):
+
+        model = build_model(model_name)
+        model.fit(fold[WINDOW_MODEL_FEATURES], fold[TARGET])
+        predicted = model.predict(scored[WINDOW_MODEL_FEATURES])
+
+        rows.append({
+            **base,
+            "model": model_name,
+            "mae_pct": stable_metric(
+                _mae(scored[TARGET], predicted),
+                high=MAE_UNSTABLE_ABOVE_PCT,
+            ),
+            "r2": stable_metric(
+                _r2(scored[TARGET], predicted),
+                low=R2_UNSTABLE_BELOW,
+            ),
+        })
+
+    rows.append({
+        **base,
+        "model": "window_formula",
+        "mae_pct": stable_metric(
+            _mae(scored[TARGET], scored["_window_formula"]),
+            high=MAE_UNSTABLE_ABOVE_PCT,
+        ),
+        "r2": stable_metric(
+            _r2(scored[TARGET], scored["_window_formula"]),
+            low=R2_UNSTABLE_BELOW,
+        ),
+    })
+
+    return rows
+
+
 def robustness_table(raw_dir=None):
     """
     Score every condition on every held-out cell and return
@@ -255,9 +324,14 @@ def robustness_table(raw_dir=None):
 
     levels = conditions()
 
-    rows = []
-
-    for cell_index, cell in enumerate(cells):
+    # Each (cell, condition) scenario is independent: it
+    # perturbs that cell's traces, rebuilds the window row and
+    # scores it against a fold that depends only on the cell.
+    # Scenarios therefore run one per worker in a fixed order
+    # that Parallel preserves; the detail frame is identical
+    # to the sequential pass, only wall-clock time changes.
+    folds = {}
+    for cell in cells:
 
         group = group_of[cell]
 
@@ -276,68 +350,29 @@ def robustness_table(raw_dir=None):
                 clean_relative["group"].isin(["G1", "G3"])
             ]
 
-        for condition_index, condition in enumerate(levels):
+        folds[cell] = (protocol, fold)
 
-            features = perturbed_cell_frame(
+    scenarios = [
+        (cell, cell_index, condition, condition_index)
+        for cell_index, cell in enumerate(cells)
+        for condition_index, condition in enumerate(levels)
+    ]
+
+    rows = [
+        row
+        for scenario_rows in Parallel(n_jobs=-1)(
+            delayed(_scenario_rows)(
                 traces_by_cell[cell],
+                clean,
+                folds[cell],
+                cell,
                 condition,
                 (SEED, cell_index, condition_index),
             )
-
-            aligned = held_out_frame(clean, features, cell)
-
-            scored = window_formula(cell_relative_features(aligned))
-            scored = scored.dropna(
-                subset=list(WINDOW_MODEL_FEATURES)
-            ).reset_index(drop=True)
-
-            if scored.empty:
-                continue
-
-            base = {
-                "condition": condition["condition"],
-                "kind": condition["kind"],
-                "voltage_noise_mv": condition["voltage_noise_mv"],
-                "current_noise_pct": condition["current_noise_pct"],
-                "window_high_v": condition["window_high_v"],
-                "window_low_v": condition["window_low_v"],
-                "window_span_v": condition["window_span_v"],
-                "protocol": protocol,
-                "test_cell": cell,
-                "n_cycles": int(len(scored)),
-            }
-
-            for model_name in ("ElasticNet", "XGBoost"):
-
-                model = build_model(model_name)
-                model.fit(fold[WINDOW_MODEL_FEATURES], fold[TARGET])
-                predicted = model.predict(scored[WINDOW_MODEL_FEATURES])
-
-                rows.append({
-                    **base,
-                    "model": model_name,
-                    "mae_pct": stable_metric(
-                        _mae(scored[TARGET], predicted),
-                        high=MAE_UNSTABLE_ABOVE_PCT,
-                    ),
-                    "r2": stable_metric(
-                        _r2(scored[TARGET], predicted),
-                        low=R2_UNSTABLE_BELOW,
-                    ),
-                })
-
-            rows.append({
-                **base,
-                "model": "window_formula",
-                "mae_pct": stable_metric(
-                    _mae(scored[TARGET], scored["_window_formula"]),
-                    high=MAE_UNSTABLE_ABOVE_PCT,
-                ),
-                "r2": stable_metric(
-                    _r2(scored[TARGET], scored["_window_formula"]),
-                    low=R2_UNSTABLE_BELOW,
-                ),
-            })
+            for cell, cell_index, condition, condition_index in scenarios
+        )
+        for row in scenario_rows
+    ]
 
     detail = pd.DataFrame(rows)
 
@@ -507,3 +542,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
