@@ -36,7 +36,12 @@ const STATUS_LABEL: Record<string, string> = {
   retired: "Retired",
   open: "Open",
   acked: "Acknowledged",
+  acknowledged: "Acknowledged",
+  investigating: "Investigating",
   resolved: "Resolved",
+  ready: "Ready",
+  failed: "Failed",
+  generating: "Generating",
 };
 
 export function StatusPill({ status }: { status: string }) {

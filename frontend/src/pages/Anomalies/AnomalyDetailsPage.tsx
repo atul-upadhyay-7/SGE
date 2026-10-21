@@ -7,11 +7,12 @@
  * actions come from the backend's versioned rule set — the page never invents a
  * diagnosis or a recommendation (PRD §4.4, §10).
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Card, KpiCard, PageHeader } from "@/components/cards/Cards";
 import { LineChart } from "@/components/charts/Charts";
+import { ConfirmButton } from "@/components/feedback/ConfirmButton";
 import {
   EmptyState,
   ErrorState,
@@ -59,6 +60,11 @@ export function AnomalyDetailsPage() {
   const event = eventState.data;
   const history = historyState.data ?? [];
 
+  const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+  useEffect(() => {
+    if (event) setLastLoaded(new Date());
+  }, [event]);
+
   const traceState = useAsync(
     (signal) =>
       event
@@ -103,7 +109,7 @@ export function AnomalyDetailsPage() {
         subtitle={event ? `${event.device_id} · ${event.anomaly_type}` : undefined}
         actions={
           <div className="page-header__actions">
-            <StaleBadge lastUpdated={eventState.data ? new Date() : null} />
+            <StaleBadge lastUpdated={lastLoaded} />
             <Link className="btn" to="/anomalies">
               ← Back to Anomaly Center
             </Link>
@@ -298,6 +304,8 @@ function TelemetryTrace({
         series={voltageSeries}
         unit="V"
         formatY={(v) => v.toFixed(1)}
+        formatX={(v) => `${Math.round(v / 60000)}m`}
+        xLabel="Minutes from detection"
         emptyLabel="No pack voltage in window"
       />
       {cellSeries.length > 0 && (
@@ -306,6 +314,8 @@ function TelemetryTrace({
           series={cellSeries}
           unit="V"
           formatY={(v) => v.toFixed(3)}
+          formatX={(v) => `${Math.round(v / 60000)}m`}
+          xLabel="Minutes from detection"
         />
       )}
     </div>
@@ -538,19 +548,19 @@ function ResolutionWorkflow({
           >
             Record corrective action
           </button>
-          <button
-            type="button"
+          <ConfirmButton
             className="btn btn--primary"
+            label="Mark resolved"
+            confirmLabel="Confirm resolve"
             disabled={busy || resolved}
-            onClick={() =>
+            title="Resolving is final for this event; confirming prevents an accidental click"
+            onConfirm={() =>
               run(
                 () => resolveAnomaly(event.id, { actor: actor || null, note: note || null }),
                 "Anomaly resolved",
               )
             }
-          >
-            Mark resolved
-          </button>
+          />
         </div>
         {message && <p className="form__message">{message}</p>}
       </div>

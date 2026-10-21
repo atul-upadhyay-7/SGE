@@ -43,9 +43,9 @@ npm run preview    # serve the built bundle
 | `/anomalies` | Anomaly Center | Live: summary counts, filters, sortable/paginated table, hourly severity chart, CSV export |
 | `/anomalies/:anomalyId` | Anomaly Details | Live: identification, measurements + trace, diagnosis, recommendations, resolution workflow |
 | `/health` | Battery Health (SoH) | Live: latest predicted SoH, predicted-vs-measured history, model/feature metadata |
-| `/reports` | Historical Reports | Awaiting report APIs |
-| `/devices` | Device Management | Live: list + register |
-| `/system` | System Health | Live: per-subsystem health panels |
+| `/reports` | Historical Reports | Live: generate from filters + section toggles, browse stored reports, render the persisted snapshot, export JSON/CSV |
+| `/devices` | Device Management | Live: list (cells, rate, status, last seen, last telemetry, ingestion errors), registration, per-device details drill-down |
+| `/system` | System Health | Live: independent panels for FastAPI, PostgreSQL, MQTT, ingestion, monitor, ML models and the live stream, plus last message per device |
 
 Pages whose backend feature does not exist yet show an explicit
 "not available yet" panel listing what they will contain — they never render
@@ -79,6 +79,14 @@ invented data.## Design notes
   same connection.
 - **Four states**: every data page renders loading, error (with retry), empty,
   and success, plus a last-updated freshness badge.
+- **Accessibility**: a skip link jumps to `<main id="main-content">`, a global
+  `:focus-visible` outline marks keyboard focus, clickable rows respond to
+  Enter/Space, and severity/status are never conveyed by colour alone.
+- **Responsive**: below 768 px the sidebar becomes a sticky horizontal nav and
+  the shell stacks; KPI grids collapse to one column and wide tables scroll
+  horizontally instead of overflowing.
+- **Tables**: long tables (reports, devices, anomalies) scroll horizontally;
+  numeric/monospace columns stay aligned.
 
 ## Layout
 
@@ -97,6 +105,40 @@ src/
   types/          Domain types mirroring backend schemas
   utils/          Formatting helpers
 ```
+
+## Deployment
+
+The app is a static SPA (Vite build → `dist/`) that talks to the backend and,
+optionally, Grafana. All three endpoints are build-time configuration and are
+public values, never secrets.
+
+1. Set the environment (copy `.env.example` → `.env`, or export in CI):
+
+   | Variable | Purpose | Default |
+   | --- | --- | --- |
+   | `VITE_API_BASE_URL` | Backend base URL incl. `/api/v1` | `http://localhost:8000/api/v1` |
+   | `VITE_GRAFANA_URL` | Grafana base URL (kiosk iframe) | `http://localhost:3000` |
+   | `VITE_GRAFANA_DASHBOARD_UID` | Dashboard UID embedded on Live Monitoring | `bms-live` |
+
+2. Build and serve:
+
+   ```
+   npm ci
+   npm run build      # emits dist/
+   npm run preview    # local check of the production build
+   ```
+
+3. Serve `dist/` from any static host. Because the app uses client-side routing,
+   configure a **SPA fallback** (rewrite unknown paths to `index.html`):
+
+   - nginx: `try_files $uri $uri/ /index.html;`
+   - Netlify: `/* /index.html 200`
+   - Vercel / SPA hosts: enable the SPA/rewrite preset.
+
+4. Serve over HTTPS in production. The backend must allow the deployed origin
+   via its `BMS_CORS_ALLOW_ORIGINS`. The browser reads the report download
+   filename from `Content-Disposition`, which the backend exposes via
+   `Access-Control-Expose-Headers`.
 
 ## Legacy
 

@@ -7,7 +7,7 @@
  * (PRD §4.5, §8) rather than resampled telemetry.
  */
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Card, KpiCard, PageHeader } from "@/components/cards/Cards";
 import { StackedBarChart } from "@/components/charts/Charts";
@@ -81,7 +81,13 @@ const CSV_COLUMNS = [
 export function AnomalyCenterPage() {
   const { deviceId } = useSelectedDevice();
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<Filters>(() => ({
+    ...EMPTY_FILTERS,
+    severity: searchParams.get("severity") ?? "",
+    anomalyType: searchParams.get("anomaly_type") ?? "",
+    status: searchParams.get("status") ?? "",
+  }));
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("detected_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -355,8 +361,17 @@ export function AnomalyCenterPage() {
               <table className="table table--clickable">
                 <thead>
                   <tr>
-                    <th>Event ID</th>
-                    <th>
+                    <th scope="col">Event ID</th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        sortKey === "detected_at"
+                          ? sortDir === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                    >
                       <SortHeader
                         label="Detected"
                         active={sortKey === "detected_at"}
@@ -364,8 +379,17 @@ export function AnomalyCenterPage() {
                         onClick={() => onSort("detected_at")}
                       />
                     </th>
-                    <th>Device</th>
-                    <th>
+                    <th scope="col">Device</th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        sortKey === "anomaly_type"
+                          ? sortDir === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                    >
                       <SortHeader
                         label="Category"
                         active={sortKey === "anomaly_type"}
@@ -373,7 +397,16 @@ export function AnomalyCenterPage() {
                         onClick={() => onSort("anomaly_type")}
                       />
                     </th>
-                    <th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        sortKey === "severity"
+                          ? sortDir === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                    >
                       <SortHeader
                         label="Severity"
                         active={sortKey === "severity"}
@@ -381,10 +414,19 @@ export function AnomalyCenterPage() {
                         onClick={() => onSort("severity")}
                       />
                     </th>
-                    <th>Cell</th>
-                    <th>Observed</th>
-                    <th>Expected</th>
-                    <th>
+                    <th scope="col">Cell</th>
+                    <th scope="col">Observed</th>
+                    <th scope="col">Expected</th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        sortKey === "duration_seconds"
+                          ? sortDir === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                    >
                       <SortHeader
                         label="Duration"
                         active={sortKey === "duration_seconds"}
@@ -392,8 +434,8 @@ export function AnomalyCenterPage() {
                         onClick={() => onSort("duration_seconds")}
                       />
                     </th>
-                    <th>Status</th>
-                    <th>Action</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -475,7 +517,7 @@ function AnomalyRow({
     >
       <td className="mono">#{event.id}</td>
       <td title={formatDateTime(event.detected_at)}>
-        {event.detected_at.replace("T", " ").slice(0, 19)}
+        {formatDateTime(event.detected_at)}
       </td>
       <td className="mono">{event.device_id}</td>
       <td>{event.anomaly_type}</td>

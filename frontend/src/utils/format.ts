@@ -68,6 +68,19 @@ export function formatHourBucket(value: string): string {
   return `${pad(date.getHours())}:00`;
 }
 
+/** The browser's IANA timezone name, for labelling grouped/relative times. */
+export function localZoneName(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** Short ``HH:MM`` label for a chart x-axis tick (timestamp in ms). */
+export function formatAxisTime(value: number): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function formatPercent(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return `${value.toFixed(1)}%`;

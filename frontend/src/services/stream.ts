@@ -7,6 +7,7 @@
  * connection indicator instead of pretending to be live (PRD §4.2, §6).
  */
 import { config } from "@/config";
+import { apiFetch } from "@/services/api";
 import type { LiveEvent } from "@/types/domain";
 
 export type StreamState = "connecting" | "open" | "closed" | "error";
@@ -48,4 +49,16 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
       handlers.onState?.("closed");
     },
   };
+}
+
+export interface StreamStatus {
+  status: string;
+  stream: string;
+  subscribers?: number;
+  published?: number;
+}
+
+/** Server-side stream health: subscriber count and published-event count. */
+export function getStreamStatus(signal?: AbortSignal): Promise<StreamStatus> {
+  return apiFetch<StreamStatus>("/stream/status", { signal });
 }

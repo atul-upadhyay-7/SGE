@@ -64,7 +64,7 @@ export function StackedBarChart({
     );
   }
 
-  const padding = { top: 12, right: 12, bottom: 28, left: 36 };
+  const padding = { top: 12, right: 12, bottom: 40, left: 44 };
   const width = 720;
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
@@ -87,6 +87,16 @@ export function StackedBarChart({
           .map((s) => s.label)
           .join(", ")}. Peak ${max} ${unit}.`}
       >
+        {unit && (
+          <text
+            x={padding.left - 34}
+            y={padding.top + 4}
+            textAnchor="start"
+            className="chart__axis chart__axis--unit"
+          >
+            {unit}
+          </text>
+        )}
         {gridLines.map((line) => (
           <g key={line.value}>
             <line
@@ -148,7 +158,7 @@ export function StackedBarChart({
               {index % Math.ceil(labels.length / 12) === 0 && (
                 <text
                   x={x + barW / 2}
-                  y={height - 10}
+                  y={height - 20}
                   textAnchor="middle"
                   className="chart__axis"
                 >
@@ -158,6 +168,14 @@ export function StackedBarChart({
             </g>
           );
         })}
+        <text
+          x={padding.left + plotW / 2}
+          y={height - 4}
+          textAnchor="middle"
+          className="chart__axis chart__axis--unit"
+        >
+          Time
+        </text>
       </svg>
       <Legend items={series.map((s) => ({ label: s.label, color: s.color }))} />
     </figure>
@@ -209,6 +227,10 @@ export interface LineChartProps {
   yMax?: number;
   /** Format a y value for the axis labels. */
   formatY?: (value: number) => string;
+  /** Format an x value (e.g. a timestamp) for the axis ticks. */
+  formatX?: (value: number) => string;
+  /** Caption under the x-axis. */
+  xLabel?: string;
   emptyLabel?: string;
 }
 
@@ -221,6 +243,8 @@ export function LineChart({
   yMin,
   yMax,
   formatY = (v) => String(Math.round(v)),
+  formatX,
+  xLabel = "Time",
   emptyLabel = "No data for this period",
 }: LineChartProps) {
   const all = series.flatMap((s) => s.points);
@@ -240,7 +264,7 @@ export function LineChart({
   const hi = yMax ?? Math.max(...ys);
   const ySpan = hi - lo || 1;
 
-  const padding = { top: 12, right: 16, bottom: 28, left: 44 };
+  const padding = { top: 12, right: 16, bottom: 40, left: 52 };
   const width = 720;
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
@@ -254,6 +278,10 @@ export function LineChart({
     value: lo + f * ySpan,
   }));
 
+  const xTicks = formatX
+    ? Array.from({ length: 5 }, (_, i) => xLo + (i / 4) * xSpan)
+    : [];
+
   return (
     <figure className="chart">
       <figcaption className="chart__title">{title}</figcaption>
@@ -261,8 +289,20 @@ export function LineChart({
         className="chart__svg"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={`${title}. ${series.map((s) => s.label).join(", ")}.`}
+        aria-label={`${title}. ${series.map((s) => s.label).join(", ")}.${
+          unit ? ` Value axis in ${unit}.` : ""
+        }`}
       >
+        {unit && (
+          <text
+            x={padding.left - 40}
+            y={padding.top + 4}
+            textAnchor="start"
+            className="chart__axis chart__axis--unit"
+          >
+            {unit}
+          </text>
+        )}
         {gridLines.map((line) => (
           <g key={line.value}>
             <line
@@ -314,6 +354,25 @@ export function LineChart({
             </circle>
           )),
         )}
+        {xTicks.map((tick, i) => (
+          <text
+            key={i}
+            x={sx(tick)}
+            y={height - 20}
+            textAnchor="middle"
+            className="chart__axis"
+          >
+            {formatX!(tick)}
+          </text>
+        ))}
+        <text
+          x={padding.left + plotW / 2}
+          y={height - 4}
+          textAnchor="middle"
+          className="chart__axis chart__axis--unit"
+        >
+          {xLabel}
+        </text>
       </svg>
       <Legend items={series.map((s) => ({ label: s.label, color: s.color }))} />
     </figure>

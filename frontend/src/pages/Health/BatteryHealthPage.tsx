@@ -25,7 +25,13 @@ import {
   getPredictionHistory,
 } from "@/services/predictions";
 import type { SohPrediction } from "@/types/domain";
-import { formatDateTime, formatPercent, relativeTime } from "@/utils/format";
+import {
+  formatAxisTime,
+  formatDateTime,
+  formatPercent,
+  localZoneName,
+  relativeTime,
+} from "@/utils/format";
 
 /** Input-quality states that mean "no trustworthy prediction yet". */
 const PENDING_QUALITY = new Set(["insufficient_data", "refused", "pending"]);
@@ -323,6 +329,8 @@ function SohHistoryChart({ items }: { items: SohPrediction[] }) {
       series={series}
       unit="%"
       formatY={(v) => `${v.toFixed(1)}`}
+      formatX={formatAxisTime}
+      xLabel={`Time (${localZoneName()})`}
       yMin={0}
       yMax={100}
       emptyLabel="No SoH history"

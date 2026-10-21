@@ -12,6 +12,7 @@ import { KpiCard, Card, PageHeader } from "@/components/cards/Cards";
 import { EmptyState, ErrorState, LoadingState, StaleBadge } from "@/components/feedback/Feedback";
 import { SeverityPill, StatusPill } from "@/components/feedback/Indicators";
 import { GrafanaEmbed } from "@/components/charts/GrafanaEmbed";
+import { deriveFreshness } from "@/hooks/useDataFreshness";
 import { useAsync } from "@/hooks/useAsync";
 import { usePolling } from "@/hooks/usePolling";
 import { useSelectedDevice } from "@/hooks/useSelectedDevice";
@@ -34,12 +35,10 @@ export function OverviewPage() {
     10_000,
     [deviceId],
   );
-  const alertState = useAsync(
+  const alertState = usePolling(
     (signal) =>
-      listAnomalies(
-        { device_id: deviceId ?? undefined, limit: 20 },
-        signal,
-      ),
+      listAnomalies({ device_id: deviceId ?? undefined, limit: 50 }, signal),
+    15_000,
     [deviceId],
   );
   const sohState = usePolling(
@@ -74,11 +73,8 @@ export function OverviewPage() {
   const device = deviceState.data;
   const soh = sohState.data;
 
-  const connected =
-    telemetry && device
-      ? Date.now() - new Date(telemetry.measured_at).getTime() <
-        Math.max(device.sampling_frequency_hz, 1) * 1000 * 60 * 5
-      : false;
+  const freshness = deriveFreshness(telemetry, device);
+  const connected = freshness.connected;
 
   return (
     <div className="page">
@@ -87,6 +83,29 @@ export function OverviewPage() {
         subtitle={device ? `${device.name} · ${device.device_id}` : deviceId}
         actions={<StaleBadge lastUpdated={telemetryState.lastUpdated ?? null} />}
       />
+
+      {device && freshness.stale && (
+        <div className="banner banner--warn" role="status">
+          <strong>Telemetry stale.</strong> No sample for{" "}
+          {Math.round(freshness.ageSeconds ?? 0)}s; the device was expected to
+          report every{" "}
+          {device.sampling_frequency_hz > 0
+            ? `${(1 / device.sampling_frequency_hz).toFixed(1)}s`
+            : "minute"}
+          . The values below are the last received, not necessarily current.
+        </div>
+      )}
+
+      {criticalAnomalies.length > 0 && (
+        <div className="banner banner--critical" role="alert">
+          <strong>
+            {criticalAnomalies.length} active critical anomal
+            {criticalAnomalies.length === 1 ? "y" : "ies"}.
+          </strong>{" "}
+          They remain listed until resolved.{" "}
+          <Link to="/anomalies?severity=critical">Review in Anomaly Center →</Link>
+        </div>
+      )}
 
       <div className="kpi-grid">
         <KpiCard
@@ -143,9 +162,9 @@ export function OverviewPage() {
           </Link>
         }
       >
-        {alertState.loading && <LoadingState />}
+        {alertState.loading && !alertState.data && <LoadingState />}
         {alertState.error && (
-          <ErrorState message={alertState.error} onRetry={alertState.reload} />
+          <ErrorState message={alertState.error} onRetry={alertState.refresh} />
         )}
         {alertState.data && anomalies.length === 0 && (
           <EmptyState
