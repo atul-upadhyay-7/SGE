@@ -38,20 +38,18 @@ npm run preview    # serve the built bundle
 
 | Route | Page | Status |
 | --- | --- | --- |
-| `/` | Overview | Live: device status, last telemetry, alert-derived counts |
-| `/live` | Live Monitoring | Live: shared SSE event log + polled latest telemetry |
-| `/anomalies` | Anomaly Center | Awaiting anomaly APIs |
-| `/anomalies/:anomalyId` | Anomaly Details | Awaiting anomaly detail APIs |
-| `/health` | Battery Health (SoH) | Awaiting SoH analytics view |
+| `/` | Overview | Live: connection, last telemetry, anomaly counts, predicted SoH, embedded 24 h telemetry |
+| `/live` | Live Monitoring | Live: embedded Grafana 24 h telemetry, data-freshness/connection KPIs, shared SSE event log |
+| `/anomalies` | Anomaly Center | Live: summary counts, filters, sortable/paginated table, hourly severity chart, CSV export |
+| `/anomalies/:anomalyId` | Anomaly Details | Live: identification, measurements + trace, diagnosis, recommendations, resolution workflow |
+| `/health` | Battery Health (SoH) | Live: latest predicted SoH, predicted-vs-measured history, model/feature metadata |
 | `/reports` | Historical Reports | Awaiting report APIs |
 | `/devices` | Device Management | Live: list + register |
 | `/system` | System Health | Live: per-subsystem health panels |
 
 Pages whose backend feature does not exist yet show an explicit
 "not available yet" panel listing what they will contain — they never render
-invented data.
-
-## Design notes
+invented data.## Design notes
 
 - **Dark monitoring theme** with severity colours (green normal, yellow warning,
   orange high-priority, red critical, blue voltage) defined as tokens in
@@ -60,6 +58,22 @@ invented data.
   alone — every indicator carries a text label and a glyph.
 - **Polling**: the 1 Hz hardware rate is never used to poll the API. Pages poll
   at 5–15 s and rely on the SSE stream for live updates.
+- **Grafana**: the rolling 24-hour telemetry graphs are Grafana's job, embedded
+  as a kiosk iframe (`now-24h` → `now`, auto-refresh) from `VITE_GRAFANA_URL`.
+  Only the public base URL and dashboard UID reach the bundle — no Grafana admin
+  or database credential is ever shipped. If the panel cannot be embedded, the
+  page shows an honest fallback with a direct link, not a blank chart.
+- **Data freshness**: connection status is derived from the newest stored sample
+  against the device's sampling rate (`src/hooks/useDataFreshness.ts`), so a
+  reachable API and a silent device are shown as different states (PRD §4.9).
+- **Charts**: aggregated views that belong in the React app (hourly anomaly
+  activity, SoH trend) are small dependency-free SVG charts in
+  `src/components/charts/Charts.tsx`, each with a title, units, legend and an
+  accessible name. Grafana owns the high-rate time series.
+- **Diagnosis honesty**: anomaly causes are shown as "evidence-backed" only when
+  the backend sets `confirmed: true`; everything else is labelled
+  "unconfirmed" and the page never asserts a specific failed component
+  (PRD §4.4).
 - **One stream**: a single `EventSource` is opened by `StreamProvider` and shared
   through context, so the connection indicator and every event log observe the
   same connection.
@@ -73,9 +87,10 @@ src/
   app/            App shell and route table
   components/
     cards/        Card, KpiCard, PageHeader
+    charts/       GrafanaEmbed (kiosk iframe for the 24 h telemetry dashboard)
     feedback/     Loading/Error/Empty/Stale, severity + status pills, placeholders
     layout/       Sidebar, Topbar, DeviceSelector, ConnectionStatus, AppLayout
-  hooks/          useAsync, usePolling, useEventStream (shared stream), useSelectedDevice
+  hooks/          useAsync, usePolling, useEventStream (shared stream), useSelectedDevice, useDataFreshness
   pages/          One folder per PRD page
   services/       Typed API client (api, devices, telemetry, predictions, alerts, health, stream)
   styles/         Design tokens + global stylesheet

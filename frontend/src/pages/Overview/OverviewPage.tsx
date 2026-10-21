@@ -1,20 +1,23 @@
 /**
  * Overview dashboard (PRD §4.1).
  *
- * Phase 1 wires the pieces the backend already exposes (device connection
- * status, last telemetry received, active/critical anomaly counts via the
- * alert rules) and marks the remaining KPIs and charts as awaiting their
- * milestone. No value is fabricated: a KPI with no backend source shows a
- * pending state, not a placeholder number.
+ * Operational summary: device connection status, last telemetry, anomaly counts
+ * from the anomaly API (device-scoped), the latest predicted SoH, and an
+ * embedded rolling 24-hour telemetry panel. No value is fabricated: a KPI with
+ * no backend source shows an em-dash, never a placeholder number.
  */
+import { Link } from "react-router-dom";
+
 import { KpiCard, Card, PageHeader } from "@/components/cards/Cards";
 import { EmptyState, ErrorState, LoadingState, StaleBadge } from "@/components/feedback/Feedback";
 import { SeverityPill, StatusPill } from "@/components/feedback/Indicators";
+import { GrafanaEmbed } from "@/components/charts/GrafanaEmbed";
 import { useAsync } from "@/hooks/useAsync";
 import { usePolling } from "@/hooks/usePolling";
 import { useSelectedDevice } from "@/hooks/useSelectedDevice";
-import { listAlerts } from "@/services/alerts";
+import { listAnomalies } from "@/services/anomalies";
 import { getDevice } from "@/services/devices";
+import { getLatestPrediction } from "@/services/predictions";
 import { getLatestTelemetry } from "@/services/telemetry";
 import { formatDateTime, relativeTime } from "@/utils/format";
 
@@ -32,8 +35,18 @@ export function OverviewPage() {
     [deviceId],
   );
   const alertState = useAsync(
-    (signal) => listAlerts({ limit: 20 }, signal),
-    [],
+    (signal) =>
+      listAnomalies(
+        { device_id: deviceId ?? undefined, limit: 20 },
+        signal,
+      ),
+    [deviceId],
+  );
+  const sohState = usePolling(
+    (signal) =>
+      deviceId ? getLatestPrediction(deviceId, signal) : Promise.resolve(null),
+    30_000,
+    [deviceId],
   );
 
   if (!deviceId) {
@@ -50,13 +63,16 @@ export function OverviewPage() {
     );
   }
 
-  const alerts = alertState.data?.items ?? [];
-  const activeAlerts = alerts.filter((a) => a.status !== "resolved");
-  const criticalAlerts = activeAlerts.filter(
+  const anomalies = alertState.data?.items ?? [];
+  const activeAnomalies = anomalies.filter(
+    (a) => a.status !== "resolved",
+  );
+  const criticalAnomalies = activeAnomalies.filter(
     (a) => a.severity === "critical",
   );
   const telemetry = telemetryState.data;
   const device = deviceState.data;
+  const soh = sohState.data;
 
   const connected =
     telemetry && device
@@ -75,13 +91,13 @@ export function OverviewPage() {
       <div className="kpi-grid">
         <KpiCard
           label="Active anomalies"
-          value={activeAlerts.length}
-          tone={activeAlerts.length > 0 ? "warn" : "ok"}
+          value={activeAnomalies.length}
+          tone={activeAnomalies.length > 0 ? "warn" : "ok"}
         />
         <KpiCard
           label="Critical anomalies"
-          value={criticalAlerts.length}
-          tone={criticalAlerts.length > 0 ? "danger" : "ok"}
+          value={criticalAnomalies.length}
+          tone={criticalAnomalies.length > 0 ? "danger" : "ok"}
         />
         <KpiCard
           label="Pack voltage"
@@ -91,7 +107,7 @@ export function OverviewPage() {
         />
         <KpiCard label="Current" value={telemetry?.current ?? "—"} unit="A" />
         <KpiCard
-          label="Temperature"
+          label="Average temperature"
           value={telemetry?.temperature ?? "—"}
           unit="°C"
         />
@@ -102,10 +118,14 @@ export function OverviewPage() {
           tone={connected ? "ok" : "warn"}
         />
         <KpiCard
-          label="Current SoH"
-          value="—"
-          hint="Pending: SoH analytics milestone"
-          tone="default"
+          label="Current SoH (predicted)"
+          value={soh ? `${soh.predicted_soh.toFixed(1)}%` : "—"}
+          hint={
+            soh
+              ? `measured ${soh.measured_soh === null ? "n/a" : `${soh.measured_soh.toFixed(1)}%`} · ${relativeTime(soh.predicted_at)}`
+              : "no prediction yet"
+          }
+          tone={soh ? "info" : "default"}
         />
         <KpiCard
           label="Device status"
@@ -115,37 +135,63 @@ export function OverviewPage() {
         />
       </div>
 
-      <Card title="Recent anomalies">
+      <Card
+        title="Recent anomalies"
+        actions={
+          <Link className="btn" to="/anomalies">
+            Open Anomaly Center →
+          </Link>
+        }
+      >
         {alertState.loading && <LoadingState />}
         {alertState.error && (
           <ErrorState message={alertState.error} onRetry={alertState.reload} />
         )}
-        {alertState.data && alerts.length === 0 && (
+        {alertState.data && anomalies.length === 0 && (
           <EmptyState
             title="No anomalies recorded"
-            detail="Detected anomalies will appear here once the anomaly APIs are wired (Anomaly Center milestone)."
+            detail="Detected anomalies will appear here as the backend's detector opens episodes."
           />
         )}
-        {alertState.data && alerts.length > 0 && (
+        {alertState.data && anomalies.length > 0 && (
           <ul className="event-list">
-            {alerts.slice(0, 8).map((alert) => (
-              <li key={alert.id} className="event-list__item">
-                <SeverityPill severity={alert.severity} />
-                <span className="event-list__message">{alert.message}</span>
-                <span className="event-list__time">
-                  {relativeTime(alert.first_seen_at)}
+            {anomalies.slice(0, 8).map((anomaly) => (
+              <li key={anomaly.id} className="event-list__item">
+                <SeverityPill severity={anomaly.severity} />
+                <span className="event-list__message">
+                  {anomaly.anomaly_type}
+                  {anomaly.affected_cell !== null
+                    ? ` · cell ${anomaly.affected_cell}`
+                    : ""}
                 </span>
+                <span className="event-list__time">
+                  {relativeTime(anomaly.detected_at)}
+                </span>
+                <Link className="btn btn--sm" to={`/anomalies/${anomaly.id}`}>
+                  Investigate
+                </Link>
               </li>
             ))}
           </ul>
         )}
       </Card>
 
-      <Card title="24-hour telemetry">
-        <EmptyState
-          title="Charts arrive with Live Monitoring"
-          detail="The rolling 24-hour telemetry, cell-voltage and anomaly-count charts are embedded from Grafana in the Live Monitoring milestone."
-        />
+      <Card
+        title="Rolling 24-hour telemetry"
+        actions={
+          <Link className="btn" to="/live">
+            Open Live Monitoring →
+          </Link>
+        }
+      >
+        {deviceId ? (
+          <GrafanaEmbed variables={{ "var-device": deviceId }} height={360} />
+        ) : (
+          <EmptyState
+            title="Select a device"
+            detail="Choose a device to scope the rolling 24-hour telemetry window."
+          />
+        )}
       </Card>
     </div>
   );
