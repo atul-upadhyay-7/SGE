@@ -289,7 +289,7 @@ first, so the frontend can attribute every prediction to a served artifact.
   multi-section report. Unknown report → `404`; unsupported format → `400`;
   an inverted `from > to` window → `422`. The download sets
   `Content-Disposition: attachment; filename="report-{id}.{ext}"`.
-- Formats are **JSON and CSV only** (no PDF in scope).
+- Formats are **JSON, CSV and PDF** from the stored snapshot.
 
 ### Grafana (CR §4.2–4.7)
 
@@ -433,7 +433,7 @@ only.
   remain untouched. Exports include every selected row up to 10,000; larger
   synchronous snapshots return 422 asking for narrower filters, not silent
   truncation. A queued high-volume report worker remains open.
-- JSON and CSV remain supported. PDF scope conflicts with the frontend PRD and
-  is awaiting the owner's choice, not silently dropped.
+- JSON, CSV and PDF are supported from the same stored snapshot. PDF uses
+  paginated text with all selected sections and no additional live data reads.
 - The all-cell blend has no UBJ export. Its stale XGBoost-only UBJ/JSON files
   were removed and training now cleans them up. Window and demo exports remain.

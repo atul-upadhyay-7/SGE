@@ -133,6 +133,7 @@ async def anomaly_hourly(
                 total=row["total"],
                 open=row["open"],
                 resolved=row["resolved"],
+                false_positive=row.get("false_positive", 0),
                 by_severity=row["by_severity"],
             )
             for row in rows

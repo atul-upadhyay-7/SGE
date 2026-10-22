@@ -37,3 +37,6 @@ scipy==1.16.1
 scikit-learn==1.7.1
 xgboost==3.4.0
 joblib==1.5.2
+
+# Stored-snapshot PDF export
+reportlab==4.4.10

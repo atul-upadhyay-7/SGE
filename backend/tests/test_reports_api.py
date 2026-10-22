@@ -253,7 +253,7 @@ def test_download_rejects_unknown_format(client, seeded) -> None:
     device_id, _ = seeded
     report_id = client.post("/api/v1/reports", json={"device_id": device_id}).json()["id"]
     response = client.get(
-        f"/api/v1/reports/{report_id}/download", params={"format": "pdf"}
+        f"/api/v1/reports/{report_id}/download", params={"format": "xlsx"}
     )
     assert response.status_code == 400
 
@@ -333,3 +333,14 @@ def test_oversized_synchronous_report_is_explicitly_rejected():
         _check_report_size(10001)
     assert info.value.status_code == 422
     assert 'narrow' in info.value.detail
+
+
+def test_pdf_download_from_stored_snapshot(client, seeded):
+    device_id, _ = seeded
+    created = client.post('/api/v1/reports', json={'device_id': device_id}).json()
+    response = client.get(f"/api/v1/reports/{created['id']}/download?format=pdf")
+    assert response.status_code == 200
+    assert response.headers['content-type'] == 'application/pdf'
+    assert response.content.startswith(b'%PDF-')
+    assert 'pdf' in response.headers['content-disposition']
+    assert len(response.content) > 2000

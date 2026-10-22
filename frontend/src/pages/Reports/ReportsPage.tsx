@@ -112,7 +112,7 @@ export function ReportsPage() {
     }
   }
 
-  async function handleDownload(id: number, format: "json" | "csv") {
+  async function handleDownload(id: number, format: "json" | "csv" | "pdf") {
     setMessage(null);
     try {
       const { blob, filename } = await downloadReport(id, format);
@@ -214,8 +214,7 @@ export function ReportsPage() {
         </form>
         <p className="muted detail-note">
           Report type: <span className="mono">full</span> — one complete report
-          whose sections you can switch off. Only JSON and CSV exports are
-          available (PDF is out of scope).
+          whose sections you can switch off. JSON, CSV and PDF exports are available from the same stored snapshot.
         </p>
         {message && <p className="form__message">{message}</p>}
       </Card>
@@ -326,6 +325,7 @@ export function ReportsPage() {
               >
                 Download CSV
               </button>
+              <button type="button" className="btn" onClick={() => handleDownload(selectedId, "pdf")}>Download PDF</button>
             </div>
           }
         >

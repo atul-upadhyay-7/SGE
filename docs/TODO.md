@@ -37,7 +37,7 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
 ## Still required for full frontend PRD completion
 
 ### Scope/architecture
-- [ ] PDF export from stored report snapshots, now approved by owner on 2026-10-22.
+- [x] Paginated PDF export from stored report snapshots (local, awaiting push review).
 - [ ] Queued large-report generation and load testing: synchronous snapshots can
   occupy the API event loop; the 10,000-row cap is a guard, not a queue worker.
 - [ ] Complete fleet-report telemetry and SoH aggregation. Current fleet reports

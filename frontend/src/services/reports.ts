@@ -54,7 +54,7 @@ export interface DownloadedReport {
  */
 export async function downloadReport(
   reportId: number,
-  format: "json" | "csv",
+  format: "json" | "csv" | "pdf",
 ): Promise<DownloadedReport> {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
   const url = `${base}/reports/${reportId}/download?format=${format}`;

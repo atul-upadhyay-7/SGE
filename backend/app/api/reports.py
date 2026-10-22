@@ -115,7 +115,7 @@ async def get_report(
 @router.get("/reports/{report_id}/download")
 async def download_report(
     report_id: int,
-    format: str = Query("json", description="'json' or 'csv'"),
+    format: str = Query("json", description="'json', 'csv' or 'pdf'"),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     """Download a stored report as JSON or CSV (PRD §4.7 export formats)."""
@@ -126,6 +126,9 @@ async def download_report(
             content=report.payload or {},
             headers=_content_disposition(report_id, "json"),
         )
+    if fmt == "pdf":
+        from app.services.report_pdf import render_report_pdf
+        return Response(content=render_report_pdf(report.payload or {}, report_id), media_type="application/pdf", headers=_content_disposition(report_id, "pdf"))
     if fmt == "csv":
         buffer = io.StringIO()
         rows = csv_rows(report.payload or {})
@@ -140,7 +143,7 @@ async def download_report(
         )
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="format must be 'json' or 'csv'",
+        detail="format must be 'json', 'csv' or 'pdf'",
     )
 
 
