@@ -168,3 +168,26 @@ def test_input_at_three_times_the_training_maximum_is_refused():
     got = estimator.predict_soh(row, early)
 
     assert got == features.OUT_OF_TRAINED_RANGE
+
+
+def test_observed_health_tracks_actual_calls_without_inventing_success(monkeypatch):
+    initial = estimator.inference_health()
+    wrapped = estimator._observe_inference(lambda: 95.0)
+    assert wrapped() == 95.0
+    body = estimator.inference_health()
+    assert body['successes'] == initial['successes'] + 1
+    assert body['last_result'] == 'success'
+    assert body['last_success_at']
+    assert body['last_latency_ms'] >= 0
+    refused = estimator._observe_inference(lambda: estimator.OUT_OF_TRAINED_RANGE)
+    refused()
+    assert estimator.inference_health()['last_result'] == 'refused'
+    def fail():
+        raise RuntimeError('sensitive detail must not appear')
+    with pytest.raises(RuntimeError):
+        estimator._observe_inference(fail)()
+    body = estimator.inference_health()
+    assert body['status'] == 'error'
+    assert body['last_error_type'] == 'RuntimeError'
+    assert 'sensitive' not in str(body)
+    wrapped()

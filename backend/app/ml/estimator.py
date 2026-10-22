@@ -23,6 +23,10 @@ has no basis outside that range.
 from __future__ import annotations
 
 import sys
+import time
+from datetime import datetime, UTC
+from functools import wraps
+from threading import Lock
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -111,6 +115,53 @@ def _load_model(model_path=None):
 
     return bundle
 
+
+_HEALTH_LOCK = Lock()
+_HEALTH = {"attempts": 0, "successes": 0, "refused": 0, "errors": 0, "last_attempt_at": None, "last_success_at": None, "last_latency_ms": None, "last_error_type": None, "last_result": None}
+
+
+def inference_health() -> dict:
+    """Actual process-local calls only. Reading health never runs a prediction."""
+    with _HEALTH_LOCK:
+        payload = dict(_HEALTH)
+    payload.update({"counter_scope": "current_process", "model_loaded": str(DEFAULT_MODEL_PATH) in _BUNDLE_CACHE, "artifact_present": DEFAULT_MODEL_PATH.is_file(), "model": "soh_window_all", "anomaly_engine": "versioned_rules", "note": "No prediction inputs, outputs or private device details are exposed. A loaded model is not proof of a recent successful inference."})
+    payload["status"] = "error" if not payload["artifact_present"] or payload["last_result"] == "error" else ("ok" if payload["last_result"] == "success" else "not_ready")
+    return payload
+
+
+def _observe_inference(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        # Test/custom model calls must not describe the production model.
+        if kwargs.get("model_path") is not None:
+            return function(*args, **kwargs)
+        started = time.perf_counter()
+        result_kind, error_type = "error", None
+        with _HEALTH_LOCK:
+            _HEALTH["attempts"] += 1
+            _HEALTH["last_attempt_at"] = datetime.now(UTC).isoformat()
+        try:
+            value = function(*args, **kwargs)
+            result_kind = "refused" if isinstance(value, str) else "success"
+            return value
+        except (InsufficientReferenceError, WindowRangeError):
+            result_kind = "refused"
+            raise
+        except Exception as exc:
+            error_type = type(exc).__name__
+            raise
+        finally:
+            with _HEALTH_LOCK:
+                _HEALTH[{"success": "successes", "refused": "refused", "error": "errors"}[result_kind]] += 1
+                _HEALTH["last_result"] = result_kind
+                _HEALTH["last_error_type"] = error_type
+                _HEALTH["last_latency_ms"] = round((time.perf_counter() - started) * 1000, 3)
+                if result_kind == "success":
+                    _HEALTH["last_success_at"] = datetime.now(UTC).isoformat()
+    return wrapped
+
+
+@_observe_inference
 
 def predict_soh(
     window_features: Mapping[str, Any],

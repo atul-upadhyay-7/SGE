@@ -93,3 +93,12 @@ async def health_monitor(request: Request, response: Response) -> dict:
         response.status_code = 503
         payload["status"] = "error"
     return payload
+
+
+@router.get("/health/inference", summary="Observed SOH inference calls")
+async def health_inference(response: Response) -> dict:
+    from app.ml.estimator import inference_health
+    payload = inference_health()
+    if payload['status'] == 'error':
+        response.status_code = 503
+    return payload

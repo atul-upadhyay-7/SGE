@@ -588,6 +588,11 @@ input {
   color: var(--normal);
 }
 
+.health-banner--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
 .health-banner--error {
   background: var(--critical-bg);
   color: var(--critical);

@@ -25,6 +25,7 @@ import {
   getHealth,
   getIngestionHealth,
   getMonitorHealth,
+  getInferenceHealth,
   getMqttHealth,
 } from "@/services/health";
 import { getStreamStatus } from "@/services/stream";
@@ -42,6 +43,25 @@ interface Panel {
 }
 
 const PANELS: Panel[] = [
+  {
+    key: "inference",
+    title: "Observed SoH inference",
+    detail: "Actual process-local calls, not registry metadata or a health-check prediction",
+    load: getInferenceHealth,
+    render: d => <Fields rows={[
+      ["Result", String(d.last_result ?? 'No calls observed')],
+      ["Artifact present", yesNo(d.artifact_present)],
+      ["Model loaded", yesNo(d.model_loaded)],
+      ["Attempts", num(d.attempts)],
+      ["Successes", num(d.successes)],
+      ["Input refusals", num(d.refused)],
+      ["Errors", num(d.errors)],
+      ["Last success", formatDateTime(asString(d.last_success_at))],
+      ["Last call latency (ms)", num(d.last_latency_ms)],
+      ["Last error type", String(d.last_error_type ?? 'none')],
+      ["Anomaly engine", String(d.anomaly_engine)],
+    ]} />,
+  },
   {
     key: "api",
     title: "FastAPI",
@@ -141,6 +161,8 @@ function HealthPanel({ panel }: { panel: Panel }) {
     10_000,
   );
   const ok = data?.status === "ok";
+  const waiting = data?.status === "not_ready";
+  const tone = ok ? "ok" : waiting ? "warning" : "error";
 
   return (
     <Card
@@ -152,9 +174,9 @@ function HealthPanel({ panel }: { panel: Panel }) {
       {error && <ErrorState message={error} onRetry={refresh} />}
       {data && (
         <>
-          <div className={`health-banner health-banner--${ok ? "ok" : "error"}`}>
-            <span aria-hidden="true">{ok ? "✓" : "✕"}</span>
-            <span>{ok ? "OK" : "Error"}</span>
+          <div className={`health-banner health-banner--${tone}`}>
+            <span aria-hidden="true">{ok ? "✓" : waiting ? "…" : "✕"}</span>
+            <span>{ok ? "OK" : waiting ? "Not yet exercised" : "Error"}</span>
           </div>
           <p className="muted">{panel.detail}</p>
           {panel.render(data)}

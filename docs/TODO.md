@@ -54,8 +54,7 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
 - [x] Grafana embed explicitly distinguishes frame load from authenticated readiness,
   includes viewer sign-in guidance and 20s timeout/reset (local, awaiting review).
   Cross-origin dashboard success cannot be inferred from iframe onLoad.
-- [ ] System Health model registry is provenance, not proof of successful current
-  model load/inference. Add actual inference-status/error/latency observability.
+- [x] Observed SoH inference health (process-local attempts/successes/refusals/errors/latency, no prediction run by health check) (local, awaiting push review).
 
 ### Deployment and release evidence
 - [x] Hardening and false-positive GitHub CI passed. PDF/filter CI pending; not claimed green.

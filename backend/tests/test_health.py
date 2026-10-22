@@ -55,3 +55,13 @@ def test_ingestion_health_exposes_rate_and_persisted_invalid_total(client, requi
     assert body['rate_window_seconds'] >= 0
     assert isinstance(body['persisted_invalid_count'], int)
     assert body['invalid_count_status'] == 'ok'
+
+
+def test_inference_health_does_not_trigger_inference(client):
+    from app.ml.estimator import inference_health
+    before = inference_health()['attempts']
+    response = client.get('/api/v1/health/inference')
+    assert response.status_code in (200, 503)
+    assert response.json()['counter_scope'] == 'current_process'
+    assert response.json()['attempts'] == before
+    assert response.json()['anomaly_engine'] == 'versioned_rules'

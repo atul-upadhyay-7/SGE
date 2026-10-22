@@ -27,3 +27,7 @@ export function getIngestionHealth(signal?: AbortSignal): Promise<HealthStatus> 
 export function getMonitorHealth(signal?: AbortSignal): Promise<HealthStatus> {
   return apiFetch<HealthStatus>("/health/monitor", { signal });
 }
+
+export function getInferenceHealth(signal?: AbortSignal): Promise<HealthStatus> {
+  return apiFetch<HealthStatus>("/health/inference", { signal });
+}
