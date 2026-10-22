@@ -138,7 +138,7 @@ def test_create_report_returns_stored_snapshot(client, seeded) -> None:
     assert created.status_code == 201, created.text
     body = created.json()
     assert body["status"] == "ready"
-    assert body["format_version"] == "report-v2"
+    assert body["format_version"] == "report-v3"
     assert body["device_id"] == device_id
     assert body["payload"]["device"]["device_id"] == device_id
     assert body["payload"]["device"]["scope"] == "device"
@@ -344,3 +344,39 @@ def test_pdf_download_from_stored_snapshot(client, seeded):
     assert response.content.startswith(b'%PDF-')
     assert 'pdf' in response.headers['content-disposition']
     assert len(response.content) > 2000
+
+
+def test_fleet_report_has_telemetry_soh_and_period_scoped_rejections(client, seeded):
+    device_id, _ = seeded
+    report = client.post('/api/v1/reports', json={}).json()['payload']
+    assert report['data_availability']['scope'] == 'fleet'
+    assert report['telemetry']['sample_count'] >= 5
+    assert report['soh']['count'] >= 2
+    assert report['soh']['devices_with_predictions'] >= 1
+    assert report['soh']['latest_predicted_soh'] is None  # not a fictitious single-pack fleet reading
+    assert all('device_id' in row for row in report['soh']['history'])
+    empty = client.post('/api/v1/reports', json={'device_id': device_id, 'from': '2000-01-01T00:00:00Z', 'to': '2000-01-02T00:00:00Z'}).json()['payload']
+    assert empty['data_availability']['rejection_count'] == 0
+    assert empty['data_availability']['rejection_time_basis'] == 'received_at'
+    assert empty['data_availability']['gaps']['count'] == 0
+
+
+def test_gap_summary_keeps_devices_separate_and_counts_internal_gaps(client, require_db):
+    import asyncio
+    from app.db.models import TelemetryRejection
+    async def prepare():
+        devices = [f'GAP_{uuid4().hex[:8]}' for _ in range(2)]
+        async with SessionLocal() as session:
+            for d in devices:
+                await DeviceRepository(session).create(device_id=d, name='gap fixture', cell_count=3, sampling_frequency_hz=1, chemistry='li_ion', status='active')
+            repo = TelemetryRepository(session)
+            await repo.insert_batch([_sample(devices[0], 0), _sample(devices[0], 100), _sample(devices[1], 50)])
+            session.add_all([TelemetryRejection(device_id=devices[0], reason='old', source='http', received_at=BASE-timedelta(days=5)), TelemetryRejection(device_id=devices[0], reason='in_window', source='http', received_at=BASE+timedelta(seconds=50))])
+            await session.commit()
+        return devices
+    devices = asyncio.run(prepare())
+    payload = client.post('/api/v1/reports', json={'device_id': devices[0], 'from': BASE.isoformat(), 'to': (BASE+timedelta(seconds=101)).isoformat()}).json()['payload']
+    assert payload['data_availability']['gaps']['count'] == 1
+    assert payload['data_availability']['gaps']['longest_gap_seconds'] == 100
+    assert payload['data_availability']['rejection_count'] == 1
+    assert payload['data_availability']['rejections_by_reason'] == {'in_window': 1}

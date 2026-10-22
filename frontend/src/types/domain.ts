@@ -278,6 +278,8 @@ export interface ReportPayload {
   };
   data_availability: {
     scope: string;
+    rejection_time_basis?: string;
+    gaps?: { count: number; longest_gap_seconds: number; total_gap_seconds: number; definition: string };
     sample_count?: number;
     first_measured_at?: string | null;
     last_measured_at?: string | null;
@@ -285,15 +287,19 @@ export interface ReportPayload {
     rejections_by_reason?: Record<string, number>;
   };
   telemetry?: {
+    aggregation_note?: string;
     sample_count: number;
     pack_voltage: Record<string, number | null>;
     current: Record<string, number | null>;
     temperature: Record<string, number | null>;
   };
   soh?: {
+    fleet_latest_mean_soh?: number | null;
+    devices_with_predictions?: number;
     count: number;
     latest_predicted_soh: number | null;
     history: {
+      device_id?: string;
       predicted_at: string;
       predicted_soh: number;
       measured_soh: number | null;

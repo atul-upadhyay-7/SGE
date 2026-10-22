@@ -429,10 +429,15 @@ only.
   is the all-device quarantine-row total, across restarts. During DB outages it
   is null with `invalid_count_status=database_unavailable`, never invented zero.
 - Ingestion stored/rejected/duplicate counters advance only after commit.
-- Reports use `report-v2` for corrected filter/section semantics. Old snapshots
+- Reports use `report-v3` for fleet/availability semantics (v2 corrected filters/sections). Old snapshots
   remain untouched. Exports include every selected row up to 10,000; larger
   synchronous snapshots return 422 asking for narrower filters, not silent
   truncation. A queued high-volume report worker remains open.
+- Fleet snapshots now include sample-weighted telemetry statistics, per-device
+  SoH history and the mean latest SoH per device in the selected period.
+  Internal gaps are partitioned by device; leading/trailing absence is not inferred.
+  Rejection totals use receipt time within the requested period. Old snapshots
+  remain unchanged. PDF rendering runs in a worker thread, not the API event loop.
 - JSON, CSV and PDF are supported from the same stored snapshot. PDF uses
   paginated text with all selected sections and no additional live data reads.
 - The all-cell blend has no UBJ export. Its stale XGBoost-only UBJ/JSON files

@@ -37,19 +37,16 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
 ## Still required for full frontend PRD completion
 
 ### Scope/architecture
-- [x] Paginated PDF export from stored report snapshots (local, awaiting push review).
+- [x] Paginated PDF export from stored report snapshots (on main).
 - [ ] Queued large-report generation and load testing: synchronous snapshots can
   occupy the API event loop; the 10,000-row cap is a guard, not a queue worker.
-- [ ] Complete fleet-report telemetry and SoH aggregation. Current fleet reports
-  contain anomaly/action data; device-only sections must not be implied complete.
-- [ ] Add data-gap summaries to reports and make rejection counts period-scoped
-  (the current rejection summary is all-time).
+- [x] Fleet-report telemetry and per-device latest SoH aggregation (local, awaiting push review).
+- [x] Internal per-device data-gap summaries and receipt-time rejection totals in report-v3 (local, awaiting push review).
 
 ### Anomalies and analysis
-- [x] FALSE_POSITIVE classification with mandatory explanation, persisted outcome, audit evidence and terminal-state handling (local feature commit, awaiting push review).
-- [ ] Affected-cell and recurrence-frequency filtering; recurrence table column.
-- [ ] Previous-equivalent-period comparison, category breakdown and 24h/7d/30d
-  analysis controls; current page's custom dates are not the entire PRD.
+- [x] FALSE_POSITIVE classification with mandatory explanation, persisted outcome, audit evidence and terminal-state handling (on main).
+- [x] Affected-cell and recurrence-frequency filtering; recurrence table column (on main).
+- [x] Previous-equivalent-period comparison, category breakdown and 24h/7d/30d controls (on main).
 - [ ] Validate before/during/after telemetry, recurrence outcomes and diagnosis
   context against the detailed PRD acceptance, not merely route availability.
 - [ ] Per-page loading/error/empty/stale acceptance beyond the smoke recorded.
@@ -60,7 +57,7 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
   model load/inference. Add actual inference-status/error/latency observability.
 
 ### Deployment and release evidence
-- [ ] Run the new CI on GitHub (requires an approved push).
+- [x] Hardening and false-positive GitHub CI passed. PDF/filter CI pending; not claimed green.
 - [ ] Run Docker compose on the target laptop/server. Native stack checks here
   do not validate image builds, ports or that host's network/cookie policy.
 - [ ] Verify Grafana viewer login/embedding behind the actual deployment's HTTPS,

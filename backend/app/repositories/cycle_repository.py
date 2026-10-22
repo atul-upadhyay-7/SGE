@@ -93,7 +93,7 @@ class CycleRepository:
 
     async def list_predictions(
         self,
-        device_id: str,
+        device_id: str | None,
         *,
         start: datetime | None = None,
         end: datetime | None = None,
@@ -107,7 +107,9 @@ class CycleRepository:
         on that pair, so a page never repeats or skips rows while new
         predictions land between requests.
         """
-        query = select(SohPrediction).where(SohPrediction.device_id == device_id)
+        query = select(SohPrediction)
+        if device_id is not None:
+            query = query.where(SohPrediction.device_id == device_id)
         if start is not None:
             query = query.where(SohPrediction.predicted_at >= start)
         if end is not None:

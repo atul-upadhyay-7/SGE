@@ -15,6 +15,7 @@ import csv
 import io
 from datetime import datetime, timezone
 
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,7 +129,7 @@ async def download_report(
         )
     if fmt == "pdf":
         from app.services.report_pdf import render_report_pdf
-        return Response(content=render_report_pdf(report.payload or {}, report_id), media_type="application/pdf", headers=_content_disposition(report_id, "pdf"))
+        return Response(content=await run_in_threadpool(render_report_pdf, report.payload or {}, report_id), media_type="application/pdf", headers=_content_disposition(report_id, "pdf"))
     if fmt == "csv":
         buffer = io.StringIO()
         rows = csv_rows(report.payload or {})

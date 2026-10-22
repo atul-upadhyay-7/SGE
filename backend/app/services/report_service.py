@@ -32,7 +32,7 @@ from app.repositories.telemetry_repository import TelemetryRepository
 from app.schemas.report import ReportCreate
 from app.services import anomaly_rules
 
-FORMAT_VERSION = "report-v2"
+FORMAT_VERSION = "report-v3"
 MAX_REPORT_ROWS = 10_000
 
 
@@ -92,9 +92,9 @@ class ReportService:
         payload["device"] = _device_block(device)
         payload["data_availability"] = await self._availability(device, start, end)
 
-        if sections.telemetry and device is not None:
+        if sections.telemetry:
             payload["telemetry"] = await self._telemetry(device, start, end)
-        if sections.soh and device is not None:
+        if sections.soh:
             payload["soh"] = await self._soh(device, start, end)
 
         if sections.anomalies:
@@ -111,15 +111,15 @@ class ReportService:
     async def _availability(
         self, device: Device | None, start: datetime | None, end: datetime | None
     ) -> dict:
-        if device is None:
-            return {"scope": "fleet"}
         repository = TelemetryRepository(self._session)
         stats = await repository.window_stats(
-            device.device_id, start=start, end=end
+            device.device_id if device else None, start=start, end=end
         )
-        rejections = await repository.count_rejections_by_reason(device.device_id)
+        rejections = await repository.count_rejections_by_reason(device.device_id if device else None, start=start, end=end)
         return {
-            "scope": "device",
+            "scope": "device" if device else "fleet",
+            "rejection_time_basis": "received_at",
+            "gaps": await repository.gap_summary(device.device_id if device else None, start=start, end=end),
             "sample_count": stats["sample_count"],
             "first_measured_at": _iso(stats["first_measured_at"]),
             "last_measured_at": _iso(stats["last_measured_at"]),
@@ -128,12 +128,14 @@ class ReportService:
         }
 
     async def _telemetry(
-        self, device: Device, start: datetime | None, end: datetime | None
+        self, device: Device | None, start: datetime | None, end: datetime | None
     ) -> dict:
         stats = await TelemetryRepository(self._session).window_stats(
-            device.device_id, start=start, end=end
+            device.device_id if device else None, start=start, end=end
         )
         return {
+            "scope": "device" if device else "fleet",
+            "aggregation_note": "Sample-weighted across selected devices; pack voltages may not be comparable across different pack configurations." if device is None else "Device sample statistics.",
             "sample_count": stats["sample_count"],
             "pack_voltage": stats["pack_voltage"],
             "current": stats["current"],
@@ -141,10 +143,10 @@ class ReportService:
         }
 
     async def _soh(
-        self, device: Device, start: datetime | None, end: datetime | None
+        self, device: Device | None, start: datetime | None, end: datetime | None
     ) -> dict:
         predictions = await CycleRepository(self._session).list_predictions(
-            device.device_id,
+            device.device_id if device else None,
             start=start,
             end=end,
             descending=False,
@@ -153,6 +155,7 @@ class ReportService:
         _check_report_size(len(predictions))
         rows = [
             {
+                "device_id": prediction.device_id,
                 "predicted_at": prediction.predicted_at.isoformat(),
                 "predicted_soh": prediction.predicted_soh,
                 "measured_soh": prediction.measured_soh,
@@ -164,9 +167,13 @@ class ReportService:
             for prediction in predictions
         ]
         latest = rows[-1]["predicted_soh"] if rows else None
+        latest_by_device = {row["device_id"]: row["predicted_soh"] for row in rows}
         return {
             "count": len(rows),
-            "latest_predicted_soh": latest,
+            "scope": "device" if device else "fleet",
+            "latest_predicted_soh": latest if device else None,
+            "fleet_latest_mean_soh": (sum(latest_by_device.values()) / len(latest_by_device)) if latest_by_device else None,
+            "devices_with_predictions": len(latest_by_device),
             "history": rows,
         }
 

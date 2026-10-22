@@ -418,11 +418,7 @@ function ReportView({
 
       <section className="report__block">
         <h3 className="report__heading">Data availability</h3>
-        {payload.data_availability.scope === "fleet" ? (
-          <p className="muted">
-            Fleet-wide report: per-device telemetry gaps are not aggregated here.
-          </p>
-        ) : (
+        {(
           <dl className="detail-grid">
             <Detail
               label="Samples"
@@ -450,11 +446,14 @@ function ReportView({
             />
           </dl>
         )}
+        {payload.data_availability.gaps && <p>Observed internal gaps: {payload.data_availability.gaps.count}; longest {formatDuration(payload.data_availability.gaps.longest_gap_seconds)}. {payload.data_availability.gaps.definition}</p>}
+        <p className="muted">{payload.data_availability.rejection_time_basis === 'received_at' ? 'Rejections are counted by receipt time inside this report period, not payload measurement time.' : 'Legacy snapshot: rejection totals may be all-time.'}</p>
       </section>
 
       {payload.telemetry && (
         <section className="report__block">
           <h3 className="report__heading">Telemetry summary</h3>
+          {payload.telemetry.aggregation_note && <p className="muted">{payload.telemetry.aggregation_note}</p>}
           <StatTable
             rows={[
               { label: "Pack voltage (V)", stats: payload.telemetry.pack_voltage },
@@ -468,6 +467,7 @@ function ReportView({
       {payload.soh && (
         <section className="report__block">
           <h3 className="report__heading">SoH prediction history</h3>
+          {payload.soh.fleet_latest_mean_soh != null && <p>Mean latest SoH per device in period: {payload.soh.fleet_latest_mean_soh.toFixed(2)}% ({payload.soh.devices_with_predictions} devices).</p>}
           {payload.soh.count === 0 ? (
             <EmptyState
               title="No SoH predictions in this period"
@@ -478,6 +478,7 @@ function ReportView({
               <table className="table">
                 <thead>
                   <tr>
+                    <th>Device</th>
                     <th>Predicted at</th>
                     <th>Predicted %</th>
                     <th>Measured %</th>
@@ -488,6 +489,7 @@ function ReportView({
                 <tbody>
                   {payload.soh.history.map((row, index) => (
                     <tr key={`${row.predicted_at}-${index}`}>
+                      <td>{row.device_id ?? payload.device.device_id ?? 'Legacy snapshot'}</td>
                       <td>{formatDateTime(row.predicted_at)}</td>
                       <td>{row.predicted_soh.toFixed(1)}</td>
                       <td>{row.measured_soh === null ? "—" : row.measured_soh.toFixed(1)}</td>

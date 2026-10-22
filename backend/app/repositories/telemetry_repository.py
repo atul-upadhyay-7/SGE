@@ -16,7 +16,7 @@ from sqlalchemy import func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import TelemetryRejection, TelemetrySample
+from app.db.models import Device, TelemetryRejection, TelemetrySample
 from app.schemas.telemetry import RejectionRecord, ValidatedSample
 
 _ROUND = 6
@@ -163,10 +163,17 @@ class TelemetryRepository:
         first, last = result.one()
         return first, last
 
-    async def count_rejections_by_reason(self, device_id: str) -> dict[str, int]:
+    async def count_rejections_by_reason(self, device_id: str | None, *, start: datetime | None = None, end: datetime | None = None) -> dict[str, int]:
+        filters = []
+        if device_id is not None:
+            filters.append(TelemetryRejection.device_id == device_id)
+        if start is not None:
+            filters.append(TelemetryRejection.received_at >= start)
+        if end is not None:
+            filters.append(TelemetryRejection.received_at <= end)
         result = await self._session.execute(
             select(TelemetryRejection.reason, func.count())
-            .where(TelemetryRejection.device_id == device_id)
+            .where(*filters)
             .group_by(TelemetryRejection.reason)
             .order_by(TelemetryRejection.reason)
         )
@@ -174,7 +181,7 @@ class TelemetryRepository:
 
     async def window_stats(
         self,
-        device_id: str,
+        device_id: str | None,
         *,
         start: datetime | None = None,
         end: datetime | None = None,
@@ -185,7 +192,9 @@ class TelemetryRepository:
         temperature min/max/mean — so a report over a large history never loads
         the readings themselves.
         """
-        filters = [TelemetrySample.device_id == device_id]
+        filters = []
+        if device_id is not None:
+            filters.append(TelemetrySample.device_id == device_id)
         if start is not None:
             filters.append(TelemetrySample.measured_at >= start)
         if end is not None:
@@ -235,6 +244,26 @@ class TelemetryRepository:
             "current": block(1),
             "temperature": block(2),
         }
+
+    async def gap_summary(self, device_id: str | None, *, start: datetime | None = None, end: datetime | None = None) -> dict:
+        """Observed internal gaps, not unobserved leading/trailing coverage.
+
+        Partition by device so fleet aggregation never pairs different packs.
+        SQL window avoids loading raw telemetry into report memory.
+        """
+        filters = []
+        if device_id is not None:
+            filters.append(TelemetrySample.device_id == device_id)
+        if start is not None:
+            filters.append(TelemetrySample.measured_at >= start)
+        if end is not None:
+            filters.append(TelemetrySample.measured_at <= end)
+        paired = select(TelemetrySample.device_id.label('device_id'), TelemetrySample.measured_at.label('at'), func.lag(TelemetrySample.measured_at).over(partition_by=TelemetrySample.device_id, order_by=TelemetrySample.measured_at).label('previous')).where(*filters).subquery()
+        delta = func.extract('epoch', paired.c.at - paired.c.previous)
+        threshold = func.greatest(30.0, 3.0 / func.nullif(Device.sampling_frequency_hz, 0))
+        rows = await self._session.execute(select(func.count(), func.max(delta), func.sum(delta)).select_from(paired).join(Device, Device.device_id == paired.c.device_id).where(paired.c.previous.is_not(None), delta > threshold))
+        count, longest, total = rows.one()
+        return {'count': int(count), 'longest_gap_seconds': float(longest or 0), 'total_gap_seconds': float(total or 0), 'definition': 'Internal consecutive-sample intervals > max(30s, 3 expected sample intervals), per device. Leading/trailing absence is not inferred.'}
 
     async def insert_rejections(self, records: list[RejectionRecord]) -> int:
         if not records:
