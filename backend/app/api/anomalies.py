@@ -12,7 +12,7 @@ path parameter never captures them.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,6 +47,8 @@ async def list_anomalies(
     severity: str | None = Query(None),
     anomaly_type: str | None = Query(None),
     status_filter: str | None = Query(None, alias="status"),
+    affected_cell: int | None = Query(None, ge=0),
+    min_recurrence: int = Query(1, ge=1),
     from_: datetime | None = Query(None, alias="from"),
     to: datetime | None = Query(None),
     offset: int = Query(0, ge=0),
@@ -60,6 +62,8 @@ async def list_anomalies(
         severity=severity,
         anomaly_type=anomaly_type,
         status=status_filter,
+        affected_cell=affected_cell,
+        min_recurrence=min_recurrence,
         start=start,
         end=end,
         limit=limit,
@@ -78,6 +82,11 @@ async def list_anomalies(
 @router.get("/anomalies/summary", response_model=AnomalySummary)
 async def anomaly_summary(
     device_id: str | None = Query(None),
+    severity: str | None = Query(None),
+    anomaly_type: str | None = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
+    affected_cell: int | None = Query(None, ge=0, description="0 = pack-level; positive = 1-based cell"),
+    min_recurrence: int = Query(1, ge=1),
     from_: datetime | None = Query(None, alias="from"),
     to: datetime | None = Query(None),
     session: AsyncSession = Depends(get_session),
@@ -85,7 +94,7 @@ async def anomaly_summary(
     """Aggregate anomaly counts for a device or the whole fleet."""
     start, end = _range(from_, to)
     rows = await AnomalyRepository(session).summary_rows(
-        device_id=device_id, start=start, end=end
+        device_id=device_id, start=start, end=end, severity=severity, anomaly_type=anomaly_type, status=status_filter, affected_cell=affected_cell, min_recurrence=min_recurrence
     )
     status_counts: dict[str, int] = rows["status_counts"]
     return AnomalySummary(
@@ -115,6 +124,11 @@ async def anomaly_summary(
 @router.get("/anomalies/hourly", response_model=AnomalyHourly)
 async def anomaly_hourly(
     device_id: str | None = Query(None),
+    severity: str | None = Query(None),
+    anomaly_type: str | None = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
+    affected_cell: int | None = Query(None, ge=0, description="0 = pack-level; positive = 1-based cell"),
+    min_recurrence: int = Query(1, ge=1),
     from_: datetime | None = Query(None, alias="from"),
     to: datetime | None = Query(None),
     session: AsyncSession = Depends(get_session),
@@ -122,7 +136,7 @@ async def anomaly_hourly(
     """Anomaly counts per hour, with a per-hour severity breakdown."""
     start, end = _range(from_, to)
     rows = await AnomalyRepository(session).hourly_activity(
-        device_id=device_id, start=start, end=end
+        device_id=device_id, start=start, end=end, severity=severity, anomaly_type=anomaly_type, status=status_filter, affected_cell=affected_cell, min_recurrence=min_recurrence
     )
     return AnomalyHourly(
         device_id=device_id,
@@ -155,6 +169,34 @@ async def anomaly_recurrence(
         device_id=device_id, start=start, end=end, limit=limit
     )
     return RecurrenceReport(**{"from": start, "to": end}, entries=entries)
+
+
+@router.get("/anomalies/comparison")
+async def anomaly_comparison(
+    from_: datetime = Query(..., alias="from"),
+    to: datetime = Query(...),
+    device_id: str | None = Query(None),
+    severity: str | None = Query(None),
+    anomaly_type: str | None = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
+    affected_cell: int | None = Query(None, ge=0),
+    min_recurrence: int = Query(1, ge=1),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Same-length adjacent periods; no overlapping boundary episodes."""
+    start, end = _range(from_, to)
+    if start == end:
+        raise HTTPException(status_code=400, detail="comparison requires a positive-duration period")
+    previous_start = start - (end - start)
+    previous_end = start - timedelta(microseconds=1)
+    repo = AnomalyRepository(session)
+    filters = dict(device_id=device_id, severity=severity, anomaly_type=anomaly_type, status=status_filter, affected_cell=affected_cell, min_recurrence=min_recurrence)
+    current = await repo.summary_rows(start=start, end=end, **filters)
+    previous = await repo.summary_rows(start=previous_start, end=previous_end, **filters)
+    def metrics(row):
+        return {"total": row["total"], "unresolved": row["total"] - row["status_counts"].get("resolved", 0) - row["status_counts"].get("false_positive", 0), "by_type": dict(row["type_counts"]), "by_severity": dict(row["severity_counts"])}
+    a, b = metrics(current), metrics(previous)
+    return {"current": {"from": start.isoformat(), "to": end.isoformat(), **a}, "previous": {"from": previous_start.isoformat(), "to": previous_end.isoformat(), **b}, "total_change": a["total"] - b["total"], "total_change_percent": ((a["total"] - b["total"]) / b["total"] * 100) if b["total"] else None, "note": "Distinct episodes detected in each period. Current persisted status, not historical status at period end. Recurrence evaluated independently in each period."}
 
 
 @router.get("/anomalies/{anomaly_id}", response_model=AnomalyEventRead)

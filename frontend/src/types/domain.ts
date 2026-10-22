@@ -83,6 +83,7 @@ export interface AnomalyEvent {
   duration_seconds: number;
   status: AnomalyStatus | string;
   resolution_outcome?: string | null;
+  recurrence_count?: number;
   diagnostic_evidence: Record<string, unknown> | null;
   likely_causes: AnomalyCause[] | null;
   recommended_actions: AnomalyRecommendation[] | null;

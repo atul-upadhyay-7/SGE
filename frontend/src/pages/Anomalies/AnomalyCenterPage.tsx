@@ -23,6 +23,7 @@ import { usePolling } from "@/hooks/usePolling";
 import { useSelectedDevice } from "@/hooks/useSelectedDevice";
 import {
   getAnomalyHourly,
+  getAnomalyComparison,
   getAnomalySummary,
   listAnomalies,
   type AnomalyQuery,
@@ -34,6 +35,7 @@ import {
   formatDuration,
   formatHourBucket,
   fromDatetimeLocal,
+  toDatetimeLocal,
 } from "@/utils/format";
 
 const PAGE_SIZE = 25;
@@ -51,6 +53,8 @@ interface Filters {
   severity: string;
   anomalyType: string;
   status: string;
+  affectedCell: string;
+  minRecurrence: string;
   from: string;
   to: string;
 }
@@ -59,6 +63,8 @@ const EMPTY_FILTERS: Filters = {
   severity: "",
   anomalyType: "",
   status: "",
+  affectedCell: "",
+  minRecurrence: "1",
   from: "",
   to: "",
 };
@@ -105,6 +111,8 @@ export function AnomalyCenterPage() {
     severity: filters.severity || undefined,
     anomaly_type: filters.anomalyType || undefined,
     status: filters.status || undefined,
+    affected_cell: filters.affectedCell === "" ? undefined : Number(filters.affectedCell),
+    min_recurrence: Number(filters.minRecurrence),
     from: range.from,
     to: range.to,
     limit: PAGE_SIZE,
@@ -114,26 +122,30 @@ export function AnomalyCenterPage() {
   const listState = usePolling(
     (signal) => listAnomalies(query, signal),
     15_000,
-    [deviceId, filters.severity, filters.anomalyType, filters.status, range.from, range.to, page],
+    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to, page],
   );
   const summaryState = usePolling(
     (signal) =>
       getAnomalySummary(
-        { device_id: deviceId ?? undefined, from: range.from, to: range.to },
+        { ...query, limit: undefined, offset: undefined },
         signal,
       ),
     15_000,
-    [deviceId, range.from, range.to],
+    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to],
   );
   const hourlyState = useAsync(
     (signal) =>
       getAnomalyHourly(
-        { device_id: deviceId ?? undefined, from: range.from, to: range.to },
+        { ...query, limit: undefined, offset: undefined },
         signal,
       ),
-    [deviceId, range.from, range.to],
+    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to],
   );
 
+  const comparisonState = useAsync(
+    signal => range.from && range.to ? getAnomalyComparison(query, signal) : Promise.resolve(null),
+    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to],
+  );
   const total = listState.data?.total ?? 0;
   const rows = listState.data?.items ?? [];
   const sorted = useMemo(() => {
@@ -226,10 +238,13 @@ export function AnomalyCenterPage() {
           value={summary ? repeatCount(summary.by_type) : "—"}
           hint="types with more than one event"
         />
-        <KpiCard label="Last 24 hours" value={last24h} hint="persisted events" />
+        <KpiCard label="Hourly activity" value={last24h} hint="filtered period; includes ongoing hours" />
       </div>
 
       <Card title="Filters">
+        <div className="page-header__actions">
+          {[1, 7, 30].map(days => <button key={days} type="button" className="btn" onClick={() => applyFilters({...filters, from: toDatetimeLocal(new Date(Date.now()-days*86400000).toISOString()), to: toDatetimeLocal(new Date().toISOString())})}>{days === 1 ? '24h' : `${days}d`}</button>)}
+        </div>
         <form
           className="form form--grid"
           onSubmit={(event) => {
@@ -274,6 +289,14 @@ export function AnomalyCenterPage() {
             </select>
           </label>
           <label>
+            Affected cell (0 = pack-level)
+            <input type="number" min="0" value={filters.affectedCell} onChange={e => applyFilters({...filters, affectedCell: e.target.value})} />
+          </label>
+          <label>
+            Minimum recurrence in filtered period
+            <input type="number" min="1" value={filters.minRecurrence} onChange={e => applyFilters({...filters, minRecurrence: e.target.value || '1'})} />
+          </label>
+          <label>
             From (local time)
             <input
               type="datetime-local"
@@ -304,6 +327,21 @@ export function AnomalyCenterPage() {
         </form>
       </Card>
 
+      <Card title="Previous-period comparison">
+        {!range.from || !range.to ? <p className="muted">Choose 24h, 7d, 30d or a bounded custom period to compare with the preceding same-length period.</p> : null}
+        {comparisonState.loading && <LoadingState />}
+        {comparisonState.error && <ErrorState message={comparisonState.error} onRetry={comparisonState.reload} />}
+        {comparisonState.data && <>
+          <p>Current: {formatDateTime(comparisonState.data.current.from)} to {formatDateTime(comparisonState.data.current.to)}: {comparisonState.data.current.total} episodes.</p>
+          <p>Previous: {formatDateTime(comparisonState.data.previous.from)} to {formatDateTime(comparisonState.data.previous.to)}: {comparisonState.data.previous.total} episodes.</p>
+          <p>Change: {comparisonState.data.total_change > 0 ? '+' : ''}{comparisonState.data.total_change} ({comparisonState.data.total_change_percent === null ? 'no previous baseline' : `${comparisonState.data.total_change_percent.toFixed(1)}%`}).</p>
+          <p className="muted">{comparisonState.data.note}</p>
+        </>}
+      </Card>
+      <Card title="Category breakdown">
+        {summary?.by_type.map(item => <p key={item.anomaly_type}>{item.anomaly_type}: {item.count}</p>)}
+        <p className="muted">All counts, charts and recurrence use the same active filters. Recurrence means distinct episodes with the same device, category and cell in this filtered period.</p>
+      </Card>
       <Card title="Hourly anomaly activity">
         {hourlyState.loading && !hourlyState.data && <LoadingState />}
         {hourlyState.error && (
@@ -416,6 +454,7 @@ export function AnomalyCenterPage() {
                       />
                     </th>
                     <th scope="col">Cell</th>
+                    <th scope="col">Recurrence</th>
                     <th scope="col">Observed</th>
                     <th scope="col">Expected</th>
                     <th
@@ -526,6 +565,7 @@ function AnomalyRow({
         <SeverityPill severity={event.severity} />
       </td>
       <td>{event.affected_cell ?? "—"}</td>
+      <td>{event.recurrence_count ?? 1}</td>
       <td>{event.observed_value ?? "—"}</td>
       <td>{event.expected_value ?? event.threshold ?? "—"}</td>
       <td>{formatDuration(event.duration_seconds)}</td>

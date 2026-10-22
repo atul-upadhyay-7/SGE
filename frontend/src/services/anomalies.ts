@@ -22,13 +22,15 @@ export interface AnomalyQuery {
   severity?: string;
   anomaly_type?: string;
   status?: string;
+  affected_cell?: number;
+  min_recurrence?: number;
   from?: string;
   to?: string;
   offset?: number;
   limit?: number;
 }
 
-export interface AnomalyRangeQuery {
+export interface AnomalyRangeQuery extends AnomalyQuery {
   device_id?: string;
   from?: string;
   to?: string;
@@ -130,4 +132,15 @@ export function resolveAnomaly(
     method: "POST",
     body: payload,
   });
+}
+
+export interface AnomalyComparison {
+  current: { from: string; to: string; total: number; unresolved: number; by_type: Record<string, number> };
+  previous: { from: string; to: string; total: number; unresolved: number; by_type: Record<string, number> };
+  total_change: number;
+  total_change_percent: number | null;
+  note: string;
+}
+export function getAnomalyComparison(query: AnomalyQuery, signal?: AbortSignal): Promise<AnomalyComparison> {
+  return apiFetch<AnomalyComparison>("/anomalies/comparison", {query: {...query}, signal});
 }

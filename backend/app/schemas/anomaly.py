@@ -30,6 +30,7 @@ class AnomalyEventRead(BaseModel):
     threshold: float | None = None
     duration_seconds: float
     status: str
+    recurrence_count: int = 1
     resolution_outcome: str | None = None
     diagnostic_evidence: dict | None = None
     likely_causes: list | None = None

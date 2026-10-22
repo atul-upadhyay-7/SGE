@@ -498,3 +498,63 @@ def test_acknowledged_episode_stays_active_for_detection(client, require_db):
             assert event.status == 'acknowledged'
             assert event_id in [e.id for e in await repo.open_events(device)]
     asyncio.run(check())
+
+
+def test_cell_and_recurrence_filters_match_summary_and_hourly(client, require_db):
+    import asyncio
+    device = f"FILTER_{uuid4().hex[:8]}"
+    ids = asyncio.run(_seed(device))
+    base = {'device_id': device, 'affected_cell': 1}
+    page = client.get('/api/v1/anomalies', params=base).json()
+    assert page['total'] == 1
+    assert page['items'][0]['id'] == ids['open_cell']
+    assert page['items'][0]['recurrence_count'] == 1
+    assert client.get('/api/v1/anomalies/summary', params=base).json()['total'] == 1
+    assert sum(b['total'] for b in client.get('/api/v1/anomalies/hourly', params=base).json()['buckets']) == 1
+    repeated = {**base, 'min_recurrence': 2}
+    assert client.get('/api/v1/anomalies', params=repeated).json()['total'] == 0
+    assert client.get('/api/v1/anomalies/summary', params=repeated).json()['total'] == 0
+    assert client.get('/api/v1/anomalies/hourly', params=repeated).json()['buckets'] == []
+    pack = client.get('/api/v1/anomalies', params={'device_id': device, 'affected_cell': 0}).json()
+    assert pack['total'] == 1
+    assert pack['items'][0]['affected_cell'] is None
+    assert client.get('/api/v1/anomalies', params={'affected_cell': -1}).status_code == 422
+
+
+def test_comparison_uses_adjacent_windows_and_zero_baseline(client, require_db):
+    import asyncio
+    device = f"CMP_{uuid4().hex[:8]}"
+    asyncio.run(_seed(device))
+    q = {'device_id': device, 'from': '2026-10-16T06:00:00Z', 'to': '2026-10-16T08:00:00Z'}
+    body = client.get('/api/v1/anomalies/comparison', params=q).json()
+    assert body['current']['total'] == 2
+    assert body['previous']['total'] == 1
+    assert body['total_change_percent'] == 100
+    body = client.get('/api/v1/anomalies/comparison', params={**q, 'affected_cell': 1}).json()
+    assert body['current']['total'] == 1
+    assert body['previous']['total'] == 0
+    assert body['total_change_percent'] is None
+    assert client.get('/api/v1/anomalies/comparison', params={**q, 'to': q['from']}).status_code == 400
+
+
+def test_recurrence_counts_distinct_episodes_before_pagination(client, require_db):
+    import asyncio
+    device = f"REPEATED_{uuid4().hex[:8]}"
+    ids = asyncio.run(_seed(device))
+    async def repeat():
+        async with SessionLocal() as session:
+            repo = AnomalyRepository(session)
+            first = await repo.get(ids['open_cell'])
+            await repo.close_event(first, first.last_detected_at)
+            fields = {k: getattr(first, k) for k in ['device_id', 'anomaly_type', 'affected_cell', 'severity', 'observed_value', 'expected_value', 'threshold', 'diagnostic_evidence', 'likely_causes', 'recommended_actions', 'rule_version']}
+            fields.update(detected_at=first.detected_at + timedelta(minutes=5), last_detected_at=first.detected_at + timedelta(minutes=6), duration_seconds=60)
+            await repo.open_or_extend(fields)
+            await session.commit()
+    asyncio.run(repeat())
+    q = {'device_id': device, 'min_recurrence': 2, 'limit': 1}
+    body = client.get('/api/v1/anomalies', params=q).json()
+    assert body['total'] == 2
+    assert len(body['items']) == 1
+    assert body['items'][0]['recurrence_count'] == 2
+    assert client.get('/api/v1/anomalies/summary', params=q).json()['total'] == 2
+    assert client.get('/api/v1/anomalies', params={**q, 'status': 'open'}).json()['total'] == 0

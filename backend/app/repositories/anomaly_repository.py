@@ -130,25 +130,15 @@ class AnomalyRepository:
         severity: str | None = None,
         anomaly_type: str | None = None,
         status: str | None = None,
+        affected_cell: int | None = None,
+        min_recurrence: int = 1,
         start: datetime | None = None,
         end: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> tuple[list[AnomalyEvent], int]:
         """A filtered page of events plus the unpaged total for the same filter."""
-        filters = []
-        if device_id is not None:
-            filters.append(AnomalyEvent.device_id == device_id)
-        if severity is not None:
-            filters.append(AnomalyEvent.severity == severity)
-        if anomaly_type is not None:
-            filters.append(AnomalyEvent.anomaly_type == anomaly_type)
-        if status is not None:
-            filters.append(AnomalyEvent.status == status)
-        if start is not None:
-            filters.append(AnomalyEvent.detected_at >= start)
-        if end is not None:
-            filters.append(AnomalyEvent.detected_at <= end)
+        filters = _event_filters(device_id, start, end, severity, anomaly_type, status, affected_cell, min_recurrence)
 
         total = int(
             (
@@ -164,7 +154,12 @@ class AnomalyRepository:
             .offset(offset)
             .limit(limit)
         )
-        return list(rows.scalars().all()), total
+        events = list(rows.scalars().all())
+        counts = await self._session.execute(select(AnomalyEvent.device_id, AnomalyEvent.anomaly_type, AnomalyEvent.affected_cell, func.count()).where(*filters).group_by(AnomalyEvent.device_id, AnomalyEvent.anomaly_type, AnomalyEvent.affected_cell))
+        by_key = {(d, t, c): int(n) for d, t, c, n in counts.all()}
+        for event in events:
+            event.recurrence_count = by_key[(event.device_id, event.anomaly_type, event.affected_cell)]
+        return events, total
 
     async def summary_rows(
         self,
@@ -174,13 +169,12 @@ class AnomalyRepository:
         end: datetime | None = None,
         severity: str | None = None,
         anomaly_type: str | None = None,
+        status: str | None = None,
+        affected_cell: int | None = None,
+        min_recurrence: int = 1,
     ) -> dict:
         """Counts by status and severity/type, plus bounds and mean duration."""
-        filters = _range_filters(device_id, start, end)
-        if severity is not None:
-            filters.append(AnomalyEvent.severity == severity)
-        if anomaly_type is not None:
-            filters.append(AnomalyEvent.anomaly_type == anomaly_type)
+        filters = _event_filters(device_id, start, end, severity, anomaly_type, status, affected_cell, min_recurrence)
 
         async def count_by(column) -> list[tuple[str, int]]:
             result = await self._session.execute(
@@ -225,6 +219,9 @@ class AnomalyRepository:
         end: datetime | None = None,
         severity: str | None = None,
         anomaly_type: str | None = None,
+        status: str | None = None,
+        affected_cell: int | None = None,
+        min_recurrence: int = 1,
     ) -> list[dict]:
         """Anomaly counts per hour, counting both detection and ongoing activity.
 
@@ -239,11 +236,7 @@ class AnomalyRepository:
         expansion is done in the query with ``generate_series`` over each open
         event's span, then aggregated in one pass.
         """
-        filters = _range_filters(device_id, start, end)
-        if severity is not None:
-            filters.append(AnomalyEvent.severity == severity)
-        if anomaly_type is not None:
-            filters.append(AnomalyEvent.anomaly_type == anomaly_type)
+        filters = _event_filters(device_id, start, end, severity, anomaly_type, status, affected_cell, min_recurrence)
         # Truncate in UTC explicitly: ``date_trunc`` on a timestamptz would
         # otherwise follow the server's session TimeZone, so the same event
         # would land in a different hour depending on how Postgres is deployed.
@@ -398,4 +391,20 @@ def _range_filters(
         filters.append(AnomalyEvent.detected_at >= start)
     if end is not None:
         filters.append(AnomalyEvent.detected_at <= end)
+    return filters
+
+
+def _event_filters(device_id, start, end, severity=None, anomaly_type=None, status=None, affected_cell=None, min_recurrence=1):
+    filters = _range_filters(device_id, start, end)
+    if severity is not None:
+        filters.append(AnomalyEvent.severity == severity)
+    if anomaly_type is not None:
+        filters.append(AnomalyEvent.anomaly_type == anomaly_type)
+    if status is not None:
+        filters.append(AnomalyEvent.status == status)
+    if affected_cell is not None:
+        filters.append(AnomalyEvent.affected_cell.is_(None) if affected_cell == 0 else AnomalyEvent.affected_cell == affected_cell)
+    if min_recurrence > 1:
+        ranked = select(AnomalyEvent.id.label('id'), func.count().over(partition_by=[AnomalyEvent.device_id, AnomalyEvent.anomaly_type, AnomalyEvent.affected_cell]).label('occurrences')).where(*filters).subquery()
+        filters.append(AnomalyEvent.id.in_(select(ranked.c.id).where(ranked.c.occurrences >= min_recurrence)))
     return filters
