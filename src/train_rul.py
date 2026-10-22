@@ -107,12 +107,12 @@ LEAKY_COLUMNS = [
     "soh_slope_early_pct_per_cycle"
 ]
 
-# Cycle index is available in the field but encodes most of
-# the target's structure, so it is ablated rather than assumed.
-FEATURE_SETS = {
-    "with cycle": None,
-    "without cycle": "cycle"
-}
+# No feature-set ablation runs here. An earlier
+# "with cycle" / "without cycle" comparison ablated a column
+# that features.py already excludes, so both passes evaluated
+# the identical feature list, doubled the compute and wrote
+# duplicate rows to rul_results.csv. The evaluation runs once
+# over the full feature set.
 
 
 def select_features(features, drop):
@@ -356,30 +356,28 @@ def main():
     all_baselines = []
     saved = {}
 
-    for drop in FEATURE_SETS.values():
+    for model_name in [
+        "Linear",
+        "Ridge",
+        "RandomForest",
+        "XGBoost"
+    ]:
 
-        for model_name in [
-            "Linear",
-            "Ridge",
-            "RandomForest",
-            "XGBoost"
-        ]:
+        rows, predictions, baselines = evaluate(
+            df,
+            model_name,
+            None
+        )
 
-            rows, predictions, baselines = evaluate(
-                df,
-                model_name,
-                drop
-            )
+        all_rows.extend(rows)
+        all_baselines.extend(baselines)
 
-            all_rows.extend(rows)
-            all_baselines.extend(baselines)
+        if model_name == "XGBoost":
 
-            if model_name == "XGBoost" and drop is None:
-
-                saved = {
-                    "predictions": predictions,
-                    "model": model_name
-                }
+            saved = {
+                "predictions": predictions,
+                "model": model_name
+            }
 
     results = pd.DataFrame(all_rows)
 
@@ -560,7 +558,7 @@ def main():
         raise RuntimeError(
             "No RUL predictions were collected. "
             "Expected an XGBoost run with the full feature "
-            "set; check FEATURE_SETS and the model list."
+            "set; check the model list."
         )
 
     for prediction in saved["predictions"]:

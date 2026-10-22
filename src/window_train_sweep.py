@@ -38,6 +38,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -293,6 +294,15 @@ def _score(rows, band, protocol, test, train):
     })
 
 
+
+def _score_task(band, protocol, test, train):
+    """All model rows for one sweep scoring task."""
+
+    rows = []
+    _score(rows, band, protocol, test, train)
+    return rows
+
+
 def sweep_table(raw_dir=None):
 
     raw_dir = Path(raw_dir) if raw_dir is not None else resolve_raw_dir()
@@ -309,7 +319,11 @@ def sweep_table(raw_dir=None):
         for cell in cells
     }
 
-    rows = []
+    # Scoring tasks are independent fits on prepared frames.
+    # They are collected in the original band/group/cell order
+    # and evaluated one per worker; Parallel preserves order,
+    # so the detail frame is identical to the sequential pass.
+    tasks = []
 
     for name, high, low in BANDS:
 
@@ -328,11 +342,11 @@ def sweep_table(raw_dir=None):
 
             for cell in sorted(g["cell_id"].unique()):
 
-                _score(
-                    rows, band, f"leave-one-cell-out: {group}",
+                tasks.append((
+                    band, f"leave-one-cell-out: {group}",
                     g[g["cell_id"] == cell],
                     g[g["cell_id"] != cell],
-                )
+                ))
 
         source = data[data["group"].isin(CONSTANT_CURRENT_GROUPS)]
 
@@ -343,12 +357,21 @@ def sweep_table(raw_dir=None):
             if test.empty:
                 continue
 
-            _score(
-                rows, band,
+            tasks.append((
+                band,
                 "train G1+G3, test B0053"
                 if cell == "B0053" else "train G1+G3, test random-load",
                 test, source,
-            )
+            ))
+
+    rows = [
+        row
+        for task_rows in Parallel(n_jobs=-1)(
+            delayed(_score_task)(band, protocol, test, train)
+            for band, protocol, test, train in tasks
+        )
+        for row in task_rows
+    ]
 
     detail = pd.DataFrame(rows)
 
@@ -565,3 +588,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+

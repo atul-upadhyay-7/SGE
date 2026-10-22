@@ -205,7 +205,7 @@ ElasticNet's blow-ups on a random-load cell were the visible symptom of a wider 
 | Task | Method | Protocol | Score | Baseline | Unit |
 |---|---|---|---|---|---|
 | SOH (offline, full features) | Coulomb formula | leave-one-cell-out (G1) | 0.73 | constant mean 9.28 | MAE % |
-| SOH (offline, full features) | XGBoost (nested) | nested leave-one-cell-out (G1) | 2.65 | constant mean 9.28 | MAE % |
+| SOH (offline, full features) | XGBoost+ElasticNet blend (nested) | nested leave-one-cell-out (G1) | 1.89 | constant mean 9.28 | MAE % |
 | SOH (partial window) | Cell-relative XGBoost | train G1+G3, test B0053 | 2.99 | window formula 10.15 | MAE % |
 | RUL | Trajectory model | leave-one-cell-out (G1) | 20.5 | fleet lifetime 34.3 | discharges |
 <!-- make_report:final:end -->

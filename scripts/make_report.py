@@ -1403,16 +1403,16 @@ def build_results(clean, audit, soh_res, soh_nested, soh_base, soh_null,
         f"{ph('soh_null_mae', null, '.2f')} | — |"
     )
 
-    lines.append("\n#### Per-cell SOH error (XGBoost, nested)\n")
+    lines.append("\n#### Per-cell SOH error (XGBoost+ElasticNet blend, nested)\n")
     lines.append("| Held-out cell | MAE (%) | RMSE (%) | R² |")
     lines.append("|---|---|---|---|")
     for _, row in soh_nested.sort_values("test_cell").iterrows():
         cell = str(row["test_cell"]).lower()
-        record("SOH", "XGBoost (nested)", f"held-out {row['test_cell']}",
+        record("SOH", "XGBoost+ElasticNet blend (nested)", f"held-out {row['test_cell']}",
                "MAE", row["MAE"], "%", REQUIRED["soh_nested"])
-        record("SOH", "XGBoost (nested)", f"held-out {row['test_cell']}",
+        record("SOH", "XGBoost+ElasticNet blend (nested)", f"held-out {row['test_cell']}",
                "RMSE", row["RMSE"], "%", REQUIRED["soh_nested"])
-        record("SOH", "XGBoost (nested)", f"held-out {row['test_cell']}",
+        record("SOH", "XGBoost+ElasticNet blend (nested)", f"held-out {row['test_cell']}",
                "R2", row["R2"], "", REQUIRED["soh_nested"])
         lines.append(
             f"| {row['test_cell']} | {ph('soh_nested_' + cell + '_mae', float(row['MAE']), '.2f')} "
@@ -2392,7 +2392,7 @@ def build_final(soh_res, soh_nested, soh_base, soh_null, partial_transfer, rul):
         f"| constant mean {ph('soh_null_mae', null, '.2f')} | MAE % |"
     )
     lines.append(
-        f"| SOH (offline, full features) | XGBoost (nested) | nested leave-one-cell-out (G1) | {ph('soh_xgb_nested_mae', nested, '.2f')} "
+        f"| SOH (offline, full features) | XGBoost+ElasticNet blend (nested) | nested leave-one-cell-out (G1) | {ph('soh_xgb_nested_mae', nested, '.2f')} "
         f"| constant mean {ph('soh_null_mae', null, '.2f')} | MAE % |"
     )
 

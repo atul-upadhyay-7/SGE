@@ -50,6 +50,7 @@ from sklearn.model_selection import (
 from repro import rounded
 from evaluation import (
     MODEL_NAMES,
+    BlendRegressor,
     build_model,
     coulomb_baseline,
     loco_evaluate,
@@ -139,7 +140,7 @@ def search_best_params(
         cv=LeaveOneGroupOut(),
         scoring="neg_mean_absolute_error",
         random_state=RANDOM_STATE,
-        n_jobs=1,
+        n_jobs=-1,
         refit=True
     )
 
@@ -185,9 +186,10 @@ def nested_loco(
             )
         )
 
-        model = build_model(
-            "XGBoost",
-            **{
+        # The blend's XGBoost member carries the searched
+        # parameters; ElasticNet runs at its defaults.
+        model = BlendRegressor(
+            xgb_params={
                 key.replace("model__", ""):
                     value
                 for key, value in best_params.items()
@@ -209,7 +211,7 @@ def nested_loco(
         )
 
         rows.append({
-            "model": "XGBoost_nested",
+            "model": "Blend_nested",
             "test_cell": test_cell,
             "MAE": mae,
             "RMSE": rmse,
@@ -235,7 +237,8 @@ def nested_loco(
 def optimistic_loco(
     df,
     features,
-    n_iter=N_ITERATIONS
+    n_iter=N_ITERATIONS,
+    search_result=None
 ):
     """
     Search scored on the folds it tuned against.
@@ -243,14 +246,22 @@ def optimistic_loco(
     Reported only to quantify the optimism in the nested
     score. These numbers are not a valid generalisation
     estimate.
+
+    search_result lets the caller pass an already-run search
+    over the same data (the final all-cells model needs the
+    same one), so the search runs once instead of twice.
     """
 
-    best_params, best_score = search_best_params(
-        df[features],
-        df[TARGET],
-        df["cell_id"],
-        n_iter=n_iter
-    )
+    if search_result is None:
+
+        search_result = search_best_params(
+            df[features],
+            df[TARGET],
+            df["cell_id"],
+            n_iter=n_iter
+        )
+
+    best_params, best_score = search_result
 
     rows = []
 
@@ -263,9 +274,8 @@ def optimistic_loco(
             test_cell
         )
 
-        model = build_model(
-            "XGBoost",
-            **{
+        model = BlendRegressor(
+            xgb_params={
                 key.replace("model__", ""):
                     value
                 for key, value in best_params.items()
@@ -287,7 +297,7 @@ def optimistic_loco(
         )
 
         rows.append({
-            "model": "XGBoost_optimistic",
+            "model": "Blend_optimistic",
             "test_cell": test_cell,
             "MAE": mae,
             "RMSE": rmse,
@@ -514,9 +524,20 @@ def main():
         "Running the optimistic comparison."
     )
 
+    # One search, two consumers: the optimistic estimate below
+    # and the final all-cells model further down need the same
+    # parameters (same data, same LOCO folds, same seed). It
+    # used to run twice; that cost one full extra search.
+    final_params, final_score = search_best_params(
+        df[features],
+        df[TARGET],
+        df["cell_id"]
+    )
+
     optimistic_rows = optimistic_loco(
         df,
-        features
+        features,
+        search_result=(final_params, final_score)
     )
 
     nested_frame = pd.DataFrame(
@@ -625,15 +646,10 @@ def main():
         "\n\n========== FINAL MODEL (all cells) =========="
     )
 
-    final_params, final_score = search_best_params(
-        df[features],
-        df[TARGET],
-        df["cell_id"]
-    )
-
-    final_model = build_model(
-        "XGBoost",
-        **{
+    # Reuses the search run before the optimistic pass above;
+    # identical inputs and seed, so identical parameters.
+    final_model = BlendRegressor(
+        xgb_params={
             key.replace("model__", ""):
                 value
             for key, value in final_params.items()
@@ -713,7 +729,7 @@ def main():
     )
 
     importance = feature_importance(
-        final_model,
+        final_model.xgb_,
         features
     )
 
@@ -857,12 +873,24 @@ def main():
             f"excluding {sorted(DEMO_CELLS)})"
         )
 
-    # Also save a portable copy of the all-cell model
-    _save_portable(
-        final_model, features, TARGET,
-        sorted(df["cell_id"].unique().tolist()),
-        MODEL_DIR / "soh_xgb_all"
-    )
+    # Portable UBJ export is XGBoost-only; the blend has no
+    # single booster to export. The joblib bundle above is the
+    # deployable artifact for the all-cell model.
+    if hasattr(final_model, "named_steps"):
+
+        _save_portable(
+            final_model, features, TARGET,
+            sorted(df["cell_id"].unique().tolist()),
+            MODEL_DIR / "soh_xgb_all"
+        )
+
+    else:
+
+        print(
+            "\nPortable UBJ export skipped: the final model "
+            "is the XGBoost+ElasticNet blend; use the joblib "
+            "bundle."
+        )
 
 
 def _save_portable(
@@ -925,3 +953,4 @@ def _save_portable(
 if __name__ == "__main__":
 
     main()
+

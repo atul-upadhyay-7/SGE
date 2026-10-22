@@ -30,6 +30,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -121,6 +122,57 @@ def run(frames, iforest=None, rul=None):
     return list(replay(frames, m))
 
 
+
+def _fault_scenario(frames, model, rul, pack, cell, kind, start):
+    """
+    One injected-fault replay for pack_evaluate. Module-level so
+    joblib can ship it to workers; pure in its arguments, so the
+    result matches the sequential loop exactly.
+    """
+
+    faulted = inject(frames, cell, kind, start)
+    reports = run(faulted, model, rul)
+
+    first_rule = first_ml = None
+
+    for k, r in reports:
+
+        if k < start:
+
+            continue
+
+        hit = [
+            a
+            for a in r["alerts"]
+            if a["code"] in EXPECT[kind]
+            and a["cell"] in (cell, None)
+        ]
+        ml_hit = any(
+            a["code"] == "ANOMALY_ML"
+            and a["cell"] == cell
+            for a in r["alerts"]
+        )
+
+        if hit and first_rule is None:
+
+            first_rule = k - start
+
+        if ml_hit and first_ml is None:
+
+            first_ml = k - start
+
+    return {
+        "pack": "+".join(pack),
+        "fault": kind,
+        "cell": cell,
+        "start": start,
+        "rule_detected": first_rule is not None,
+        "rule_delay_discharges": first_rule,
+        "iforest_detected": first_ml is not None,
+        "iforest_delay_discharges": first_ml,
+    }
+
+
 def main(save_model=True):
 
     keep = audited_cells()
@@ -198,59 +250,28 @@ def main(save_model=True):
             }
         )
 
-        for kind in FAULTS:
+        # Fault scenarios are independent replays of the same
+        # healthy pack through the same monitor, so they are
+        # evaluated one per worker. The scenario list order is
+        # fixed and Parallel preserves it, so the output table
+        # is identical to the sequential pass; only wall-clock
+        # time changes.
+        scenarios = [
+            (cell, kind, start)
+            for kind in FAULTS
+            for cell in pack
+            for start in STARTS
+            if start < horizon - 5
+        ]
 
-            for cell in pack:
-
-                for start in STARTS:
-
-                    if start >= horizon - 5:
-
-                        continue
-
-                    faulted = inject(base[pack], cell, kind, start)
-                    reports = run(faulted, model, rul)
-
-                    first_rule = first_ml = None
-
-                    for k, r in reports:
-
-                        if k < start:
-
-                            continue
-
-                        hit = [
-                            a
-                            for a in r["alerts"]
-                            if a["code"] in EXPECT[kind]
-                            and a["cell"] in (cell, None)
-                        ]
-                        ml_hit = any(
-                            a["code"] == "ANOMALY_ML"
-                            and a["cell"] == cell
-                            for a in r["alerts"]
-                        )
-
-                        if hit and first_rule is None:
-
-                            first_rule = k - start
-
-                        if ml_hit and first_ml is None:
-
-                            first_ml = k - start
-
-                    out_rows.append(
-                        {
-                            "pack": "+".join(pack),
-                            "fault": kind,
-                            "cell": cell,
-                            "start": start,
-                            "rule_detected": first_rule is not None,
-                            "rule_delay_discharges": first_rule,
-                            "iforest_detected": first_ml is not None,
-                            "iforest_delay_discharges": first_ml,
-                        }
-                    )
+        out_rows.extend(
+            Parallel(n_jobs=-1)(
+                delayed(_fault_scenario)(
+                    base[pack], model, rul, pack, cell, kind, start
+                )
+                for cell, kind, start in scenarios
+            )
+        )
 
     det = pd.DataFrame(out_rows)
     fa = pd.DataFrame(fa)
@@ -296,3 +317,4 @@ if __name__ == "__main__":
              "run_pipeline --skip-train to keep the committed artifact)",
     )
     main(save_model=not parser.parse_args().no_save_model)
+

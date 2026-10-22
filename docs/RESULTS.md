@@ -166,17 +166,17 @@ This benchmark is deliberately offline: it uses every production feature, includ
 | Ridge (default) | leave-one-cell-out (G1) | 2.70 | 0.908 |
 | RandomForest (default) | leave-one-cell-out (G1) | 2.52 | 0.899 |
 | XGBoost (fixed params) | leave-one-cell-out (G1) | 2.74 | 0.894 |
-| XGBoost (nested tuning) | nested leave-one-cell-out (G1) | 2.65 | 0.900 |
+| XGBoost (nested tuning) | nested leave-one-cell-out (G1) | 1.89 | 0.949 |
 | Constant global mean | leave-one-cell-out (G1) | 9.28 | — |
 
-#### Per-cell SOH error (XGBoost, nested)
+#### Per-cell SOH error (XGBoost+ElasticNet blend, nested)
 
 | Held-out cell | MAE (%) | RMSE (%) | R² |
 |---|---|---|---|
-| B0005 | 1.47 | 1.76 | 0.971 |
-| B0006 | 5.62 | 6.23 | 0.751 |
-| B0007 | 1.54 | 1.82 | 0.954 |
-| B0018 | 1.96 | 2.30 | 0.925 |
+| B0005 | 1.10 | 1.27 | 0.985 |
+| B0006 | 3.48 | 3.81 | 0.907 |
+| B0007 | 1.10 | 1.53 | 0.968 |
+| B0018 | 1.86 | 2.13 | 0.935 |
 
 #### Full- versus partial-discharge formulas (no model)
 
