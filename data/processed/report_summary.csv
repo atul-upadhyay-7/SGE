@@ -184,18 +184,18 @@ SOH,XGBoost (fixed params),leave-one-cell-out (G1),mean R2,0.8938454270455589,,d
 SOH,XGBoost (nested tuning),nested leave-one-cell-out (G1),mean MAE,1.8883290079,%,data/processed/soh_nested_results.csv
 SOH,XGBoost (nested tuning),nested leave-one-cell-out (G1),mean R2,0.948729720275,,data/processed/soh_nested_results.csv
 SOH,Constant global mean,leave-one-cell-out (G1),mean MAE,9.284328896398257,%,data/processed/soh_null_baselines.csv
-SOH,XGBoost (nested),held-out B0005,MAE,1.1041018162,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0005,RMSE,1.266364914,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0005,R2,0.9850115814,,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0006,MAE,3.4837547906,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0006,RMSE,3.8110384328,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0006,R2,0.9067656749,,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0007,MAE,1.100863024,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0007,RMSE,1.5292963883,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0007,R2,0.9678771447,,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0018,MAE,1.8645964008,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0018,RMSE,2.1340492406,%,data/processed/soh_nested_results.csv
-SOH,XGBoost (nested),held-out B0018,R2,0.9352644801,,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0005,MAE,1.1041018162,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0005,RMSE,1.266364914,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0005,R2,0.9850115814,,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0006,MAE,3.4837547906,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0006,RMSE,3.8110384328,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0006,R2,0.9067656749,,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0007,MAE,1.100863024,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0007,RMSE,1.5292963883,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0007,R2,0.9678771447,,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0018,MAE,1.8645964008,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0018,RMSE,2.1340492406,%,data/processed/soh_nested_results.csv
+SOH,XGBoost+ElasticNet blend (nested),held-out B0018,R2,0.9352644801,,data/processed/soh_nested_results.csv
 SOH,full-discharge formula,held-out B0005,MAE,0.1707900824,%,data/processed/experiments/soh_full_discharge.csv
 SOH,full-discharge formula,held-out B0006,MAE,0.5256173014,%,data/processed/experiments/soh_full_discharge.csv
 SOH,full-discharge formula,held-out B0007,MAE,0.2774504139,%,data/processed/experiments/soh_full_discharge.csv

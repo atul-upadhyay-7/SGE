@@ -169,7 +169,7 @@ This benchmark is deliberately offline: it uses every production feature, includ
 | XGBoost (nested tuning) | nested leave-one-cell-out (G1) | 1.89 | 0.949 |
 | Constant global mean | leave-one-cell-out (G1) | 9.28 | — |
 
-#### Per-cell SOH error (XGBoost, nested)
+#### Per-cell SOH error (XGBoost+ElasticNet blend, nested)
 
 | Held-out cell | MAE (%) | RMSE (%) | R² |
 |---|---|---|---|
