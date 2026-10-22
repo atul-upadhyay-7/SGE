@@ -2,9 +2,9 @@
 
 A report is assembled once, here, from the same repositories the live APIs read
 (telemetry, cycles/SoH, anomalies, actions) and stored as a JSON snapshot. It
-never reads from the raw telemetry stream, never runs a model, and never blocks
-ingestion: generation is a bounded set of aggregate queries over rows that are
-already persisted.
+never reads from the raw telemetry stream and never runs a model. Large
+snapshots are synchronous and still require a queued-job path before
+high-volume deployment.
 
 The sections map onto the PRD's report contents:
 
@@ -21,6 +21,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException
 
 from app.core.config import get_settings
 from app.db.models import Device
@@ -31,7 +32,17 @@ from app.repositories.telemetry_repository import TelemetryRepository
 from app.schemas.report import ReportCreate
 from app.services import anomaly_rules
 
-FORMAT_VERSION = "report-v1"
+FORMAT_VERSION = "report-v2"
+MAX_REPORT_ROWS = 10_000
+
+
+def _check_report_size(count: int) -> None:
+    if count > MAX_REPORT_ROWS:
+        raise HTTPException(
+            status_code=422,
+            detail=("Report exceeds 10,000 rows; narrow the time range or filters. "
+                    "Queued large-report generation is not available yet."),
+        )
 
 # The primary tabular section each report renders as CSV: the detailed anomaly
 # event list is the most useful "raw tabular export" (PRD §4.7 export formats).
@@ -86,10 +97,10 @@ class ReportService:
         if sections.soh and device is not None:
             payload["soh"] = await self._soh(device, start, end)
 
-        anomalies = await self._anomalies(device, start, end, request)
-        payload["anomalies"] = anomalies
+        if sections.anomalies:
+            payload["anomalies"] = await self._anomalies(device, start, end, request)
         if sections.actions:
-            payload["actions"] = await self._actions(device, start, end)
+            payload["actions"] = await self._actions(device, start, end, request)
 
         payload["model_metadata"] = await self._model_metadata()
         payload["summary"] = _executive_summary(payload)
@@ -137,8 +148,9 @@ class ReportService:
             start=start,
             end=end,
             descending=False,
-            limit=1000,
+            limit=MAX_REPORT_ROWS + 1,
         )
+        _check_report_size(len(predictions))
         rows = [
             {
                 "predicted_at": prediction.predicted_at.isoformat(),
@@ -168,10 +180,12 @@ class ReportService:
         repository = AnomalyRepository(self._session)
         device_id = device.device_id if device is not None else None
         summary = await repository.summary_rows(
-            device_id=device_id, start=start, end=end
+            device_id=device_id, start=start, end=end,
+            severity=request.severity, anomaly_type=request.anomaly_type,
         )
         hourly = await repository.hourly_activity(
-            device_id=device_id, start=start, end=end
+            device_id=device_id, start=start, end=end,
+            severity=request.severity, anomaly_type=request.anomaly_type,
         )
         events, total = await repository.list_events(
             device_id=device_id,
@@ -179,9 +193,10 @@ class ReportService:
             anomaly_type=request.anomaly_type,
             start=start,
             end=end,
-            limit=1000,
+            limit=MAX_REPORT_ROWS + 1,
             offset=0,
         )
+        _check_report_size(total)
         event_rows = [_event_row(event) for event in events]
         unresolved = [row for row in event_rows if row["status"] != "resolved"]
         return {
@@ -206,13 +221,16 @@ class ReportService:
         }
 
     async def _actions(
-        self, device: Device | None, start: datetime | None, end: datetime | None
+        self, device: Device | None, start: datetime | None, end: datetime | None,
+        request: ReportCreate,
     ) -> dict:
         repository = AnomalyRepository(self._session)
         device_id = device.device_id if device is not None else None
-        events, _ = await repository.list_events(
-            device_id=device_id, start=start, end=end, limit=1000, offset=0
+        events, total = await repository.list_events(
+            device_id=device_id, start=start, end=end, limit=MAX_REPORT_ROWS + 1, offset=0,
+            severity=request.severity, anomaly_type=request.anomaly_type
         )
+        _check_report_size(total)
         actions: list[dict] = []
         for event in events:
             trail = await repository.list_actions(event.id)

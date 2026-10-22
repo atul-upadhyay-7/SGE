@@ -172,9 +172,15 @@ class AnomalyRepository:
         device_id: str | None = None,
         start: datetime | None = None,
         end: datetime | None = None,
+        severity: str | None = None,
+        anomaly_type: str | None = None,
     ) -> dict:
         """Counts by status and severity/type, plus bounds and mean duration."""
         filters = _range_filters(device_id, start, end)
+        if severity is not None:
+            filters.append(AnomalyEvent.severity == severity)
+        if anomaly_type is not None:
+            filters.append(AnomalyEvent.anomaly_type == anomaly_type)
 
         async def count_by(column) -> list[tuple[str, int]]:
             result = await self._session.execute(
@@ -217,6 +223,8 @@ class AnomalyRepository:
         device_id: str | None = None,
         start: datetime | None = None,
         end: datetime | None = None,
+        severity: str | None = None,
+        anomaly_type: str | None = None,
     ) -> list[dict]:
         """Anomaly counts per hour, counting both detection and ongoing activity.
 
@@ -232,6 +240,10 @@ class AnomalyRepository:
         event's span, then aggregated in one pass.
         """
         filters = _range_filters(device_id, start, end)
+        if severity is not None:
+            filters.append(AnomalyEvent.severity == severity)
+        if anomaly_type is not None:
+            filters.append(AnomalyEvent.anomaly_type == anomaly_type)
         # Truncate in UTC explicitly: ``date_trunc`` on a timestamptz would
         # otherwise follow the server's session TimeZone, so the same event
         # would land in a different hour depending on how Postgres is deployed.

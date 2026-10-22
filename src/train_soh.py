@@ -886,6 +886,11 @@ def main():
 
     else:
 
+        # UBJ cannot represent this blend. Remove exports from earlier runs
+        # so a failed joblib load cannot silently serve XGBoost alone.
+        for suffix in (".ubj", ".json"):
+            (MODEL_DIR / f"soh_xgb_all{suffix}").unlink(missing_ok=True)
+
         print(
             "\nPortable UBJ export skipped: the final model "
             "is the XGBoost+ElasticNet blend; use the joblib "

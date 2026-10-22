@@ -18,7 +18,7 @@ baked into the bundle at build time — never put a secret here.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | `http://localhost:8000/api/v1` | Backend base URL including the `/api/v1` prefix |
-| `VITE_GRAFANA_URL` | `http://localhost:3000` | Grafana base URL for embedded panels |
+| `VITE_GRAFANA_URL` | `http://localhost:3050` | Grafana base URL for embedded panels |
 | `VITE_GRAFANA_DASHBOARD_UID` | `bms-live` | Dashboard UID embedded on the Live Monitoring page |
 
 The backend must allow this origin via CORS; its `BMS_CORS_ALLOW_ORIGINS`
@@ -117,7 +117,7 @@ public values, never secrets.
    | Variable | Purpose | Default |
    | --- | --- | --- |
    | `VITE_API_BASE_URL` | Backend base URL incl. `/api/v1` | `http://localhost:8000/api/v1` |
-   | `VITE_GRAFANA_URL` | Grafana base URL (kiosk iframe) | `http://localhost:3000` |
+   | `VITE_GRAFANA_URL` | Grafana base URL (kiosk iframe) | `http://localhost:3050` |
    | `VITE_GRAFANA_DASHBOARD_UID` | Dashboard UID embedded on Live Monitoring | `bms-live` |
 
 2. Build and serve:
@@ -144,3 +144,21 @@ public values, never secrets.
 
 The previous static frontend (plain `index.html`/`app.js`/`styles.css`) is kept
 under `_legacy/` for reference and is not built or served.
+
+
+## Verified hardening (2026-10-22, local patch)
+
+- `npm test` runs lifecycle/cancellation and UTC-hour regression tests.
+- Polling starts correctly under React StrictMode and never applies an old
+  device request after selection changes.
+- System Health distinguishes process-local counters/rate from the persisted
+  all-device rejection total. Rate is committed samples per second over the
+  last 60 seconds, or since startup if younger. These are not per-device rates.
+- Anonymous Grafana is disabled. Sign into Grafana in a separate tab first.
+  Local HTTP uses SameSite=lax and Secure=false; production cross-site embeds
+  need HTTPS, SameSite=None and Secure=true. Browser third-party-cookie policy
+  may still require a same-site reverse proxy. Never put credentials in VITE_*.
+- Mobile names/tables stay within a 390px viewport. Grafana lazy-loads panels
+  when the iframe scrolls into view; offscreen panels need not have canvases yet.
+- The complete PRD is not finished. See `docs/TODO.md` and
+  `docs/ACCEPTANCE_2026-10-22.md` for tested versus still-open requirements.

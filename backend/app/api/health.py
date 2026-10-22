@@ -8,6 +8,9 @@ a future orchestrator) can act on them directly.
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
+from sqlalchemy import func, select
+from app.db.database import SessionLocal
+from app.db.models import TelemetryRejection
 
 from app.core.config import get_settings
 from app.db.database import check_connection
@@ -55,7 +58,18 @@ async def health_ingestion(request: Request) -> dict:
     service = getattr(request.app.state, "ingestion", None)
     if service is None:
         return {"status": "error", "ingestion": "not_started"}
-    return {"status": "ok", "ingestion": "running", **service.stats()}
+    payload = {"status": "ok", "ingestion": "running", **service.stats()}
+    try:
+        async with SessionLocal() as session:
+            payload["persisted_invalid_count"] = await session.scalar(
+                select(func.count()).select_from(TelemetryRejection)
+            )
+    except Exception:  # Counters remain available during a database outage.
+        payload["persisted_invalid_count"] = None
+        payload["invalid_count_status"] = "database_unavailable"
+    else:
+        payload["invalid_count_status"] = "ok"
+    return payload
 
 
 @router.get("/health/monitor", summary="Monitoring loop status")

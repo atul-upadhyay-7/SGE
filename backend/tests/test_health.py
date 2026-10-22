@@ -46,3 +46,12 @@ def test_openapi_lists_health_routes(client: TestClient) -> None:
     paths = client.get("/openapi.json").json()["paths"]
     for path in ("/api/v1/health", "/api/v1/health/database", "/api/v1/health/mqtt"):
         assert path in paths
+
+
+def test_ingestion_health_exposes_rate_and_persisted_invalid_total(client, require_db):
+    body = client.get('/api/v1/health/ingestion').json()
+    assert body['counter_scope'] == 'current_process'
+    assert body['stored_per_second'] >= 0
+    assert body['rate_window_seconds'] >= 0
+    assert isinstance(body['persisted_invalid_count'], int)
+    assert body['invalid_count_status'] == 'ok'

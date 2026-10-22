@@ -15,10 +15,12 @@ Design contract:
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from time import monotonic
 
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -88,6 +90,8 @@ class IngestionService:
         self._writer_task: asyncio.Task[None] | None = None
         self._stop = asyncio.Event()
 
+        self._started_at = monotonic()
+        self._recent_stores: deque[tuple[float, int]] = deque()
         self.stored = 0
         self.duplicates = 0
         self.rejected = 0
@@ -436,8 +440,6 @@ class IngestionService:
                 if samples:
                     telemetry = TelemetryRepository(session)
                     outcome = await telemetry.insert_batch(samples)
-                    self.stored += outcome.inserted
-                    self.duplicates += outcome.duplicates
                     await self._touch_devices(session, samples)
                     for sample in outcome.conflicting:
                         rejections.append(
@@ -451,8 +453,16 @@ class IngestionService:
                         )
                 if rejections:
                     await TelemetryRepository(session).insert_rejections(rejections)
-                    self.rejected += len(rejections)
                 await session.commit()
+                # Counters describe committed rows, never rolled-back attempts.
+                self.stored += outcome.inserted
+                self.duplicates += outcome.duplicates
+                self.rejected += len(rejections)
+                if outcome.inserted:
+                    now = monotonic()
+                    self._recent_stores.append((now, outcome.inserted))
+                    while self._recent_stores and self._recent_stores[0][0] <= now - 60.0:
+                        self._recent_stores.popleft()
                 self._publish_stored(samples)
                 # Detection runs *after* the commit and never rolls it back:
                 # raw ingestion must survive a detector fault (CR §10).
@@ -538,8 +548,16 @@ class IngestionService:
 
     # -- observability -----------------------------------------------------
 
-    def stats(self) -> dict[str, int]:
+    def stats(self) -> dict[str, int | float | str]:
+        now = monotonic()
+        window = 60.0
+        while self._recent_stores and self._recent_stores[0][0] <= now - window:
+            self._recent_stores.popleft()
+        elapsed = max(min(now - self._started_at, window), 1e-9)
         return {
+            "stored_per_second": sum(n for _, n in self._recent_stores) / elapsed,
+            "rate_window_seconds": min(now - self._started_at, window),
+            "counter_scope": "current_process",
             "queued": self._queue.qsize(),
             "stored": self.stored,
             "duplicates": self.duplicates,

@@ -1236,3 +1236,22 @@ input {
 }
 
 
+
+/* Keep long device names, tables and alert copy inside small screens. */
+.page, .card, .grid, .topbar, .topbar__device { min-width: 0; }
+@media (max-width: 768px) {
+  .sidebar { min-width: 0; max-width: 100vw; }
+  .topbar { flex-wrap: wrap; height: auto; gap: 8px; }
+  .topbar__device { flex: 1 1 100%; max-width: 100%; }
+  .topbar select { max-width: 100%; min-width: 0; width: 100%; }
+  .card__head { flex-wrap: wrap; gap: 8px; }
+  .banner { flex-wrap: wrap; }
+  .detail__value { overflow-wrap: anywhere; }
+  .grafana-embed__bar { flex-wrap: wrap; }
+}
+
+@media (max-width: 768px) {
+  .topbar__controls { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; }
+  .device-select { min-width: 0; max-width: 100%; flex: 1; }
+  .device-select select { width: 100%; min-width: 0; max-width: 100%; }
+}

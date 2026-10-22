@@ -6,7 +6,7 @@ datasources:
     type: simpod-json-datasource
     access: proxy
     url: http://api:8099
-    isDefault: true
+    isDefault: false
   # Alert rules: Prometheus (backend datasource, full alerting support).
   - name: Battery PDM Prometheus
     uid: battery-pdm-prom

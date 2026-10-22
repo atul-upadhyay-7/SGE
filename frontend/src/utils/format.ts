@@ -62,10 +62,13 @@ export function fromDatetimeLocal(value: string): string | undefined {
 
 /** Label an hour bucket as ``HH:00`` with the local timezone name (PRD §4.5, §7). */
 export function formatHourBucket(value: string): string {
-  const date = new Date(value);
+  // Hourly API buckets are naive UTC. Date.parse otherwise treats them as
+  // local wall time and shifts counts by the browser offset.
+  const utc = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;
+  const date = new Date(utc);
   if (Number.isNaN(date.getTime())) return value;
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(date.getHours())}:00`;
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 /** The browser's IANA timezone name, for labelling grouped/relative times. */

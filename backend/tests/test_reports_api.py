@@ -138,7 +138,7 @@ def test_create_report_returns_stored_snapshot(client, seeded) -> None:
     assert created.status_code == 201, created.text
     body = created.json()
     assert body["status"] == "ready"
-    assert body["format_version"] == "report-v1"
+    assert body["format_version"] == "report-v2"
     assert body["device_id"] == device_id
     assert body["payload"]["device"]["device_id"] == device_id
     assert body["payload"]["device"]["scope"] == "device"
@@ -269,3 +269,67 @@ def test_list_reports_includes_created(client, seeded) -> None:
     assert body["total"] >= 1
     assert all(item["device_id"] == device_id for item in body["items"])
     assert all("payload" not in item for item in body["items"])
+
+
+def test_filtered_report_counts_match_its_events_and_actions(client, seeded):
+    device_id, _ = seeded
+    payload = client.post('/api/v1/reports', json={
+        'device_id': device_id, 'severity': 'critical',
+    }).json()['payload']
+    assert payload['anomalies']['total'] == 1
+    assert dict(payload['anomalies']['by_severity']) == {'critical': 1}
+    assert all(set(b['by_severity']) <= {'critical'} for b in payload['anomalies']['hourly'])
+    event_ids = {e['id'] for e in payload['anomalies']['events']}
+    assert all(a['anomaly_id'] in event_ids for a in payload['actions']['items'])
+
+
+async def test_report_does_not_truncate_prediction_history_at_1000(require_db):
+    from app.schemas.report import ReportCreate
+    from app.services.report_service import ReportService
+    device_id = f'REPORT_LONG_{uuid4().hex[:8]}'
+    async with SessionLocal() as session:
+        device = await DeviceRepository(session).create(
+            device_id=device_id, name='long report', cell_count=1,
+            sampling_frequency_hz=1, status='active',
+        )
+        await CycleRepository(session).insert_predictions([
+            {'device_id': device_id, 'cycle_id': None, 'predicted_soh': 90.,
+             'measured_soh': None, 'model_version': 'test',
+             'feature_schema_version': 'window-v1', 'input_quality_status': 'ok'}
+            for _ in range(1002)
+        ])
+        payload = await ReportService(session).build(ReportCreate(device_id=device_id), device)
+        assert payload['soh']['count'] == 1002
+        assert len(payload['soh']['history']) == 1002
+        await session.rollback()
+
+
+def test_report_can_exclude_anomalies_without_reintroducing_them(client, seeded):
+    device_id, _ = seeded
+    payload = client.post('/api/v1/reports', json={
+        'device_id': device_id,
+        'sections': {'telemetry': True, 'soh': False, 'anomalies': False, 'actions': False},
+    }).json()['payload']
+    assert payload['included_sections'] == ['telemetry']
+    assert 'anomalies' not in payload
+    assert 'actions' not in payload
+    assert 'soh' not in payload
+
+
+def test_mixed_naive_and_aware_report_dates_do_not_raise_server_error(client, seeded):
+    device_id, _ = seeded
+    response = client.post('/api/v1/reports', json={
+        'device_id': device_id,
+        'from': '2026-10-17T00:00:00', 'to': '2026-10-18T00:00:00Z',
+    })
+    assert response.status_code == 201
+
+
+def test_oversized_synchronous_report_is_explicitly_rejected():
+    from app.services.report_service import _check_report_size
+    from fastapi import HTTPException
+    _check_report_size(10000)
+    with pytest.raises(HTTPException) as info:
+        _check_report_size(10001)
+    assert info.value.status_code == 422
+    assert 'narrow' in info.value.detail

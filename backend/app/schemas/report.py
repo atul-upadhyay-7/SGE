@@ -57,6 +57,10 @@ class ReportCreate(BaseModel):
 
     @model_validator(mode="after")
     def _check_window(self) -> "ReportCreate":
+        if self.from_ is not None and self.to is not None:
+            from datetime import UTC
+            self.from_ = self.from_.replace(tzinfo=UTC) if self.from_.tzinfo is None else self.from_.astimezone(UTC)
+            self.to = self.to.replace(tzinfo=UTC) if self.to.tzinfo is None else self.to.astimezone(UTC)
         if self.from_ is not None and self.to is not None and self.from_ > self.to:
             raise ValueError("'from' must be on or before 'to'")
         return self

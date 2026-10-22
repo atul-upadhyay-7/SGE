@@ -1,26 +1,46 @@
 {
   "uid": "bms-live",
   "title": "BMS Live (24h)",
-  "tags": ["bms", "cr"],
+  "tags": [
+    "bms",
+    "cr"
+  ],
   "timezone": "utc",
   "schemaVersion": 39,
   "version": 1,
   "editable": false,
   "refresh": "5s",
-  "time": { "from": "now-24h", "to": "now" },
-  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"] },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
   "templating": {
     "list": [
       {
         "name": "device",
         "label": "Device",
         "type": "query",
-        "datasource": { "type": "postgres", "uid": "bms-postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "bms-postgres"
+        },
         "query": "SELECT device_id FROM devices ORDER BY device_id",
         "refresh": 1,
         "includeAll": true,
         "multi": true,
-        "current": { "text": "All", "value": "$__all" }
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       }
     ]
   },
@@ -29,12 +49,24 @@
       "id": 1,
       "title": "Pack voltage (V)",
       "type": "timeseries",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "volt",
-          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "spanNulls": false },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false
+          },
           "min": null
         },
         "overrides": []
@@ -43,8 +75,8 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT measured_at AS time, device_id AS metric, pack_voltage AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN ($device)\nORDER BY measured_at",
-          "rawQuery": true
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(measured_at, '5s', NULL), device_id AS metric, AVG(pack_voltage) AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN (${device:sqlstring})\nGROUP BY 1, 2 ORDER BY 1"
         }
       ]
     },
@@ -52,12 +84,24 @@
       "id": 2,
       "title": "Current (A)",
       "type": "timeseries",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "amp",
-          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "spanNulls": false }
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
@@ -65,8 +109,8 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT measured_at AS time, device_id AS metric, current AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN ($device)\nORDER BY measured_at",
-          "rawQuery": true
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(measured_at, '5s', NULL), device_id AS metric, AVG(current) AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN (${device:sqlstring})\nGROUP BY 1, 2 ORDER BY 1"
         }
       ]
     },
@@ -74,12 +118,24 @@
       "id": 3,
       "title": "Individual cell voltages (V)",
       "type": "timeseries",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "volt",
-          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "spanNulls": false }
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
@@ -87,7 +143,7 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT s.measured_at AS time,\n       s.device_id || ' cell ' || c.ord AS metric,\n       c.v AS value\nFROM telemetry_samples s\nCROSS JOIN LATERAL jsonb_array_elements_text(s.cell_voltages) WITH ORDINALITY AS c(v, ord)\nWHERE $__timeFilter(s.measured_at) AND s.device_id IN ($device)\nORDER BY s.measured_at",
+          "rawSql": "SELECT $__timeGroupAlias(s.measured_at, '5s', NULL), s.device_id || ' cell ' || c.ord AS metric, AVG(c.v::float) AS value\nFROM telemetry_samples s CROSS JOIN LATERAL jsonb_array_elements_text(s.cell_voltages) WITH ORDINALITY AS c(v, ord)\nWHERE $__timeFilter(s.measured_at) AND s.device_id IN (${device:sqlstring})\nGROUP BY 1, 2 ORDER BY 1",
           "rawQuery": true
         }
       ]
@@ -96,12 +152,24 @@
       "id": 4,
       "title": "Temperature (\u00b0C)",
       "type": "timeseries",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "celsius",
-          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "spanNulls": false }
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
@@ -109,8 +177,8 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT measured_at AS time, device_id AS metric, temperature AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN ($device)\nORDER BY measured_at",
-          "rawQuery": true
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(measured_at, '5s', NULL), device_id AS metric, AVG(temperature) AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN (${device:sqlstring})\nGROUP BY 1, 2 ORDER BY 1"
         }
       ]
     },
@@ -118,12 +186,24 @@
       "id": 5,
       "title": "Cell voltage spread (V)",
       "type": "timeseries",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "volt",
-          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "spanNulls": false }
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
@@ -131,7 +211,7 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT s.measured_at AS time,\n       s.device_id AS metric,\n       MAX(c.v::float) - MIN(c.v::float) AS value\nFROM telemetry_samples s\nCROSS JOIN LATERAL jsonb_array_elements_text(s.cell_voltages) AS c(v)\nWHERE $__timeFilter(s.measured_at) AND s.device_id IN ($device)\nGROUP BY s.measured_at, s.device_id\nORDER BY s.measured_at",
+          "rawSql": "SELECT $__timeGroupAlias(s.measured_at, '5s', NULL), s.device_id AS metric, AVG(spread.value) AS value\nFROM telemetry_samples s CROSS JOIN LATERAL (SELECT MAX(c.v::float) - MIN(c.v::float) AS value FROM jsonb_array_elements_text(s.cell_voltages) c(v)) spread\nWHERE $__timeFilter(s.measured_at) AND s.device_id IN (${device:sqlstring})\nGROUP BY 1, 2 ORDER BY 1",
           "rawQuery": true
         }
       ]
@@ -140,21 +220,57 @@
       "id": 6,
       "title": "Anomaly indicator (events) & overlays",
       "type": "timeseries",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "drawStyle": "bars", "fillOpacity": 30, "stacking": { "mode": "none" } }
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 30,
+            "stacking": {
+              "mode": "none"
+            }
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "critical" },
-            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+            "matcher": {
+              "id": "byName",
+              "options": "critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "warning" },
-            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]
+            "matcher": {
+              "id": "byName",
+              "options": "warning"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
           }
         ]
       },
@@ -162,7 +278,7 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT detected_at AS time, severity AS metric, 1 AS value\nFROM anomaly_events\nWHERE $__timeFilter(detected_at) AND device_id IN ($device)\nORDER BY detected_at",
+          "rawSql": "SELECT detected_at AS time, severity AS metric, 1 AS value\nFROM anomaly_events\nWHERE $__timeFilter(detected_at) AND device_id IN (${device:sqlstring})\nORDER BY detected_at",
           "rawQuery": true
         }
       ]
@@ -171,20 +287,47 @@
       "id": 7,
       "title": "Anomalies over telemetry (overlay)",
       "type": "timeseries",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 25 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "volt",
-          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "spanNulls": false }
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "anomaly" },
+            "matcher": {
+              "id": "byName",
+              "options": "anomaly"
+            },
             "properties": [
-              { "id": "custom.drawStyle", "value": "points" },
-              { "id": "custom.pointSize", "value": 7 },
-              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 7
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
             ]
           }
         ]
@@ -193,14 +336,8 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT measured_at AS time, device_id AS metric, pack_voltage AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN ($device)\nORDER BY measured_at",
-          "rawQuery": true
-        },
-        {
-          "refId": "B",
-          "format": "time_series",
-          "rawSql": "SELECT detected_at AS time, 'anomaly' AS metric, threshold AS value\nFROM anomaly_events\nWHERE $__timeFilter(detected_at) AND device_id IN ($device)\nORDER BY detected_at",
-          "rawQuery": true
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(measured_at, '5s', NULL), device_id AS metric, AVG(pack_voltage) AS value\nFROM telemetry_samples\nWHERE $__timeFilter(measured_at) AND device_id IN (${device:sqlstring})\nGROUP BY 1, 2 ORDER BY 1"
         }
       ]
     },
@@ -208,31 +345,73 @@
       "id": 8,
       "title": "Data freshness",
       "type": "stat",
-      "datasource": { "type": "postgres", "uid": "bms-postgres" },
-      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 33 },
+      "datasource": {
+        "type": "postgres",
+        "uid": "bms-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "s",
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 60 },
-              { "color": "red", "value": 300 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
             ]
           }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
       "targets": [
         {
           "refId": "A",
           "format": "table",
-          "rawSql": "SELECT EXTRACT(EPOCH FROM (now() - MAX(measured_at))) AS \"staleness (s)\"\nFROM telemetry_samples\nWHERE device_id IN ($device)",
+          "rawSql": "SELECT EXTRACT(EPOCH FROM (now() - MAX(measured_at))) AS \"staleness (s)\"\nFROM telemetry_samples\nWHERE device_id IN (${device:sqlstring})",
           "rawQuery": true
         }
       ]
     }
-  ]
+  ],
+  "annotations": {
+    "list": [
+      {
+        "name": "Detected anomalies",
+        "enable": true,
+        "iconColor": "red",
+        "datasource": {
+          "type": "postgres",
+          "uid": "bms-postgres"
+        },
+        "target": {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT detected_at AS time, anomaly_type AS text, severity AS tags FROM anomaly_events WHERE $__timeFilter(detected_at) AND device_id IN (${device:sqlstring}) ORDER BY detected_at"
+        }
+      }
+    ]
+  }
 }

@@ -405,16 +405,20 @@ def test_load_committed_model_loads_successfully():
     assert len(bundle["features"]) > 0
 
 
-def test_load_committed_portable_model_loads_and_predicts():
-    """Step 5 requirement: test that loads the portable UBJ + JSON model."""
-    path = predict.MODEL_DIR / "soh_xgb_all.ubj"
-    assert path.exists(), f"{path} must exist"
-    bundle = predict.load_soh_model(path)
-    assert bundle["model"] is not None
-    assert len(bundle["features"]) > 0
-    test_row = {f: 1.0 for f in bundle["features"]}
-    val = predict_soh(bundle, test_row)
-    assert np.isfinite(val)
+def test_blend_does_not_ship_stale_xgboost_portable_artifacts():
+    # UBJ cannot encode ElasticNet. A portable XGBoost member must never be
+    # mistaken for the current blend, including during joblib-load fallback.
+    assert not (predict.MODEL_DIR / "soh_xgb_all.ubj").exists()
+    assert not (predict.MODEL_DIR / "soh_xgb_all.json").exists()
+    bundle = predict.load_soh_model(predict.MODEL_DIR / "soh_xgb_all.joblib")
+    assert "Blend" in type(bundle["model"]).__name__
+
+
+def test_corrupt_blend_does_not_silently_return_another_model(tmp_path, monkeypatch):
+    path = tmp_path / "soh_xgb_all.joblib"
+    path.write_bytes(b"corrupt")
+    with pytest.raises(SohModelLoadError):
+        predict.load_soh_model(path)
 
 
 def test_demo_model_loads_and_excludes_demo_cells():

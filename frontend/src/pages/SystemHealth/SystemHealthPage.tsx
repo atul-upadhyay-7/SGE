@@ -6,9 +6,7 @@
  * each fail independently. Every panel reads its own endpoint, so one failing
  * subsystem does not hide the others.
  *
- * The PRD lists two quantities the backend does not expose (an ingestion
- * *rate* and a global invalid-message *count* beyond the rejected counter), so
- * they are labelled as unavailable rather than invented (PRD §10).
+ * Writer rates are process-local; the invalid-message total is persisted.
  */
 import { Card, PageHeader } from "@/components/cards/Cards";
 import {
@@ -108,7 +106,10 @@ const PANELS: Panel[] = [
           ["Rejected (invalid)", num(d.rejected)],
           ["Dropped (queue overflow)", num(d.dropped)],
           ["Write errors", num(d.write_errors)],
-          ["Ingestion rate", "not exposed by backend"],
+          ["Stored samples / second (last 60s or since startup)",
+            typeof d.stored_per_second === "number" ? d.stored_per_second.toFixed(2) : "unavailable"],
+          ["Invalid messages (persisted, all devices)", num(d.persisted_invalid_count)],
+          ["Counter scope", String(d.counter_scope ?? "unavailable")],
         ]}
       />
     ),

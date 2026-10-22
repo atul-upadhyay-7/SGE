@@ -121,10 +121,27 @@ services:
     environment:
       GF_INSTALL_PLUGINS: simpod-json-datasource
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_COOKIE_SAMESITE: ${GRAFANA_COOKIE_SAMESITE:-lax}
+      GF_SECURITY_COOKIE_SECURE: ${GRAFANA_COOKIE_SECURE:-false}
+      BMS_POSTGRES_HOST: postgres
+      BMS_POSTGRES_PORT: "5432"
+      BMS_POSTGRES_DB: bms
+      BMS_GRAFANA_PG_USER: bms_ro
+      BMS_GRAFANA_PG_PASSWORD: ${BMS_GRAFANA_PG_PASSWORD:-}
+      BMS_PROMETHEUS_URL: http://prometheus:9090
+      BMS_GRAFANA_DASHBOARDS_PATH: /var/lib/grafana/bms-dashboards
     volumes:
+      - ./docker/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/provisioning/dashboards:/var/lib/grafana/bms-dashboards:ro
       - ./dashboard/provisioning/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on: [api, prometheus]
+    depends_on:
+      api:
+        condition: service_started
+      prometheus:
+        condition: service_started
+      postgres:
+        condition: service_healthy
 
   alert-sink:                # mock webhook receiver: where firing alerts land
     <<: *app

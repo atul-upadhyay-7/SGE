@@ -61,3 +61,46 @@ non-secret values reach the bundle.
 Every panel leaves `spanNulls = false`, so a gap in telemetry renders as a gap
 rather than a continuous line (PRD §4.2). Anomaly panels read `anomaly_events`,
 so the anomaly indicator and overlays are the detector's own persisted events.
+
+
+## Compose setup (hardening patch)
+
+Compose now passes the datasource variables, mounts `grafana.ini`, and mounts
+BMS dashboards at a distinct path from the legacy dashboards. PostgreSQL is a
+startup dependency. Only BMS PostgreSQL is the default datasource.
+
+Set a dedicated `BMS_GRAFANA_PG_PASSWORD` in your local environment or secrets
+manager. Do not commit it. After migrations, provision the role using the backend
+Python environment from `backend/`:
+
+```
+python -m scripts.setup_grafana_reader
+```
+
+For compose, pass that variable into the one-off container, then start Grafana:
+
+```
+docker compose up -d postgres mosquitto bms-api
+docker compose exec -e BMS_GRAFANA_PG_PASSWORD bms-api python -m scripts.setup_grafana_reader
+docker compose up -d grafana
+```
+
+The script grants SELECT on existing tables and default SELECT privileges on
+future tables created by the migration owner. It rotates the dedicated role's
+password when rerun. It is for a new dedicated reader, not a pre-existing
+privileged account. Verify INSERT is denied after deployment.
+
+Anonymous viewing is disabled. Sign in to Grafana in a separate tab before
+opening the app. Compose's defaults are for same-site local HTTP. For cross-site
+production HTTPS set `GRAFANA_COOKIE_SAMESITE=none` and
+`GRAFANA_COOKIE_SECURE=true`; a same-site reverse proxy may still be needed for
+third-party-cookie restrictions. No service tokens belong in the frontend.
+
+Telemetry line panels aggregate into 5-second buckets with explicit NULL fill,
+not zero fill. The 1Hz source remains stored unchanged. `spanNulls=false` then
+shows missing buckets as gaps. Device values use `${device:sqlstring}` and cell
+JSON values are cast to numeric. Anomaly annotations carry event times instead
+of incorrectly plotting temperature/current thresholds against a voltage axis.
+
+Verified natively with Grafana 11.2.0 + PostgreSQL 14 on Oct 22. Docker compose
+itself, PostgreSQL 16 CI and the target deployment remain to be exercised.

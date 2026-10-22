@@ -104,8 +104,9 @@ export function BatteryHealthPage() {
             detail={
               latest
                 ? `The latest prediction's input data was "${latest.input_quality_status}". SoH is only produced once sufficient cycle-level features exist; it is never inferred from live telemetry (PRD §4.6).`
-                : latestState.error ??
-                  "This device has no stored SoH prediction. Predictions require aggregated charge cycles."
+                : latestState.error === "Not found"
+                  ? "No stored prediction yet. Complete and aggregate enough discharge windows to form the model reference baseline."
+                  : latestState.error ?? "Waiting for sufficient discharge-window features."
             }
           />
           {latest && <PredictionMeta prediction={latest} />}

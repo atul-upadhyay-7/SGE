@@ -46,5 +46,7 @@ def db_ready() -> bool:
 def require_db() -> bool:
     """Skip a test when no database is available (keeps the unit suite portable)."""
     if not db_ready():
+        if os.environ.get("BMS_REQUIRE_DB") == "true":
+            pytest.fail("Postgres is required for this run but not reachable")
         pytest.skip("Postgres not reachable")
     return True

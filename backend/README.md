@@ -7,7 +7,15 @@ and evaluates alert rules against the stored state. Built alongside the
 repo's offline ML pipeline, and it reuses that pipeline's own cycle/feature
 code (no private copy) so training and serving cannot drift.
 
-## Status: Phases 1–8 complete; Frontend & Grafana Integration change request (CR) complete
+## Status: core implemented; full PRD acceptance still open
+
+The earlier "complete" label referred to code milestones, not a full production
+acceptance. See `docs/TODO.md` and `docs/ACCEPTANCE_2026-10-22.md`. The Oct 22
+hardening patch is local until reviewed/pushed; do not assume hosted main has it.
+
+The live partial-window model is intentional, not an obsolete copy of the
+39-input completed-discharge SOH blend. Their feature contracts and availability
+are different. Never swap them without a separate ingestion/feature design.
 
 **Phase 1 — Foundation**
 
@@ -265,7 +273,7 @@ first, so the frontend can attribute every prediction to a served artifact.
 ### Reports (CR §7)
 
 - `POST /api/v1/reports` builds a **synchronous, persisted** snapshot
-  (`reports.payload`, `format_version = "report-v1"`). One configurable
+  (`reports.payload`, `format_version = "report-v2"`). One configurable
   **full** report with include-flags (`sections.telemetry/soh/anomalies/actions`,
   all on by default) and filters (`device_id`, `from`/`to`, `severity`,
   `anomaly_type`). A device-scoped report uses `"scope": "device"`; no
@@ -283,7 +291,7 @@ first, so the frontend can attribute every prediction to a served artifact.
   `Content-Disposition: attachment; filename="report-{id}.{ext}"`.
 - Formats are **JSON and CSV only** (no PDF in scope).
 
-### Grafana (CR §4.2–4.7) — configuration only
+### Grafana (CR §4.2–4.7)
 
 Grafana is **not a required service**; the repository ships provisioning
 artifacts under `docker/grafana/` and the stack runs without them. See
@@ -408,3 +416,24 @@ python -m pytest
 Every setting is an environment variable prefixed with `BMS_` and documented
 in `.env.example`. Secrets (`.env`) are git-ignored; commit `.env.example`
 only.
+
+
+## Hardening patch: operational checks
+
+- `.github/workflows/verify.yml` provisions PostgreSQL 16, migrates/checks schema,
+  then runs backend tests with `BMS_REQUIRE_DB=true`. A missing DB fails CI
+  instead of skipping integration tests. This workflow has not run on GitHub
+  until the patch is pushed.
+- `/health/ingestion`: `stored_per_second` is committed inserts over the last
+  60 seconds (or since startup), scoped to this process. `persisted_invalid_count`
+  is the all-device quarantine-row total, across restarts. During DB outages it
+  is null with `invalid_count_status=database_unavailable`, never invented zero.
+- Ingestion stored/rejected/duplicate counters advance only after commit.
+- Reports use `report-v2` for corrected filter/section semantics. Old snapshots
+  remain untouched. Exports include every selected row up to 10,000; larger
+  synchronous snapshots return 422 asking for narrower filters, not silent
+  truncation. A queued high-volume report worker remains open.
+- JSON and CSV remain supported. PDF scope conflicts with the frontend PRD and
+  is awaiting the owner's choice, not silently dropped.
+- The all-cell blend has no UBJ export. Its stale XGBoost-only UBJ/JSON files
+  were removed and training now cleans them up. Window and demo exports remain.
