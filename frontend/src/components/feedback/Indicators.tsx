@@ -39,6 +39,7 @@ const STATUS_LABEL: Record<string, string> = {
   acknowledged: "Acknowledged",
   investigating: "Investigating",
   resolved: "Resolved",
+  false_positive: "False positive",
   ready: "Ready",
   failed: "Failed",
   generating: "Generating",

@@ -37,8 +37,7 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
 ## Still required for full frontend PRD completion
 
 ### Scope/architecture
-- [ ] Resolve PDF conflict: frontend PRD requires PDF; backend README excludes it.
-  Await owner's choice. Do not silently change the PRD or claim PDF exists.
+- [ ] PDF export from stored report snapshots, now approved by owner on 2026-10-22.
 - [ ] Queued large-report generation and load testing: synchronous snapshots can
   occupy the API event loop; the 10,000-row cap is a guard, not a queue worker.
 - [ ] Complete fleet-report telemetry and SoH aggregation. Current fleet reports
@@ -47,7 +46,7 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
   (the current rejection summary is all-time).
 
 ### Anomalies and analysis
-- [ ] FALSE_POSITIVE workflow/status and explicit resolution outcome fields.
+- [x] FALSE_POSITIVE classification with mandatory explanation, persisted outcome, audit evidence and terminal-state handling (local feature commit, awaiting push review).
 - [ ] Affected-cell and recurrence-frequency filtering; recurrence table column.
 - [ ] Previous-equivalent-period comparison, category breakdown and 24h/7d/30d
   analysis controls; current page's custom dates are not the entire PRD.

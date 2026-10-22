@@ -287,6 +287,7 @@ class AnomalyEvent(Base):
     threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
     duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    resolution_outcome: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     # Evidence is a structured record of *why* the rule fired; the cause and
     # action lists come from the diagnostic mapping and are labelled
     # confirmed/unconfirmed so an unproven explanation is never presented as

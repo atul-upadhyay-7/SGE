@@ -50,7 +50,7 @@ class AnomalyRepository:
                 AnomalyEvent.device_id == device_id,
                 AnomalyEvent.anomaly_type == anomaly_type,
                 cell_match,
-                AnomalyEvent.status == "open",
+                AnomalyEvent.status.in_(["open", "acknowledged", "investigating"]),
             )
         )
         return result.scalars().first()
@@ -61,7 +61,7 @@ class AnomalyRepository:
             select(AnomalyEvent)
             .where(
                 AnomalyEvent.device_id == device_id,
-                AnomalyEvent.status == "open",
+                AnomalyEvent.status.in_(["open", "acknowledged", "investigating"]),
             )
             .order_by(AnomalyEvent.id.asc())
         )
@@ -270,7 +270,7 @@ class AnomalyRepository:
                 AnomalyEvent.severity.label("severity"),
                 AnomalyEvent.status.label("status"),
             )
-            .where(*filters, AnomalyEvent.status == "open")
+            .where(*filters, AnomalyEvent.status.in_(["open", "acknowledged", "investigating"]))
             .where(last_hour > hour)
         )
         activity = detected.union_all(ongoing).subquery()
@@ -290,13 +290,15 @@ class AnomalyRepository:
         for row_hour, severity, status, count in result.all():
             bucket = buckets.setdefault(
                 row_hour,
-                {"hour": row_hour, "total": 0, "open": 0, "resolved": 0, "by_severity": {}},
+                {"hour": row_hour, "total": 0, "open": 0, "resolved": 0, "false_positive": 0, "by_severity": {}},
             )
             bucket["total"] += int(count)
-            if status == "open":
+            if status in {"open", "acknowledged", "investigating"}:
                 bucket["open"] += int(count)
             elif status == "resolved":
                 bucket["resolved"] += int(count)
+            elif status == "false_positive":
+                bucket["false_positive"] += int(count)
             bucket["by_severity"][severity] = (
                 bucket["by_severity"].get(severity, 0) + int(count)
             )
@@ -322,7 +324,7 @@ class AnomalyRepository:
                 func.max(AnomalyEvent.last_detected_at).label("last_detected_at"),
                 func.max(AnomalyEvent.duration_seconds).label("max_duration_seconds"),
                 func.count()
-                .filter(AnomalyEvent.status != "resolved")
+                .filter(AnomalyEvent.status.notin_(["resolved", "false_positive"]))
                 .label("unresolved"),
             )
             .where(*filters)

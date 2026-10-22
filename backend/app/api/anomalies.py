@@ -96,6 +96,7 @@ async def anomaly_summary(
         acknowledged=status_counts.get("acknowledged", 0),
         investigating=status_counts.get("investigating", 0),
         resolved=status_counts.get("resolved", 0),
+        false_positive=status_counts.get("false_positive", 0),
         by_severity=[
             SeverityCount(severity=name, count=count)
             for name, count in rows["severity_counts"]
@@ -107,7 +108,7 @@ async def anomaly_summary(
         first_detected_at=rows["first_detected_at"],
         last_detected_at=rows["last_detected_at"],
         avg_duration_seconds=rows["avg_duration_seconds"],
-        unresolved=rows["total"] - status_counts.get("resolved", 0),
+        unresolved=rows["total"] - status_counts.get("resolved", 0) - status_counts.get("false_positive", 0),
     )
 
 
@@ -195,7 +196,7 @@ async def acknowledge_anomaly(
     """Acknowledge an open anomaly so it stops paging, without resolving it."""
     repository = AnomalyRepository(session)
     event = await _require_anomaly(repository, anomaly_id)
-    if event.status == "resolved":
+    if event.status in {"resolved", "false_positive"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="cannot acknowledge a resolved anomaly",
@@ -255,19 +256,23 @@ async def resolve_anomaly(
     """Resolve an anomaly manually, ending its episode."""
     repository = AnomalyRepository(session)
     event = await _require_anomaly(repository, anomaly_id)
-    if event.status == "resolved":
+    if event.status in {"resolved", "false_positive"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="anomaly is already resolved",
         )
+    if payload.classification == "false_positive" and not (payload.outcome or payload.note or "").strip():
+        raise HTTPException(status_code=422, detail="A false-positive classification requires an explanation")
     now = datetime.now(UTC)
     await repository.add_action(
         anomaly_id,
         "resolve",
         actor=payload.actor,
         note=payload.note,
+        evidence={"classification": payload.classification, "outcome": payload.outcome or payload.note},
     )
-    event.status = "resolved"
+    event.status = payload.classification
+    event.resolution_outcome = payload.outcome or payload.note
     event.ended_at = now
     span = (now - event.detected_at).total_seconds()
     event.duration_seconds = max(span, event.duration_seconds)

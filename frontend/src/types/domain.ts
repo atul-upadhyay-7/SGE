@@ -58,7 +58,8 @@ export type AnomalyStatus =
   | "open"
   | "acknowledged"
   | "investigating"
-  | "resolved";
+  | "resolved"
+  | "false_positive";
 
 export type AnomalyActionType =
   | "acknowledge"
@@ -81,6 +82,7 @@ export interface AnomalyEvent {
   threshold: number | null;
   duration_seconds: number;
   status: AnomalyStatus | string;
+  resolution_outcome?: string | null;
   diagnostic_evidence: Record<string, unknown> | null;
   likely_causes: AnomalyCause[] | null;
   recommended_actions: AnomalyRecommendation[] | null;

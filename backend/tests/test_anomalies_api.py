@@ -451,3 +451,50 @@ def test_range_validation_rejects_inverted_window(client, seeded) -> None:
         params={"from": "2026-10-17T00:00:00Z", "to": "2026-10-16T00:00:00Z"},
     )
     assert response.status_code == 400
+
+
+def test_false_positive_requires_explanation_and_is_terminal(client, require_db):
+    import asyncio
+    device = f"FP_{uuid4().hex[:8]}"
+    ids = asyncio.run(_seed(device))
+    event_id = ids['open_cell']
+    url = f"/api/v1/anomalies/{event_id}/resolve"
+    assert client.post(url, json={'classification': 'false_positive'}).status_code == 422
+    response = client.post(url, json={'classification': 'false_positive', 'outcome': 'Bench reference verified sensor offset', 'actor': 'acceptance'})
+    assert response.status_code == 200
+    assert response.json()['resolution_outcome'] == 'Bench reference verified sensor offset'
+    assert response.json()['status'] == 'false_positive'
+    assert client.post(url, json={}).status_code == 409
+    assert client.post(f'/api/v1/anomalies/{event_id}/acknowledge', json={}).status_code == 409
+    history = client.get(f'/api/v1/anomalies/{event_id}/history').json()
+    assert history[-1]['evidence']['classification'] == 'false_positive'
+    summary = client.get('/api/v1/anomalies/summary', params={'device_id': device}).json()
+    assert summary['false_positive'] == 1
+    assert summary['unresolved'] == 1
+    filtered = client.get('/api/v1/anomalies', params={'device_id': device, 'status': 'false_positive'}).json()
+    assert filtered['total'] == 1
+
+
+def test_resolution_outcome_persists(client, require_db):
+    import asyncio
+    ids = asyncio.run(_seed(f"OUT_{uuid4().hex[:8]}"))
+    url = f"/api/v1/anomalies/{ids['open_temp']}/resolve"
+    response = client.post(url, json={'outcome': 'Cooling restored after fan replacement'})
+    assert response.status_code == 200
+    assert response.json()['resolution_outcome'] == 'Cooling restored after fan replacement'
+
+
+def test_acknowledged_episode_stays_active_for_detection(client, require_db):
+    import asyncio
+    device = f"ACTIVE_{uuid4().hex[:8]}"
+    ids = asyncio.run(_seed(device))
+    event_id = ids['open_cell']
+    assert client.post(f'/api/v1/anomalies/{event_id}/acknowledge', json={}).status_code == 200
+    async def check():
+        async with SessionLocal() as session:
+            repo = AnomalyRepository(session)
+            event = await repo.open_event(device, 'cell_voltage_out_of_range', 1)
+            assert event.id == event_id
+            assert event.status == 'acknowledged'
+            assert event_id in [e.id for e in await repo.open_events(device)]
+    asyncio.run(check())

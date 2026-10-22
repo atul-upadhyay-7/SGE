@@ -117,9 +117,14 @@ export function addAnomalyAction(
   });
 }
 
+export interface AnomalyResolutionPayload extends AnomalyActorPayload {
+  classification?: "resolved" | "false_positive";
+  outcome?: string | null;
+}
+
 export function resolveAnomaly(
   anomalyId: number,
-  payload: AnomalyActorPayload = {},
+  payload: AnomalyResolutionPayload = {},
 ): Promise<AnomalyEvent> {
   return apiFetch<AnomalyEvent>(`/anomalies/${anomalyId}/resolve`, {
     method: "POST",

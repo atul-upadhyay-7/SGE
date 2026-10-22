@@ -270,6 +270,7 @@ export function AnomalyCenterPage() {
               <option value="acknowledged">acknowledged</option>
               <option value="investigating">investigating</option>
               <option value="resolved">resolved</option>
+                <option value="false_positive">false positive</option>
             </select>
           </label>
           <label>

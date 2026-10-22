@@ -198,7 +198,7 @@ class ReportService:
         )
         _check_report_size(total)
         event_rows = [_event_row(event) for event in events]
-        unresolved = [row for row in event_rows if row["status"] != "resolved"]
+        unresolved = [row for row in event_rows if row["status"] not in {"resolved", "false_positive"}]
         return {
             "total": summary["total"],
             "status_counts": summary["status_counts"],
@@ -210,6 +210,7 @@ class ReportService:
                     "total": bucket["total"],
                     "open": bucket["open"],
                     "resolved": bucket["resolved"],
+                    "false_positive": bucket.get("false_positive", 0),
                     "by_severity": bucket["by_severity"],
                 }
                 for bucket in hourly
@@ -299,6 +300,7 @@ def _event_row(event) -> dict:
         "severity": event.severity,
         "affected_cell": event.affected_cell,
         "status": event.status,
+        "resolution_outcome": event.resolution_outcome,
         "observed_value": event.observed_value,
         "expected_value": event.expected_value,
         "threshold": event.threshold,

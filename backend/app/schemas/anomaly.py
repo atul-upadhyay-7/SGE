@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Severity = Literal["info", "warning", "critical"]
-AnomalyStatus = Literal["open", "acknowledged", "investigating", "resolved"]
+AnomalyStatus = Literal["open", "acknowledged", "investigating", "resolved", "false_positive"]
 ActionType = Literal["acknowledge", "note", "corrective_action", "resolve"]
 
 
@@ -30,6 +30,7 @@ class AnomalyEventRead(BaseModel):
     threshold: float | None = None
     duration_seconds: float
     status: str
+    resolution_outcome: str | None = None
     diagnostic_evidence: dict | None = None
     likely_causes: list | None = None
     recommended_actions: list | None = None
@@ -82,6 +83,8 @@ class AnomalyResolve(BaseModel):
 
     actor: str | None = Field(default=None, max_length=128)
     note: str | None = Field(default=None, max_length=2048)
+    outcome: str | None = Field(default=None, max_length=2048)
+    classification: Literal["resolved", "false_positive"] = "resolved"
 
 
 class SeverityCount(BaseModel):
@@ -105,6 +108,7 @@ class AnomalySummary(BaseModel):
     acknowledged: int
     investigating: int
     resolved: int
+    false_positive: int = 0
     by_severity: list[SeverityCount]
     by_type: list[TypeCount]
     first_detected_at: datetime | None = None
@@ -120,6 +124,7 @@ class HourlyBucket(BaseModel):
     total: int
     open: int
     resolved: int
+    false_positive: int = 0
     by_severity: dict[str, int]
 
 

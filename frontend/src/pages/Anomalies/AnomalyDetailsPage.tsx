@@ -451,7 +451,9 @@ function ResolutionWorkflow({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const resolved = event.status === "resolved";
+  const resolved = ["resolved", "false_positive"].includes(event.status);
+  const [classification, setClassification] = useState<"resolved" | "false_positive">("resolved");
+  const [outcome, setOutcome] = useState("");
 
   async function run(fn: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -474,12 +476,24 @@ function ResolutionWorkflow({
         <div className="banner banner--ok" role="status">
           <span aria-hidden="true">✓</span>
           <span>
-            Resolved{event.ended_at ? ` ${relativeTime(event.ended_at)}` : ""}.
+            {event.status === "false_positive" ? "False positive" : "Resolved"}{event.ended_at ? ` ${relativeTime(event.ended_at)}` : ""}.
           </span>
         </div>
       )}
 
+      {event.resolution_outcome && <p>Resolution outcome: {event.resolution_outcome}</p>}
       <div className="workflow">
+        <label className="workflow__field">
+          Final classification
+          <select value={classification} onChange={(e) => setClassification(e.target.value as "resolved" | "false_positive")} disabled={resolved}>
+            <option value="resolved">Resolved</option>
+            <option value="false_positive">False positive</option>
+          </select>
+        </label>
+        <label className="workflow__field workflow__field--wide">
+          Resolution outcome / false-positive explanation
+          <textarea value={outcome} onChange={(e) => setOutcome(e.target.value)} disabled={resolved} maxLength={2048} />
+        </label>
         <label className="workflow__field">
           Investigator (actor)
           <input
@@ -550,13 +564,13 @@ function ResolutionWorkflow({
           </button>
           <ConfirmButton
             className="btn btn--primary"
-            label="Mark resolved"
-            confirmLabel="Confirm resolve"
-            disabled={busy || resolved}
+            label={classification === "false_positive" ? "Mark false positive" : "Mark resolved"}
+            confirmLabel={classification === "false_positive" ? "Confirm false positive" : "Confirm resolve"}
+            disabled={busy || resolved || (classification === "false_positive" && !outcome.trim())}
             title="Resolving is final for this event; confirming prevents an accidental click"
             onConfirm={() =>
               run(
-                () => resolveAnomaly(event.id, { actor: actor || null, note: note || null }),
+                () => resolveAnomaly(event.id, { actor: actor || null, note: note || null, classification, outcome: outcome || null }),
                 "Anomaly resolved",
               )
             }
