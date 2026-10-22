@@ -51,8 +51,9 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
   context against the detailed PRD acceptance, not merely route availability.
 - [ ] Per-page loading/error/empty/stale acceptance beyond the smoke recorded.
   Missing prediction is honest; production outage/auth behavior still needs checks.
-- [ ] Grafana iframe cannot reliably detect cross-origin login/failure from
-  onLoad alone. Improve explicit readiness/auth guidance and timeout/fallback.
+- [x] Grafana embed explicitly distinguishes frame load from authenticated readiness,
+  includes viewer sign-in guidance and 20s timeout/reset (local, awaiting review).
+  Cross-origin dashboard success cannot be inferred from iframe onLoad.
 - [ ] System Health model registry is provenance, not proof of successful current
   model load/inference. Add actual inference-status/error/latency observability.
 
