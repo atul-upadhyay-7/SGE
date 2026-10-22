@@ -9,6 +9,11 @@ data/raw/
 *.db
 data/*.db
 
+# Secrets. Commit the example only; never a populated .env (PRD §6).
+.env
+.env.*
+!.env.example
+
 # Machine-local logs (pipeline, Grafana, the JSON API) are state,
 # not source. Nothing under logs/ is tracked.
 logs/
@@ -21,3 +26,8 @@ logs/
 
 artifacts/
 reports/train_report_*
+
+# Frontend build output and dependencies are reproducible, not source.
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo

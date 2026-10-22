@@ -1,0 +1,17 @@
+apiVersion: 1
+
+# Provider for the CR-aligned dashboard set (PRD §4.2). Configuration artifact
+# only. Mount the directory that contains bms-live.json at the path below, or
+# override BMS_GRAFANA_DASHBOARDS_PATH to wherever the operator keeps it.
+providers:
+  - name: 'BMS CR Dashboards'
+    orgId: 1
+    folder: 'BMS'
+    folderUid: 'bms'
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: $__env{BMS_GRAFANA_DASHBOARDS_PATH}
+      foldersFromFilesStructure: false

@@ -1,0 +1,61 @@
+apiVersion: 1
+
+# CR-aligned Grafana datasources for the BMS backend (PRD §4.2 "Grafana
+# implementation rules"). Configuration artifacts only: Grafana is optional and
+# nothing here is required to run the backend.
+#
+# Mount this directory at /etc/grafana/provisioning/datasources and export the
+# referenced variables before starting Grafana. The database connection uses a
+# **read-only** role, so a dashboard can never mutate telemetry, cycles or
+# anomaly state; "do not expose database write credentials" (PRD §4.2) is met by
+# provisioning the read-only account, not the backend's own user.
+#
+#   BMS_POSTGRES_HOST       e.g. postgres         (compose service name)
+#   BMS_POSTGRES_PORT       e.g. 5432
+#   BMS_POSTGRES_DB         e.g. bms
+#   BMS_GRAFANA_PG_USER     e.g. bms_ro           (read-only role)
+#   BMS_GRAFANA_PG_PASSWORD (read-only password; not the backend's)
+#   BMS_PROMETHEUS_URL      e.g. http://prometheus:9090  (optional)
+#
+# Create the role once:
+#   CREATE ROLE bms_ro LOGIN PASSWORD '...';
+#   GRANT CONNECT ON DATABASE bms TO bms_ro;
+#   GRANT USAGE ON SCHEMA public TO bms_ro;
+#   GRANT SELECT ON ALL TABLES IN SCHEMA public TO bms_ro;
+#   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO bms_ro;
+datasources:
+  # The rolling 24-hour live view (PRD §4.2). Panels write SQL over the
+  # persisted telemetry/anomaly tables and use Grafana's $__timeFilter so the
+  # window stays pinned to now-24h → now with automatic refresh.
+  - name: BMS PostgreSQL
+    uid: bms-postgres
+    type: postgres
+    access: proxy
+    url: ${BMS_POSTGRES_HOST}:${BMS_POSTGRES_PORT}
+    database: ${BMS_POSTGRES_DB}
+    user: ${BMS_GRAFANA_PG_USER}
+    isDefault: true
+    editable: false
+    secureJsonData:
+      password: ${BMS_GRAFANA_PG_PASSWORD}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1600
+      timescaledb: false
+
+  # Alert rules are evaluated by Grafana's own engine against a metrics
+  # exporter; the PostgreSQL datasource can also back alerting if no exporter
+  # is deployed.
+  - name: BMS Prometheus
+    uid: bms-prometheus
+    type: prometheus
+    access: proxy
+    url: ${BMS_PROMETHEUS_URL}
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 5s

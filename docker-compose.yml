@@ -41,6 +41,43 @@ services:
     volumes:
       - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
+  postgres:                  # backend datastore for the BMS ingestion path
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bms
+      POSTGRES_PASSWORD: ${BMS_POSTGRES_PASSWORD:-bms}
+      POSTGRES_DB: bms
+    # Host port 5433 (not 5432) so a Postgres already installed on the host
+    # does not collide. The bms-api container reaches it at postgres:5432.
+    ports: ["5433:5432"]
+    volumes:
+      - bms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bms -d bms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bms-api:                   # FastAPI telemetry + SoH backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      BMS_DATABASE_URL: postgresql+asyncpg://bms:${BMS_POSTGRES_PASSWORD:-bms}@postgres:5432/bms
+      BMS_MQTT_HOST: mosquitto
+      BMS_MQTT_PORT: "1883"
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    # Migrate on boot, then serve. Schema changes stay in Alembic (PRD §5).
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
   soh:                       # three per-cell SOH services
     <<: *app
     command: python src/pack/run_pack.py --host mosquitto
@@ -108,3 +145,6 @@ services:
       python src/pack/publisher.py --host mosquitto --delay 1
       --fault CELL2:resistance_spike:40 --fault CELL3:thermal:60
     depends_on: [soh, bridge]
+
+volumes:
+  bms_pgdata:
