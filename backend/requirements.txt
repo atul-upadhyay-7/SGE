@@ -25,7 +25,7 @@ asyncpg==0.32.0
 alembic==1.20.0
 
 # Settings + validation
-pydantic==2.11.7
+pydantic==2.14.1
 pydantic-settings==2.10.1
 
 # HTTP client for tests (ASGITransport)
