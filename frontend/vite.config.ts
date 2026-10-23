@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
 
 import react from "@vitejs/plugin-react";
+import { configDefaults } from "vitest/config";
 import { defineConfig } from "vite";
 
 // The app talks to the FastAPI backend over `VITE_API_BASE_URL`. During
@@ -13,6 +14,10 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+  },
+  test: {
+    // Playwright specs run through `npm run e2e`, not vitest.
+    exclude: [...configDefaults.exclude, "e2e/**"],
   },
   server: {
     port: 5173,

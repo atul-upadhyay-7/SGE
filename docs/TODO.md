@@ -62,8 +62,10 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
   do not validate image builds, ports or that host's network/cookie policy.
 - [ ] Verify Grafana viewer login/embedding behind the actual deployment's HTTPS,
   authentication and reverse proxy, with a dedicated read-only DB role.
-- [ ] Persist a browser regression suite in CI, including offline/error/empty,
-  device switching, keyboard navigation and production bundle secret checks.
+- [x] Browser regression suite (Playwright, production build, mocked backend): offline and
+  empty-backend rendering on all 7 routes, device switching, keyboard navigation,
+  refused-write message, operator key handling, bundle secret scan. New `browser` CI job
+  (passes locally in 24 tests; its first GitHub run is not yet seen, so not claimed green in CI).
 - [x] Write authorization: every dashboard write route needs `X-Operator-Key` when
   `BMS_OPERATOR_API_KEY` is set; production refuses to start without admin and
   operator keys; a route-inventory test blocks unguarded writes (local, awaiting push review).
