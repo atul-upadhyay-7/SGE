@@ -425,8 +425,10 @@ python -m pytest
 
 Settings are read at import time, so the test suite disables MQTT, points at
 the compose Postgres (`localhost:5433`) and uses `NullPool` so per-test event
-loops never share a pooled connection. Database-backed tests skip when no
-Postgres is reachable, so the unit suite runs without infrastructure.
+loops never share a pooled connection. A reachable Postgres is required
+before the suite even collects: session setup resolves, creates when
+missing, and migrates the dedicated test database at import time, so with
+no database reachable the run fails at startup instead of skipping.
 
 The suite drops and recreates tables, so it NEVER runs against the configured
 application database. It resolves a dedicated test database instead: an
@@ -434,6 +436,12 @@ explicit `BMS_TEST_DATABASE_URL` must name a database containing `test`
 (otherwise the suite refuses to start), and otherwise the `BMS_DATABASE_URL`
 database name is rewritten to `<name>_test` and created (plus migrated)
 automatically. A demo dataset in `bms` is therefore safe while tests run.
+Automatic creation needs the `CREATEDB` privilege on the connecting role:
+`db_guard.ensure_test_database` issues `CREATE DATABASE` and treats only
+`DuplicateDatabaseError` as success, so on a plain local Postgres without
+`CREATEDB` the run dies with `InsufficientPrivilegeError` during session
+setup even when the test database already exists — grant it once (for
+example `ALTER ROLE bms CREATEDB`, run as a superuser).
 
 ```bash
 docker compose up -d postgres   # start the datastore for the full suite

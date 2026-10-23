@@ -367,7 +367,9 @@ tens of minutes, which is why `--skip-train` exists.
 
 ### Step 11 — Provision and start Grafana (no sudo needed)
 
-Grafana is the only dashboard in this project. The provisioning
+Grafana is the provisioned dashboard for the offline-results and
+pack views below; the operator dashboard is the React app in
+`frontend/` (see *Dashboard*). The provisioning
 tree lives in the repo at `dashboard/provisioning/` so a fresh
 checkout never requires copying files into `/etc/grafana`:
 
@@ -511,9 +513,14 @@ that payload to arrive at the receiver, and fails unless both happen.
 
 ## Dashboard
 
-Grafana is the only dashboard and monitoring surface. Streamlit is
+The primary dashboard is the React app in `frontend/`: in the
+compose stack the `frontend` service builds it and serves the bundle
+with nginx on http://localhost:5173, proxying `/api` to the `bms-api`
+service, so the browser talks to one origin. Grafana is the
+provisioned monitoring surface for the pack and offline-results
+views. Streamlit is
 gone: `dashboard/app.py` was deleted and `streamlit`/`plotly` were
-removed from `requirements.txt`. The dashboard is built natively in
+removed from `requirements.txt`. The Grafana dashboard is built natively in
 **Grafana** using the JSON API datasource plugin. It provides
 visualizations of:
 
