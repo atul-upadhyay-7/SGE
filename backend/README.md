@@ -428,6 +428,13 @@ the compose Postgres (`localhost:5433`) and uses `NullPool` so per-test event
 loops never share a pooled connection. Database-backed tests skip when no
 Postgres is reachable, so the unit suite runs without infrastructure.
 
+The suite drops and recreates tables, so it NEVER runs against the configured
+application database. It resolves a dedicated test database instead: an
+explicit `BMS_TEST_DATABASE_URL` must name a database containing `test`
+(otherwise the suite refuses to start), and otherwise the `BMS_DATABASE_URL`
+database name is rewritten to `<name>_test` and created (plus migrated)
+automatically. A demo dataset in `bms` is therefore safe while tests run.
+
 ```bash
 docker compose up -d postgres   # start the datastore for the full suite
 python -m pytest
