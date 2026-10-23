@@ -252,7 +252,7 @@ export function BatteryHealthPage() {
         )}
         {modelsState.data && modelsState.data.items.length > 0 && (
           <p className="detail-note">
-            <span className="pill pill--info">Live model: XGBoost</span>{" "}
+            <span className="pill">Live model: XGBoost</span>{" "}
             <span className="mono">
               {modelsState.data.items.map((m) => m.model_name).join(", ")}
             </span>{" "}

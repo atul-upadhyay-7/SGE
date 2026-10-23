@@ -37,7 +37,7 @@ export function ValidationPage() {
         title="Model Validation"
         subtitle="Live XGBoost model scored against measured SoH"
         actions={
-          <span className="pill pill--info">
+          <span className="pill">
             PoC — not hardware-proven
           </span>
         }

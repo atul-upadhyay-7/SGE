@@ -90,7 +90,7 @@ export function OverviewPage() {
         subtitle={device ? `${device.name} · ${device.device_id}` : deviceId}
         actions={
           <>
-            <span className="pill pill--info" title="Tested on NASA lab data and demo packs — not a hardware-proven BMS">
+            <span className="pill" title="Tested on NASA lab data and demo packs — not a hardware-proven BMS">
               PoC · Lab + demo data
             </span>
             <StaleBadge lastUpdated={telemetryState.lastUpdated ?? null} />
