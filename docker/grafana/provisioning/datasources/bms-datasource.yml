@@ -39,6 +39,7 @@ datasources:
     secureJsonData:
       password: ${BMS_GRAFANA_PG_PASSWORD}
     jsonData:
+      database: ${BMS_POSTGRES_DB}
       sslmode: disable
       maxOpenConns: 5
       maxIdleConns: 2
