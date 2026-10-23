@@ -74,8 +74,9 @@ are different. Never swap them without a separate ingestion/feature design.
   `WINDOW_MIN_REFERENCE_DISCHARGES` opening discharges is refused rather than
   guessed (reported as `refused` in the response).
 - `GET /api/v1/devices/{device_id}/cycles` — aggregated cycles, ascending.
-- `GET /api/v1/devices/{device_id}/soh` — stored predictions, oldest first.
-- `GET /api/v1/devices/{device_id}/soh/latest` — newest prediction (`404`
+- `GET /api/v1/predictions/history/{device_id}` — stored predictions, oldest
+  first (paginated).
+- `GET /api/v1/predictions/latest/{device_id}` — newest prediction (`404`
   before the device has been aggregated).
 - Model provenance: the served artifact is registered in `model_registry`,
   versioned by the SHA-256 of the `.ubj`, and every prediction records its
@@ -393,7 +394,7 @@ curl http://localhost:8000/api/v1/health/ingestion
 
 # 4. aggregate the discharges seen so far and read back the SoH
 curl -X POST http://localhost:8000/api/v1/devices/BMS_001/cycles/aggregate
-curl http://localhost:8000/api/v1/devices/BMS_001/soh/latest
+curl http://localhost:8000/api/v1/predictions/latest/BMS_001
 ```
 
 The simulator publishes at ~1 Hz and the tracker needs at least a couple of
@@ -426,6 +427,13 @@ Settings are read at import time, so the test suite disables MQTT, points at
 the compose Postgres (`localhost:5433`) and uses `NullPool` so per-test event
 loops never share a pooled connection. Database-backed tests skip when no
 Postgres is reachable, so the unit suite runs without infrastructure.
+
+The suite drops and recreates tables, so it NEVER runs against the configured
+application database. It resolves a dedicated test database instead: an
+explicit `BMS_TEST_DATABASE_URL` must name a database containing `test`
+(otherwise the suite refuses to start), and otherwise the `BMS_DATABASE_URL`
+database name is rewritten to `<name>_test` and created (plus migrated)
+automatically. A demo dataset in `bms` is therefore safe while tests run.
 
 ```bash
 docker compose up -d postgres   # start the datastore for the full suite
