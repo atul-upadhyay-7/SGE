@@ -17,6 +17,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_operator_key
 from app.db.database import get_session
 from app.repositories.anomaly_repository import AnomalyRepository
 from app.schemas.anomaly import (
@@ -228,7 +229,9 @@ async def anomaly_history(
 
 
 @router.post(
-    "/anomalies/{anomaly_id}/acknowledge", response_model=AnomalyEventRead
+    "/anomalies/{anomaly_id}/acknowledge",
+    response_model=AnomalyEventRead,
+    dependencies=[Depends(require_operator_key)],
 )
 async def acknowledge_anomaly(
     anomaly_id: int,
@@ -258,7 +261,11 @@ async def acknowledge_anomaly(
     return AnomalyEventRead.model_validate(event)
 
 
-@router.post("/anomalies/{anomaly_id}/actions", response_model=AnomalyActionRead)
+@router.post(
+    "/anomalies/{anomaly_id}/actions",
+    response_model=AnomalyActionRead,
+    dependencies=[Depends(require_operator_key)],
+)
 async def add_anomaly_action(
     anomaly_id: int,
     payload: AnomalyActionCreate,
@@ -289,7 +296,11 @@ async def add_anomaly_action(
     return AnomalyActionRead.model_validate(action)
 
 
-@router.post("/anomalies/{anomaly_id}/resolve", response_model=AnomalyEventRead)
+@router.post(
+    "/anomalies/{anomaly_id}/resolve",
+    response_model=AnomalyEventRead,
+    dependencies=[Depends(require_operator_key)],
+)
 async def resolve_anomaly(
     anomaly_id: int,
     payload: AnomalyResolve,

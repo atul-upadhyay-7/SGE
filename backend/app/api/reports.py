@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_operator_key
 from app.db.database import get_session
 from app.repositories.device_repository import DeviceRepository
 from app.repositories.report_repository import ReportRepository
@@ -37,7 +38,12 @@ UTC = timezone.utc
 _MAX_PAGE = 1000
 
 
-@router.post("/reports", response_model=ReportDetail, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/reports",
+    response_model=ReportDetail,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_operator_key)],
+)
 async def create_report(
     request: ReportCreate,
     session: AsyncSession = Depends(get_session),

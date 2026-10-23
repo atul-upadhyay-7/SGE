@@ -57,6 +57,12 @@ async def _load_device_cache(cache: DeviceCache) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
+    problems = settings.access_control_problems()
+    if problems:
+        raise RuntimeError(
+            "Refusing to start in production without write protection: "
+            + "; ".join(problems)
+        )
     logger.info(
         "Starting %s v%s (env=%s)",
         settings.app_name,

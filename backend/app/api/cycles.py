@@ -14,6 +14,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_operator_key
 from app.db.database import get_session
 from app.db.models import Device
 from app.repositories.cycle_repository import CycleRepository
@@ -30,7 +31,11 @@ router = APIRouter(prefix="/devices/{device_id}", tags=["cycles"])
 _MAX_PAGE = 1000
 
 
-@router.post("/cycles/aggregate", response_model=AggregationResult)
+@router.post(
+    "/cycles/aggregate",
+    response_model=AggregationResult,
+    dependencies=[Depends(require_operator_key)],
+)
 async def aggregate_cycles(
     device_id: str,
     session: AsyncSession = Depends(get_session),

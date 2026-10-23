@@ -122,6 +122,12 @@ class Settings(BaseSettings):
     # local development and the compose stack expect; set it before exposing
     # the API beyond a trusted network.
     admin_api_key: str | None = None
+    # Optional operator key guarding every state-changing call the dashboard
+    # makes (alert/anomaly acknowledge, resolve, actions, evaluate, cycle
+    # re-aggregation and report generation). Device ingestion keeps its own
+    # per-device credential. Unset keeps local development open; in a
+    # production environment the app refuses to start without both keys.
+    operator_api_key: str | None = None
     # Reject device secrets shorter than this at registration time. Long
     # enough to force a random value, short enough for a QR-code sticker.
     min_credential_length: int = 8
@@ -143,6 +149,21 @@ class Settings(BaseSettings):
     # Per-subscriber buffer for live events. A slow reader drops its oldest
     # events rather than applying back-pressure to ingestion.
     stream_queue_max: int = 256
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.strip().lower() in {"production", "prod"}
+
+    def access_control_problems(self) -> list[str]:
+        """Missing write-protection keys that must block a production start."""
+        if not self.is_production:
+            return []
+        problems = []
+        if not self.admin_api_key:
+            problems.append("BMS_ADMIN_API_KEY is not set")
+        if not self.operator_api_key:
+            problems.append("BMS_OPERATOR_API_KEY is not set")
+        return problems
 
     @property
     def mqtt_telemetry_topic(self) -> str:

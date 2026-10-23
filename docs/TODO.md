@@ -64,8 +64,11 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
   authentication and reverse proxy, with a dedicated read-only DB role.
 - [ ] Persist a browser regression suite in CI, including offline/error/empty,
   device switching, keyboard navigation and production bundle secret checks.
-- [ ] Review security/authorization of read APIs and anomaly actions before any
-  public deployment. Per-device ingest credentials do not protect all UI APIs.
+- [x] Write authorization: every dashboard write route needs `X-Operator-Key` when
+  `BMS_OPERATOR_API_KEY` is set; production refuses to start without admin and
+  operator keys; a route-inventory test blocks unguarded writes (local, awaiting push review).
+- [ ] Read-API authorization: reads and the SSE stream are still open. Needs viewer
+  authentication at a reverse proxy or a real session design before public deployment.
 - [ ] Confirm full-stack recovery/backpressure/resource behavior under expected
   device counts and retention volumes.
 

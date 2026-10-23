@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.api.deps import require_operator_key
 from app.db.database import get_session
 from app.db.models import Device
 from app.repositories.alert_repository import AlertRepository
@@ -74,7 +75,11 @@ async def get_alert(
     return AlertRead.model_validate(alert)
 
 
-@router.post("/alerts/{alert_id}/ack", response_model=AlertRead)
+@router.post(
+    "/alerts/{alert_id}/ack",
+    response_model=AlertRead,
+    dependencies=[Depends(require_operator_key)],
+)
 async def ack_alert(
     alert_id: int,
     payload: AlertAckRequest,
@@ -98,6 +103,7 @@ async def ack_alert(
 @router.post(
     "/devices/{device_id}/alerts/evaluate",
     response_model=AlertEvaluationResult,
+    dependencies=[Depends(require_operator_key)],
 )
 async def evaluate_device(
     device_id: str,

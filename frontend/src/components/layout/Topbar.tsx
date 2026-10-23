@@ -1,4 +1,5 @@
 import { ConnectionStatus } from "@/components/layout/ConnectionStatus";
+import { OperatorKeyControl } from "@/components/layout/OperatorKeyControl";
 import { DeviceSelector } from "@/components/layout/DeviceSelector";
 
 export function Topbar() {
@@ -9,6 +10,7 @@ export function Topbar() {
       </div>
       <div className="topbar__controls">
         <DeviceSelector />
+        <OperatorKeyControl />
         <ConnectionStatus />
       </div>
     </header>

@@ -22,6 +22,7 @@ import hmac
 # carries the same secret in the payload's optional ``credential`` field.
 DEVICE_CREDENTIAL_HEADER = "X-Device-Credential"
 ADMIN_API_KEY_HEADER = "X-Admin-Key"
+OPERATOR_API_KEY_HEADER = "X-Operator-Key"
 
 # Minimum length for a device secret. Device secrets are typically minted
 # with a CSPRNG rather than chosen by a human, so the floor is a hygiene

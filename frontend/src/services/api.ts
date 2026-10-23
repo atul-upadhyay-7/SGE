@@ -6,6 +6,7 @@
  * :class:`ApiError` so pages can render a consistent message without guessing
  * at fetch/HTTP/parse failures.
  */
+import { getOperatorKey } from "@/services/operatorKey";
 import { config } from "@/config";
 
 export class ApiError extends Error {
@@ -37,6 +38,7 @@ export interface RequestOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+const OPERATOR_KEY_HEADER = "X-Operator-Key";
 
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
@@ -52,6 +54,9 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
 }
 
 function messageFor(status: number, detail: unknown): string {
+  if (status === 401) {
+    return "This action needs the operator key. Enter it with the Operator key control in the top bar, then try again.";
+  }
   if (typeof detail === "string" && detail.trim()) return detail;
   if (detail && typeof detail === "object" && "detail" in detail) {
     const inner = (detail as { detail: unknown }).detail;
@@ -84,6 +89,9 @@ export async function apiFetch<T>(
       headers: {
         Accept: "application/json",
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(method !== "GET" && getOperatorKey()
+          ? { [OPERATOR_KEY_HEADER]: getOperatorKey() as string }
+          : {}),
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,

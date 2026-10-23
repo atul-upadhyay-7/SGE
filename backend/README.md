@@ -138,6 +138,20 @@ are different. Never swap them without a separate ingestion/feature design.
 - Optional admin key. Setting `BMS_ADMIN_API_KEY` guards device registration
   and credential rotation behind an `X-Admin-Key` header (401 when missing
   or wrong). Unset — the default — those endpoints stay open for local use.
+- Optional operator key. Setting `BMS_OPERATOR_API_KEY` guards every
+  dashboard write (alert/anomaly acknowledge, actions and resolve, alert
+  evaluate, cycle re-aggregation, report generation) behind an
+  `X-Operator-Key` header. The dashboard asks the operator to type the key
+  into a top-bar control; it lives in `sessionStorage` for that tab only and
+  is never part of the built bundle. With `BMS_ENVIRONMENT=production` the
+  app refuses to start unless both the admin and operator keys are set.
+  `GET /api/v1/health` reports booleans only for whether each key is set.
+- Read endpoints are NOT keyed. Anomaly, telemetry, report and health reads
+  (and the SSE stream) are open to anyone who can reach the API. Before any
+  public deployment put the API behind a reverse proxy or VPN that
+  authenticates viewers. This is a known remaining gap, not a finished
+  read-access design. A test fails if a new write route is added without a
+  guard.
 - Comparison uses `hmac.compare_digest`, so a timing probe cannot recover
   the stored digest byte by byte.
 - Broker-side security is configuration, not code: run Mosquitto with a TLS

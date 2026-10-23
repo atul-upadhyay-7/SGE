@@ -7,12 +7,12 @@ a future orchestrator) can act on them directly.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import func, select
 from app.db.database import SessionLocal
 from app.db.models import TelemetryRejection
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.db.database import check_connection
 
 router = APIRouter(tags=["health"])
@@ -21,12 +21,17 @@ _settings = get_settings()
 
 
 @router.get("/health", summary="Application health")
-async def health() -> dict:
+async def health(settings: Settings = Depends(get_settings)) -> dict:
     return {
         "status": "ok",
-        "app": _settings.app_name,
-        "version": _settings.app_version,
-        "environment": _settings.environment,
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment,
+        # Booleans only: whether write protection is configured, never a key.
+        "write_protection": {
+            "admin_key": settings.admin_api_key is not None,
+            "operator_key": settings.operator_api_key is not None,
+        },
     }
 
 

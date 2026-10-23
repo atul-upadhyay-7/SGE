@@ -1260,3 +1260,19 @@ input {
   .device-select { min-width: 0; max-width: 100%; flex: 1; }
   .device-select select { width: 100%; min-width: 0; max-width: 100%; }
 }
+
+.operator-key { position: relative; }
+.operator-key__form {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(280px, 90vw);
+  padding: 12px;
+  background: var(--bg-elevated, var(--bg-inset));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
