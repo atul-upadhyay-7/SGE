@@ -20,10 +20,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
 from app.db.models import Device
 from app.repositories.anomaly_repository import AnomalyRepository
 from app.repositories.cycle_repository import CycleRepository

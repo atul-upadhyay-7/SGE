@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 
 import pytest
-
 from app.core.config import get_settings
 from app.core.security import (
     ADMIN_API_KEY_HEADER,
@@ -24,11 +23,31 @@ def viewer_key(monkeypatch):
     return VIEWER
 
 
+def _iter_routes(routes, prefix=""):
+    """Yield ``(full_path, route)`` for every concrete route.
+
+    FastAPI >= 0.161 wraps each included APIRouter in an object in
+    ``app.routes`` instead of flattening its routes in, so a flat walk
+    finds nothing — and this inventory silently came back empty. Recurse
+    through ``original_router`` and apply the include prefix so the walk
+    works on both route-tree shapes.
+    """
+    for route in routes:
+        included = getattr(route, "original_router", None)
+        if included is not None:
+            include_prefix = (
+                getattr(getattr(route, "include_context", None), "prefix", "")
+                or ""
+            )
+            yield from _iter_routes(included.routes, prefix + include_prefix)
+        else:
+            yield prefix + (getattr(route, "path", "") or ""), route
+
+
 def _get_paths() -> list[str]:
     paths = []
-    for route in app.routes:
+    for path, route in _iter_routes(app.routes):
         if "GET" in (getattr(route, "methods", None) or set()):
-            path = route.path
             if path.startswith(API):
                 paths.append(re.sub(r"\{[^}]+\}", "1", path))
     return sorted(set(paths))

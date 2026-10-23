@@ -18,9 +18,9 @@ import asyncio
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
 from time import monotonic
+from typing import Any
 
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -37,8 +37,8 @@ from app.schemas.telemetry import (
     adapt_legacy_payload,
     looks_like_legacy,
 )
-from app.services.device_cache import DeviceCache
 from app.services.anomaly_detection_service import AnomalyDetector
+from app.services.device_cache import DeviceCache
 from app.services.event_bus import EVENT_ALERT, EVENT_TELEMETRY, EventBus
 
 logger = get_logger(__name__)
@@ -65,7 +65,7 @@ REASON_QUEUE_OVERFLOW = "queue_overflow"
 class IngestOutcome:
     """Result of a synchronous (HTTP) ingestion call."""
 
-    status: str  # "stored" | "duplicate" | "rejected"
+    status: str  # "stored" | "duplicate" | "rejected" | "error"
     message_id: str | None = None
     reason: str | None = None
     detail: str | None = None
@@ -271,6 +271,19 @@ class IngestionService:
 
     def _check_ranges(self, payload: TelemetryPayload) -> str | None:
         s = self._settings
+        # A far-future timestamp is an impossible measurement for this
+        # device: last_seen_at is monotonic (GREATEST), so one such sample
+        # would pin it in the future permanently and the device_stale rule
+        # could never fire again. Past timestamps stay unbounded so
+        # legitimate backfill is still accepted.
+        future_by = (
+            payload.measured_at - datetime.now(UTC)
+        ).total_seconds()
+        if future_by > s.telemetry_max_future_skew_s:
+            return (
+                f"measured_at is {future_by:.0f}s in the future "
+                f"(limit {s.telemetry_max_future_skew_s:.0f}s)"
+            )
         for index, cell_v in enumerate(payload.cell_voltages):
             if not (self._settings.cell_voltage_min_v <= cell_v <= self._settings.cell_voltage_max_v):
                 return (
@@ -383,6 +396,16 @@ class IngestionService:
             )
 
         outcome = await self._flush([item])
+        if outcome.failed:
+            # The transaction was rolled back: the sample was NOT stored,
+            # so saying "stored" (or "duplicate") would be a lie the HTTP
+            # caller cannot recover from. Report a retryable failure.
+            return IngestOutcome(
+                status="error",
+                message_id=item.message_id,
+                reason="storage_failed",
+                detail="sample could not be persisted; retry",
+            )
         if outcome.duplicates:
             if item in outcome.conflicting:
                 return IngestOutcome(
@@ -463,7 +486,15 @@ class IngestionService:
                     self._recent_stores.append((now, outcome.inserted))
                     while self._recent_stores and self._recent_stores[0][0] <= now - 60.0:
                         self._recent_stores.popleft()
-                self._publish_stored(samples)
+                # Only rows this transaction actually inserted: duplicates
+                # leave no visible change, so they must not emit events.
+                self._publish_stored(
+                    [
+                        s
+                        for s in samples
+                        if (s.device_id, s.message_id) in outcome.inserted_keys
+                    ]
+                )
                 # Detection runs *after* the commit and never rolls it back:
                 # raw ingestion must survive a detector fault (CR §10).
                 if samples:
@@ -471,6 +502,7 @@ class IngestionService:
             except Exception:  # noqa: BLE001 - a bad batch must not kill the writer
                 await session.rollback()
                 self.write_errors += 1
+                outcome.failed = True
                 logger.exception(
                     "Ingestion flush failed for %d item(s); batch dropped", len(items)
                 )

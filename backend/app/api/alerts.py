@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import Settings, get_settings
 from app.api.deps import require_operator_key
+from app.core.config import Settings, get_settings
 from app.db.database import get_session
 from app.db.models import Device
 from app.repositories.alert_repository import AlertRepository

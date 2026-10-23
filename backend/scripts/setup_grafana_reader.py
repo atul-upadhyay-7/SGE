@@ -1,8 +1,10 @@
 """Provision the read-only Grafana DB login after migrations. No secrets in argv."""
 import asyncio
 import os
-from sqlalchemy import text
+
 from app.db.database import engine
+from sqlalchemy import text
+
 
 async def main():
     password = os.environ["BMS_GRAFANA_PG_PASSWORD"]

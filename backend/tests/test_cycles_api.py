@@ -16,7 +16,6 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
 from app.services.cycle_service import _finite, _representative_cell
 
 BASE = datetime(2026, 2, 1, 0, 0, 0, tzinfo=UTC)

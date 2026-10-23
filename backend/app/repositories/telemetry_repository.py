@@ -27,6 +27,12 @@ class InsertOutcome:
     inserted: int = 0
     duplicates: int = 0
     conflicting: list[ValidatedSample] = field(default_factory=list)
+    # (device_id, message_id) pairs this call actually inserted, so the
+    # caller can publish/act on exactly those rows — never on duplicates.
+    inserted_keys: set[tuple[str, str]] = field(default_factory=set)
+    # Set by the ingestion flush when the transaction failed and was
+    # rolled back: nothing in this outcome was persisted.
+    failed: bool = False
 
 
 class TelemetryRepository:
@@ -60,7 +66,9 @@ class TelemetryRepository:
         result = await self._session.execute(statement)
         inserted_keys = {(row.device_id, row.message_id) for row in result.all()}
 
-        outcome = InsertOutcome(inserted=len(inserted_keys))
+        outcome = InsertOutcome(
+            inserted=len(inserted_keys), inserted_keys=set(inserted_keys)
+        )
         duplicates = [
             s for s in samples if (s.device_id, s.message_id) not in inserted_keys
         ]

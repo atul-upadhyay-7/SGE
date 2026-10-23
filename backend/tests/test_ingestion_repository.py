@@ -6,13 +6,12 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
-
 from app.db.database import SessionLocal
 from app.db.models import TelemetryRejection, TelemetrySample
 from app.repositories.device_repository import DeviceRepository
 from app.repositories.telemetry_repository import TelemetryRepository
 from app.schemas.telemetry import RejectionRecord, ValidatedSample
+from sqlalchemy import func, select
 
 pytestmark = pytest.mark.usefixtures("require_db")
 

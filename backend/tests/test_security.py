@@ -14,7 +14,6 @@ import asyncio
 from uuid import uuid4
 
 import pytest
-
 from app.core.config import get_settings
 from app.core.security import (
     ADMIN_API_KEY_HEADER,
@@ -27,7 +26,6 @@ from app.schemas.telemetry import RejectionRecord, ValidatedSample
 from app.services import ingestion_service as ing
 from app.services.device_cache import DeviceCache
 from app.services.ingestion_service import IngestionService
-
 
 # --------------------------------------------------------------------------
 # app.core.security

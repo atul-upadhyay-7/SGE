@@ -13,8 +13,6 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.deps import require_read_access
-from app.services.report_queue import ReportQueue
 from app.api import (
     alerts,
     anomalies,
@@ -28,6 +26,7 @@ from app.api import (
     stream,
     telemetry,
 )
+from app.api.deps import require_read_access
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import SessionLocal, engine
@@ -38,6 +37,7 @@ from app.services.device_cache import DeviceCache
 from app.services.event_bus import EventBus
 from app.services.ingestion_service import IngestionService
 from app.services.monitor_service import MonitorService
+from app.services.report_queue import ReportQueue
 
 settings = get_settings()
 logger = get_logger(__name__)

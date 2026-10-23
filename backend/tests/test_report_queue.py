@@ -5,13 +5,11 @@ from __future__ import annotations
 import asyncio
 import time
 
-import pytest
-from sqlalchemy import text
-
 from app.core.config import get_settings
 from app.db.database import SessionLocal
 from app.services.report_queue import ReportQueue
 from app.services.report_service import ReportService
+from sqlalchemy import text
 
 API = "/api/v1"
 

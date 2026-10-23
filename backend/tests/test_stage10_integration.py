@@ -18,9 +18,8 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.core.config import get_settings
+from app.core.security import hash_credential
 from app.db.database import SessionLocal
 from app.repositories.anomaly_repository import AnomalyRepository
 from app.repositories.cycle_repository import CycleRepository
@@ -28,7 +27,7 @@ from app.repositories.device_repository import DeviceRepository
 from app.repositories.telemetry_repository import TelemetryRepository
 from app.schemas.telemetry import ValidatedSample
 from app.services.anomaly_rules import RULES_VERSION
-from app.core.security import hash_credential
+from fastapi.testclient import TestClient
 
 UTC = timezone.utc
 BASE = datetime(2026, 10, 18, 6, 0, tzinfo=UTC)

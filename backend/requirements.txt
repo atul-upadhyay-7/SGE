@@ -6,7 +6,14 @@
 # time, so it also needs its own `src/` and `models/` sources alongside it.
 
 # REST API + ASGI server
-fastapi==0.116.1
+# FastAPI 0.161 + Starlette 1.9: the previous FastAPI 0.116.1 pulled in
+# Starlette 0.47.3, which carries 12 known vulnerabilities (pip-audit,
+# Oct 2026). Starlette is pinned explicitly because FastAPI declares only
+# a floor for it, and the route-inventory tests (test_read_access /
+# test_write_access) were updated for Starlette 1.x's included-router
+# route tree.
+fastapi==0.161.1
+starlette==1.9.0
 uvicorn[standard]==0.35.0
 
 # Async MQTT client (FR-02)

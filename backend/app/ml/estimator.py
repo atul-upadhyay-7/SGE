@@ -24,10 +24,10 @@ from __future__ import annotations
 
 import sys
 import time
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from functools import wraps
-from threading import Lock
 from pathlib import Path
+from threading import Lock
 from typing import Any, Iterable, Mapping
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -37,7 +37,7 @@ if str(_SRC) not in sys.path:
 
     sys.path.insert(0, str(_SRC))
 
-from features import (  # noqa: E402
+from features import (  # noqa: E402, F401
     OUT_OF_TRAINED_RANGE,
     WINDOW_FEATURES,
     WINDOW_MIN_REFERENCE_DISCHARGES,

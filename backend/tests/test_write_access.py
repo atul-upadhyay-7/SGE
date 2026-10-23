@@ -8,7 +8,6 @@ fails when a new unguarded write endpoint is added.
 from __future__ import annotations
 
 import pytest
-
 from app.api.deps import require_operator_key
 from app.api.devices import require_admin_key
 from app.core.config import Settings, get_settings
@@ -21,16 +20,42 @@ OPERATOR_KEY = "test-operator-key-1234"
 DEVICE_CREDENTIAL_ROUTES = {("POST", "/api/v1/devices/{device_id}/telemetry")}
 
 
+def _iter_routes(routes, prefix=""):
+    """Yield ``(full_path, route)`` for every concrete route.
+
+    FastAPI >= 0.161 wraps each included APIRouter in an object in
+    ``app.routes`` instead of flattening its routes in. A flat walk finds
+    no write routes at all, which made the guard inventory below pass
+    vacuously — it must recurse (and the test asserts the inventory is
+    not empty, so a future route-tree change fails loudly instead).
+    """
+    for route in routes:
+        included = getattr(route, "original_router", None)
+        if included is not None:
+            include_prefix = (
+                getattr(getattr(route, "include_context", None), "prefix", "")
+                or ""
+            )
+            yield from _iter_routes(included.routes, prefix + include_prefix)
+        else:
+            yield prefix + (getattr(route, "path", "") or ""), route
+
+
 def _write_routes():
-    for route in app.routes:
+    for path, route in _iter_routes(app.routes):
         methods = getattr(route, "methods", None) or set()
         for method in methods & {"POST", "PUT", "PATCH", "DELETE"}:
-            yield method, route.path, route
+            yield method, path, route
 
 
 def test_every_write_route_has_an_explicit_guard() -> None:
+    inventory = list(_write_routes())
+    assert inventory, "no write routes found — route enumeration is broken"
+    assert ("POST", "/api/v1/reports") in {
+        (method, path) for method, path, _ in inventory
+    }
     unguarded = []
-    for method, path, route in _write_routes():
+    for method, path, route in inventory:
         calls = {dep.call for dep in route.dependant.dependencies}
         if (method, path) in DEVICE_CREDENTIAL_ROUTES:
             continue

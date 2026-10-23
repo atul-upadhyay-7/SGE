@@ -9,11 +9,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import func, select
-from app.db.database import SessionLocal
-from app.db.models import TelemetryRejection
 
 from app.core.config import Settings, get_settings
-from app.db.database import check_connection
+from app.db.database import SessionLocal, check_connection
+from app.db.models import TelemetryRejection
 
 router = APIRouter(tags=["health"])
 
@@ -94,6 +93,7 @@ async def health_monitor(request: Request, response: Response) -> dict:
         "runs": service.runs,
         "last_run_at": service.last_run_at,
         "last_error": service.last_error,
+        "last_tick_failures": service.last_tick_failures,
     }
     if service.last_error is not None:
         response.status_code = 503

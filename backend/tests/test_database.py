@@ -7,9 +7,8 @@ stays runnable without infrastructure.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import text
-
 from app.db.database import SessionLocal, check_connection, engine
+from sqlalchemy import text
 
 EXPECTED_TABLES = {
     "devices",

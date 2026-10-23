@@ -40,7 +40,6 @@ from app.ml.estimator import (
 )
 from app.repositories.cycle_repository import CycleRepository
 from app.repositories.telemetry_repository import TelemetryRepository
-
 from streaming.cycle_tracker import CycleTracker  # noqa: E402  (sys.path set above)
 
 # Samples read per page while replaying history. Bounds memory on long streams
