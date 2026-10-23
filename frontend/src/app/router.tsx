@@ -39,6 +39,11 @@ const BatteryHealthPage = lazy(() =>
     default: m.BatteryHealthPage,
   })),
 );
+const ValidationPage = lazy(() =>
+  import("@/pages/Validation/ValidationPage").then((m) => ({
+    default: m.ValidationPage,
+  })),
+);
 const ReportsPage = lazy(() =>
   import("@/pages/Reports/ReportsPage").then((m) => ({
     default: m.ReportsPage,
@@ -65,6 +70,7 @@ export const router = createBrowserRouter([
       { path: "anomalies", element: <AnomalyCenterPage /> },
       { path: "anomalies/:anomalyId", element: <AnomalyDetailsPage /> },
       { path: "health", element: <BatteryHealthPage /> },
+      { path: "validation", element: <ValidationPage /> },
       { path: "reports", element: <ReportsPage /> },
       { path: "devices", element: <DevicesPage /> },
       { path: "system", element: <SystemHealthPage /> },

@@ -250,6 +250,16 @@ export function BatteryHealthPage() {
             </table>
           </div>
         )}
+        {modelsState.data && modelsState.data.items.length > 0 && (
+          <p className="detail-note">
+            <span className="pill pill--info">Live model: XGBoost</span>{" "}
+            <span className="mono">
+              {modelsState.data.items.map((m) => m.model_name).join(", ")}
+            </span>{" "}
+            is the only model used for live prediction. ElasticNet is an
+            offline benchmark only — not deployed, not a live improvement.
+          </p>
+        )}
         {latest && (
           <>
             <p className="muted detail-note">

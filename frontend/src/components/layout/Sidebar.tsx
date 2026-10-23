@@ -55,6 +55,12 @@ const ICONS = {
       <polyline points="6.2 12 9.3 12 11 9.4 13.2 14 14.6 12 17.8 12" />
     </Icon>
   ),
+  validation: (
+    <Icon>
+      <path d="M9 12.2 11.2 14.4 15.4 9.8" />
+      <circle cx="12" cy="12" r="8.6" />
+    </Icon>
+  ),
   reports: (
     <Icon>
       <path d="M6.5 3.5H14L18.5 8v12a1.5 1.5 0 0 1-1.5 1.5H6.5A1.5 1.5 0 0 1 5 20V5A1.5 1.5 0 0 1 6.5 3.5z" />
@@ -90,6 +96,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/live", label: "Live Monitoring", icon: ICONS.live },
   { to: "/anomalies", label: "Anomaly Center", icon: ICONS.anomalies },
   { to: "/health", label: "Battery Health", icon: ICONS.health },
+  { to: "/validation", label: "Model Validation", icon: ICONS.validation },
   { to: "/reports", label: "Historical Reports", icon: ICONS.reports },
   { to: "/devices", label: "Device Management", icon: ICONS.devices },
   { to: "/system", label: "System Health", icon: ICONS.system },

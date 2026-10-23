@@ -9,7 +9,13 @@
  * boundary, and a shape mismatch becomes an ApiError the page can
  * show instead of a white screen.
  */
-import type { LiveEvent, ReportDetail, ReportPage, SohPrediction } from "@/types/domain";
+import type {
+  LiveEvent,
+  ReportDetail,
+  ReportPage,
+  SohPrediction,
+  ValidationReport,
+} from "@/types/domain";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -55,6 +61,37 @@ export function isReportDetail(value: unknown): value is ReportDetail {
     isRecord(value) &&
     "payload" in value &&
     (value.payload === null || isRecord(value.payload))
+  );
+}
+
+export function isValidationReport(value: unknown): value is ValidationReport {
+  if (!isRecord(value)) return false;
+  if (
+    typeof value.generated_at !== "string" ||
+    typeof value.source !== "string" ||
+    typeof value.dataset !== "string" ||
+    !isRecord(value.model) ||
+    typeof value.model.algorithm !== "string" ||
+    !isRecord(value.summary) ||
+    !Array.isArray(value.rows) ||
+    !Array.isArray(value.notes)
+  ) {
+    return false;
+  }
+  const summary = value.summary;
+  return (
+    isFiniteNumber(summary.scored_rows) &&
+    isFiniteNumber(summary.refused_rows) &&
+    (summary.mae_pct === null || isFiniteNumber(summary.mae_pct)) &&
+    (summary.rmse_pct === null || isFiniteNumber(summary.rmse_pct)) &&
+    value.rows.every(
+      (row) =>
+        isRecord(row) &&
+        typeof row.cell_id === "string" &&
+        isFiniteNumber(row.discharge_index) &&
+        isFiniteNumber(row.actual_soh_pct) &&
+        typeof row.status === "string",
+    )
   );
 }
 
