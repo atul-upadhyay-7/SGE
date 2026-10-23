@@ -37,6 +37,10 @@ export function useAsync<T>(
     const controller = new AbortController();
     setLoading(true);
     setError(null);
+    // Never present the previous dep's data as the new dep's: on the
+    // Anomaly Details route, navigating anomaly A -> B briefly rendered
+    // A's data *with A's resolution actions enabled* while B loaded.
+    setData(null);
 
     fnRef
       .current(controller.signal)

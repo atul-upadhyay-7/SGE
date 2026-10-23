@@ -271,7 +271,9 @@ function TelemetryTrace({
   );
 
   const cellSeries = useMemo(() => {
-    if (affectedCell === null) return [];
+    // affected_cell is 1-based; 0 means "pack-level" (no specific cell),
+    // which used to index cell_voltages[-1] and render an empty chart.
+    if (affectedCell === null || affectedCell < 1) return [];
     const index = affectedCell - 1;
     return [
       {

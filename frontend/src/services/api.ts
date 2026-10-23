@@ -81,12 +81,14 @@ export async function apiFetch<T>(
   );
 
   // Forward an external abort signal to our controller so callers can cancel.
+  const forwardAbort = () => controller.abort();
   if (signal) {
     if (signal.aborted) controller.abort();
-    else signal.addEventListener("abort", () => controller.abort(), { once: true });
+    else signal.addEventListener("abort", forwardAbort, { once: true });
   }
 
   let response: Response;
+  let text: string;
   try {
     response = await fetch(buildUrl(path, query), {
       method,
@@ -102,6 +104,10 @@ export async function apiFetch<T>(
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
+    // The timeout must cover the body, not just the headers: a backend
+    // that sends headers and then stalls used to hang here forever,
+    // because the timer was cleared as soon as fetch() resolved.
+    text = await response.text();
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new NetworkError("The request was cancelled or timed out");
@@ -111,9 +117,8 @@ export async function apiFetch<T>(
     );
   } finally {
     window.clearTimeout(timeout);
+    signal?.removeEventListener("abort", forwardAbort);
   }
-
-  const text = await response.text();
   const parsed: unknown = text ? safeParse(text) : null;
 
   if (!response.ok) {

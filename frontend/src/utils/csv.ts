@@ -8,7 +8,20 @@
 
 function escapeCell(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const text = String(value);
+  let text = String(value);
+  // Spreadsheet formula injection: a *string* cell beginning with =, +, -
+  // or @ is executed as a formula when the export is opened in Excel /
+  // Sheets. Device ids, anomaly types and notes are operator/backend
+  // controlled, so neutralise the leading character with a quote prefix.
+  // Genuine numbers (typed, or plain numeric strings like "-3.2") are
+  // values, not formulas, and are left untouched.
+  if (
+    typeof value === "string" &&
+    /^\s*[=+@\t-]/.test(text) &&
+    !/^\s*-?\d+(\.\d+)?$/.test(text)
+  ) {
+    text = `'${text}`;
+  }
   if (/[",\n\r]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
@@ -35,5 +48,7 @@ export function downloadCsv(filename: string, csv: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  // Revoking synchronously can cancel the download in some browsers for
+  // larger blobs; defer it until the click has been processed.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

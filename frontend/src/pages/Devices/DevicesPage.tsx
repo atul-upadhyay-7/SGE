@@ -57,6 +57,7 @@ export function DevicesPage() {
       setMessage(`Registered ${form.device_id}`);
       setForm(EMPTY_FORM);
       setCredential("");
+      setAdminKey("");
       refresh();
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Registration failed");

@@ -3,18 +3,57 @@
  *
  * Eight pages per the PRD (PRD §4). Anomaly Details is a child route of the
  * Anomaly Center so "back" returns to the filtered list.
+ *
+ * Pages are loaded lazily (one chunk per page) instead of being bundled
+ * into a single entry chunk: the operator who opens Overview should not
+ * have to download Reports and Anomaly Details up front. The Suspense
+ * boundary lives in AppLayout around the <Outlet />.
  */
+import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
-import { AnomalyCenterPage } from "@/pages/Anomalies/AnomalyCenterPage";
-import { AnomalyDetailsPage } from "@/pages/Anomalies/AnomalyDetailsPage";
-import { BatteryHealthPage } from "@/pages/Health/BatteryHealthPage";
-import { DevicesPage } from "@/pages/Devices/DevicesPage";
-import { LiveMonitoringPage } from "@/pages/Live/LiveMonitoringPage";
-import { OverviewPage } from "@/pages/Overview/OverviewPage";
-import { ReportsPage } from "@/pages/Reports/ReportsPage";
-import { SystemHealthPage } from "@/pages/SystemHealth/SystemHealthPage";
+
+const OverviewPage = lazy(() =>
+  import("@/pages/Overview/OverviewPage").then((m) => ({
+    default: m.OverviewPage,
+  })),
+);
+const LiveMonitoringPage = lazy(() =>
+  import("@/pages/Live/LiveMonitoringPage").then((m) => ({
+    default: m.LiveMonitoringPage,
+  })),
+);
+const AnomalyCenterPage = lazy(() =>
+  import("@/pages/Anomalies/AnomalyCenterPage").then((m) => ({
+    default: m.AnomalyCenterPage,
+  })),
+);
+const AnomalyDetailsPage = lazy(() =>
+  import("@/pages/Anomalies/AnomalyDetailsPage").then((m) => ({
+    default: m.AnomalyDetailsPage,
+  })),
+);
+const BatteryHealthPage = lazy(() =>
+  import("@/pages/Health/BatteryHealthPage").then((m) => ({
+    default: m.BatteryHealthPage,
+  })),
+);
+const ReportsPage = lazy(() =>
+  import("@/pages/Reports/ReportsPage").then((m) => ({
+    default: m.ReportsPage,
+  })),
+);
+const DevicesPage = lazy(() =>
+  import("@/pages/Devices/DevicesPage").then((m) => ({
+    default: m.DevicesPage,
+  })),
+);
+const SystemHealthPage = lazy(() =>
+  import("@/pages/SystemHealth/SystemHealthPage").then((m) => ({
+    default: m.SystemHealthPage,
+  })),
+);
 
 export const router = createBrowserRouter([
   {
