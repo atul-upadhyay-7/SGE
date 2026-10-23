@@ -5,50 +5,44 @@
  * always paired with a text label + glyph in the components (PRD §7), so the
  * palette is never the only signal.
  *
- * The palette is a deep blue-tinted charcoal with a single electric-blue
- * accent; panels layer with hairline borders, soft shadows and a faint
- * top-light gradient rather than flat fills, so the console reads as one
- * designed surface instead of stacked boxes.
+ * Monochrome system: every chrome surface, border and text tone is a
+ * neutral gray (equal RGB) on near-black. White is the only accent for
+ * chrome. Colour survives in exactly two places: chart series, and
+ * semantic severity/status signals (a dot or coloured text, never a
+ * tinted panel). The severity tokens below exist for those two uses.
  */
 :root {
   color-scheme: dark;
 
-  --bg: #090b0f;
-  --bg-elevated: #0d1015;
-  --bg-panel: #12161e;
-  --bg-inset: #0a0d12;
-  --border: #1e2632;
-  --border-strong: #303b4c;
+  --bg: #050505;
+  --bg-elevated: #000000;
+  --bg-panel: #0a0a0a;
+  --bg-inset: #111111;
+  --border: #1f1f1f;
+  --border-strong: #333333;
 
-  --text: #eef2f7;
-  --text-muted: #9aa7ba;
-  --text-dim: #66738a;
+  --text: #fafafa;
+  --text-muted: #a3a3a3;
+  --text-dim: #737373;
 
-  --accent: #4f83ff;
-  --accent-strong: #3f6fe0;
-  --accent-2: #38bdf8;
+  --accent: #fafafa;
+  --accent-strong: #e5e5e5;
+  --accent-2: #fafafa;
 
+  /* Semantic + chart-series colours. Not for chrome. */
   --normal: #34d399;
   --warning: #fbbf24;
   --high: #fb923c;
   --critical: #fb7185;
   --info: #60a5fa;
 
-  --normal-bg: rgba(52, 211, 153, 0.13);
-  --warning-bg: rgba(251, 191, 36, 0.13);
-  --high-bg: rgba(251, 146, 60, 0.13);
-  --critical-bg: rgba(251, 113, 133, 0.13);
-  --info-bg: rgba(96, 165, 250, 0.13);
-
-  --radius: 12px;
-  --radius-sm: 9px;
-  --gap: 18px;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --gap: 16px;
   --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
   --font-mono: "Cascadia Mono", "Consolas", "SFMono-Regular", monospace;
-  --sidebar-width: 236px;
+  --sidebar-width: 224px;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35),
-    0 10px 30px -14px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 12px 40px -8px rgba(0, 0, 0, 0.6),
-    0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-card: none;
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55);
 }

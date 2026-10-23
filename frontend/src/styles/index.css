@@ -22,7 +22,8 @@ body {
 }
 
 ::selection {
-  background: rgba(79, 131, 255, 0.35);
+  background: #fafafa;
+  color: #000;
 }
 
 a {
@@ -73,16 +74,13 @@ a {
   min-width: 0;
   height: 100vh;
   overflow: hidden;
-  background:
-    radial-gradient(880px 460px at 12% -6%, rgba(79, 131, 255, 0.08), transparent 60%),
-    radial-gradient(760px 480px at 98% -4%, rgba(56, 189, 248, 0.05), transparent 55%),
-    var(--bg);
+  background: var(--bg);
 }
 
 .app-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--gap);
+  padding: 20px 24px;
 }
 
 /* ---- Scrollbars ---- */
@@ -112,27 +110,27 @@ a {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 20px 12px;
-  gap: 10px;
+  padding: 16px 10px;
+  gap: 8px;
 }
 
 .sidebar__brand {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 0 6px 8px;
+  padding: 2px 6px 14px;
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebar__logo {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
-  border-radius: 10px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-  box-shadow: 0 6px 16px -6px rgba(79, 131, 255, 0.65);
+  border-radius: var(--radius-sm);
+  color: #000;
+  background: #fafafa;
 }
 
 .sidebar__brand-text {
@@ -154,7 +152,7 @@ a {
 }
 
 .sidebar__section {
-  margin: 10px 8px 2px;
+  margin: 12px 8px 2px;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -184,21 +182,18 @@ a {
 }
 
 .sidebar__link:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: #111111;
   color: var(--text);
 }
 
 .sidebar__link--active {
-  background: linear-gradient(
-    90deg,
-    rgba(79, 131, 255, 0.18),
-    rgba(79, 131, 255, 0.05)
-  );
+  background: #1a1a1a;
   color: #fff;
+  box-shadow: inset 3px 0 0 #fafafa;
 }
 
 .sidebar__link--active .sidebar__icon {
-  color: var(--accent-2);
+  color: #fff;
 }
 
 .sidebar__icon {
@@ -213,14 +208,13 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: var(--gap);
-  padding: 12px 20px;
-  background: rgba(13, 16, 21, 0.82);
-  backdrop-filter: blur(10px);
+  padding: 9px 20px;
+  background: #000;
   border-bottom: 1px solid var(--border);
 }
 
 .topbar__title p {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   margin: 0;
 }
@@ -262,7 +256,7 @@ input:hover {
 select:focus,
 input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 131, 255, 0.18);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14);
   outline: none;
 }
 
@@ -287,7 +281,6 @@ input:focus {
 
 .conn--open .conn__dot {
   background: var(--normal);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
 }
 .conn--connecting .conn__dot,
 .conn--error .conn__dot {
@@ -313,15 +306,15 @@ input:focus {
 
 .page-header__title {
   margin: 0;
-  font-size: 25px;
-  font-weight: 680;
-  letter-spacing: -0.02em;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
 }
 
 .page-header__subtitle {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   color: var(--text-muted);
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .page-header__actions {
@@ -332,13 +325,10 @@ input:focus {
 
 /* ---- Cards ---- */
 .card {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 42%),
-    var(--bg-panel);
-  box-shadow: var(--shadow-card);
+  background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 18px;
 }
 
 .card--wide {
@@ -367,7 +357,7 @@ input:focus {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--gap);
+  gap: 12px;
 }
 
 .grid {
@@ -381,14 +371,11 @@ input:focus {
 
 /* ---- KPI ---- */
 .kpi {
-  --tone: var(--border-strong);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 46%),
-    var(--bg-panel);
+  --tone: #525252;
+  background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
 }
 
 .kpi--ok {
@@ -401,7 +388,8 @@ input:focus {
   --tone: var(--critical);
 }
 .kpi--info {
-  --tone: var(--info);
+  /* Informational values are not a status: keep the dot neutral. */
+  --tone: #525252;
 }
 
 .kpi__label {
@@ -425,11 +413,11 @@ input:focus {
 }
 
 .kpi__value {
-  font-size: 27px;
-  font-weight: 680;
-  letter-spacing: -0.02em;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
-  margin-top: 6px;
+  margin-top: 5px;
 }
 
 .kpi--warn .kpi__value {
@@ -459,52 +447,41 @@ input:focus {
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 550;
-  border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
 }
 
+/* Semantic pills: colour lives in the text only, never a tinted fill. */
 .pill--info {
-  background: var(--info-bg);
   color: #93c5fd;
 }
 .pill--warning {
-  background: var(--warning-bg);
   color: #fcd34d;
 }
 .pill--critical {
-  background: var(--critical-bg);
   color: #fda4af;
 }
 .pill--status-active,
 .pill--status-resolved,
 .pill--status-ready,
 .pill--status-acknowledged {
-  background: var(--normal-bg);
   color: #6ee7b7;
 }
 .pill--status-open {
-  background: var(--warning-bg);
   color: #fcd34d;
 }
 .pill--status-investigating {
-  background: var(--high-bg);
   color: #fdba74;
 }
 .pill--status-failed {
-  background: var(--critical-bg);
   color: #fda4af;
 }
 .pill--status-acked,
 .pill--status-queued,
 .pill--status-running,
 .pill--status-generating {
-  background: var(--info-bg);
   color: #93c5fd;
-}
-.pill--status-inactive,
-.pill--status-retired {
-  background: var(--bg-inset);
 }
 
 /* ---- Feedback ---- */
@@ -526,8 +503,8 @@ input:focus {
 }
 
 .feedback--error {
-  border-color: var(--critical);
-  background: var(--critical-bg);
+  border: 1px solid var(--critical);
+  background: var(--bg-panel);
   flex-direction: row;
 }
 
@@ -586,28 +563,25 @@ input:focus {
 }
 
 .btn--primary {
-  background: linear-gradient(180deg, #5b8cff, var(--accent-strong));
-  border-color: transparent;
-  color: white;
-  box-shadow: 0 6px 18px -8px rgba(79, 131, 255, 0.6);
+  background: #fafafa;
+  border-color: #fafafa;
+  color: #000;
 }
 
 .btn--primary:hover {
-  background: linear-gradient(180deg, #5b8cff, var(--accent-strong));
-  border-color: transparent;
-  filter: brightness(1.08);
+  background: #e5e5e5;
+  border-color: #e5e5e5;
 }
 
 .btn--danger {
-  background: linear-gradient(180deg, #f87171, #dc2626);
-  border-color: transparent;
+  background: #dc2626;
+  border-color: #dc2626;
   color: white;
 }
 
 .btn--danger:hover {
-  background: linear-gradient(180deg, #f87171, #dc2626);
-  border-color: transparent;
-  filter: brightness(1.08);
+  background: #b91c1c;
+  border-color: #b91c1c;
 }
 
 .btn:disabled {
@@ -639,7 +613,7 @@ input:focus {
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.06em;
-  background: rgba(255, 255, 255, 0.02);
+  background: #111111;
 }
 
 .table tbody tr {
@@ -647,7 +621,7 @@ input:focus {
 }
 
 .table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: #111111;
 }
 
 /* ---- Forms ---- */
@@ -731,22 +705,22 @@ input:focus {
   align-items: center;
   gap: 8px;
   padding: 4px 12px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  background: transparent;
   font-weight: 600;
 }
 
+/* Status banners: neutral surface, colour in the text only. */
 .health-banner--ok {
-  background: var(--normal-bg);
   color: var(--normal);
 }
 
 .health-banner--warning {
-  background: var(--warning-bg);
   color: var(--warning);
 }
 
 .health-banner--error {
-  background: var(--critical-bg);
   color: var(--critical);
 }
 
@@ -769,21 +743,20 @@ input:focus {
   gap: 10px;
   padding: 12px 16px;
   border-radius: var(--radius);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
   font-size: 13px;
-  box-shadow: var(--shadow-card);
+  color: var(--text);
 }
 
+/* Semantic banners: neutral surface; the only colour is a slim
+   left rule in the severity colour. */
 .banner--warn {
-  background: var(--warning-bg);
-  border-color: var(--warning);
-  color: var(--text);
+  border-left: 3px solid var(--warning);
 }
 
 .banner--critical {
-  background: var(--critical-bg);
-  border-color: var(--critical);
-  color: var(--text);
+  border-left: 3px solid var(--critical);
 }
 
 /* ---- Grafana embed ---- */
@@ -854,13 +827,11 @@ input:focus {
 
 /* ---- Extra banners ---- */
 .banner--info {
-  background: var(--info-bg);
-  border-color: var(--info);
+  border-left: 3px solid var(--info);
 }
 
 .banner--ok {
-  background: var(--normal-bg);
-  border-color: var(--normal);
+  border-left: 3px solid var(--normal);
 }
 
 /* ---- Tags ---- */
@@ -870,19 +841,14 @@ input:focus {
   border-radius: 999px;
   padding: 1px 8px;
   font-size: 11px;
-  border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  background: transparent;
   color: var(--text-muted);
   text-transform: lowercase;
 }
 
 .tag--ok {
-  background: var(--normal-bg);
   color: #6ee7b7;
-}
-
-.tag--muted {
-  background: var(--bg-inset);
 }
 
 /* ---- Small buttons ---- */
@@ -1021,7 +987,7 @@ input:focus {
 }
 
 .table__row--selected {
-  background: var(--info-bg);
+  background: #1a1a1a;
 }
 
 .count-list {
@@ -1069,9 +1035,7 @@ input:focus {
   flex-direction: column;
   gap: 2px;
   padding: 9px 11px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
-    var(--bg-inset);
+  background: var(--bg-inset);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
@@ -1118,7 +1082,7 @@ input:focus {
   /* Keep a visible focus indicator: the background tint alone is
      too easy to miss, and removing the outline entirely left
      keyboard users with no clear position. */
-  outline: 2px solid var(--accent, #2563eb);
+  outline: 2px solid var(--accent, #fafafa);
   outline-offset: -2px;
 }
 
@@ -1439,7 +1403,7 @@ input:focus {
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .auth-gate { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
-.auth-gate--overlay { position: fixed; inset: 0; z-index: 60; background: rgba(10, 14, 20, 0.72); }
+.auth-gate--overlay { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.72); }
 .auth-gate__form { display: flex; flex-direction: column; gap: 10px; width: min(420px, 100%); box-shadow: var(--shadow-pop); }
 
 /* ---- Redesign finishing touches ---- */
@@ -1449,7 +1413,7 @@ input:focus {
 
 .workflow textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 131, 255, 0.18);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14);
   outline: none;
 }
 
