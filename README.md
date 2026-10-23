@@ -55,6 +55,25 @@ guessed. `docs/CONTRACT.md` lists the full input set and its units.
 
 ---
 
+## Live model, offline benchmarks, and PoC status
+
+- **Live prediction: XGBoost only.** The backend estimator
+  (`backend/app/ml/estimator.py`) loads `models/soh_window_all.ubj` —
+  the cell-relative XGBoost partial-window model. That is the only
+  model that produces a live SoH prediction.
+- **ElasticNet is an offline benchmark only.** The
+  XGBoost+ElasticNet blend and the standalone ElasticNet numbers in
+  the tables below come from offline, full-feature experiments. They
+  are **not deployed, not used in live prediction, and must not be
+  described as a live improvement.**
+- **This is a tested PoC, not a hardware-proven BMS.** All results so
+  far are on NASA laboratory cells (see *What this is not* above).
+  The current priority is validating the live XGBoost model on real
+  sensor data with `scripts/validate_real_data.py` (report served at
+  `GET /api/v1/validation/summary` and shown on the dashboard's Model
+  Validation page); whether to improve or replace the model is a
+  decision for after those real-data results.
+
 ## Results at a glance
 
 The headline numbers, generated from the CSVs. The full tables and how to read them are in [`docs/RESULTS.md`](docs/RESULTS.md).
@@ -68,7 +87,7 @@ The headline numbers, generated from the CSVs. The full tables and how to read t
 | RUL | Trajectory model | leave-one-cell-out (G1) | 20.5 | fleet lifetime 34.3 | discharges |
 <!-- make_report:results_glance:end -->
 
-SOH is the partial-discharge (window-only) task — the only online SOH signal a BMS has; the full-discharge benchmark is a formula and is not the deployable estimator. RUL is indicative and reported as a range, not a point: the winner between the two methods depends on the cell and the reference group, so no single method is shipped.
+SOH is the partial-discharge (window-only) task — the only online SOH signal a BMS has; the full-discharge benchmark is a formula and is not the deployable estimator. Read the two “offline, full features” rows as offline benchmarks only: in particular the XGBoost+ElasticNet blend is not the live model and is not a live improvement — live prediction is the cell-relative XGBoost (`soh_window_all`) in the third row's family. RUL is indicative and reported as a range, not a point: the winner between the two methods depends on the cell and the reference group, so no single method is shipped.
 
 ---
 
