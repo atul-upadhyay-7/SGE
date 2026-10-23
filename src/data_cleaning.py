@@ -29,23 +29,23 @@ Outputs
     data/processed/cell_audit.csv
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from causal import add_causal_features  # noqa: E402
 from load_data import RATED_CAPACITY_AH  # noqa: E402
-from repro import rounded  # noqa: E402
 from preprocessing import (  # noqa: E402
     EARLY_SLOPE_WINDOW,
     EOL_SOH_THRESHOLD,
     first_eol_discharge,
     ols_slope,
 )
+from repro import rounded  # noqa: E402
 
 PROC = Path("data/processed")
 IN = PROC / "nasa_ml_dataset.csv"

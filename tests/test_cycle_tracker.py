@@ -8,14 +8,12 @@ synthetic cycles.
 
 import numpy as np
 import pytest
-
 from conftest import discharge_samples, feed
-
 from cycle_tracker import (
     CHARGE_DEBOUNCE_SAMPLES,
     DEFAULT_MAX_SAMPLES,
     DISCHARGE_DEBOUNCE_SAMPLES,
-    CycleTracker
+    CycleTracker,
 )
 
 

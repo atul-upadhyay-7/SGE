@@ -487,7 +487,7 @@ def main():
                 f" of {len(frame)} cells."
             )
 
-    print(f"\n=== fade-rate window sweep (MAE vs window) ===")
+    print("\n=== fade-rate window sweep (MAE vs window) ===")
     print(sweep_out.to_string(index=False))
 
     print(f"\nwrote {LABELS_OUT.relative_to(ROOT)}")

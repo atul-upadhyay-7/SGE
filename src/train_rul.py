@@ -44,27 +44,12 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.metrics import mean_absolute_error
 
-from sklearn.metrics import (
-    mean_absolute_error
-)
-
-from features import (
-    make_xy
-)
-
-from evaluation import (
-    build_model,
-    loco_evaluate,
-    split_by_cell
-)
-
+from evaluation import build_model, loco_evaluate, split_by_cell
+from features import make_xy
+from preprocessing import EARLY_SLOPE_WINDOW, EOL_SOH_THRESHOLD
 from repro import rounded
-from preprocessing import (
-    EARLY_SLOPE_WINDOW,
-    EOL_SOH_THRESHOLD
-)
-
 
 DATA_FILE = Path(
     "data/processed/nasa_ml_dataset_clean.csv"

@@ -27,8 +27,8 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
-from features import LEAKY_FEATURES  # noqa: E402
 import run_experiments as R  # noqa: E402
+from features import LEAKY_FEATURES  # noqa: E402
 
 CROSS = REPO / "data" / "processed" / "experiments" / "cross_condition.csv"
 TRANSFER = REPO / "data" / "processed" / "experiments" / "soh_partial_transfer.csv"

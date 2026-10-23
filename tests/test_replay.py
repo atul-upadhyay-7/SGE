@@ -15,14 +15,12 @@ without it.
 
 import numpy as np
 import pytest
-
 from conftest import ROOT, make_bundle
-
 from cycle_tracker import CycleTracker
-from load_data import parse_battery_file
 from replay import read_cycles, replay_cell
 from soh_service import SohService
 
+from load_data import parse_battery_file
 
 RAW = ROOT / "BMS Dataset" / "Battery_DataSet" / "Battery_DataSet"
 

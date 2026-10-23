@@ -14,30 +14,16 @@ something real rather than memorising a cell identity.
 """
 
 import numpy as np
-
-from sklearn.ensemble import (
-    RandomForestRegressor
-)
+from joblib import Parallel, delayed
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import (
-    ElasticNet,
-    LinearRegression,
-    Ridge
-)
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score
-)
+from sklearn.linear_model import ElasticNet, LinearRegression, Ridge
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
-from joblib import Parallel, delayed
-
 from xgboost import XGBRegressor
 
 import features as _features
-
 
 # Defaults tuned by hand and used as the fixed comparison
 # point before any search is run.

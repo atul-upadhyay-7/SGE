@@ -33,12 +33,12 @@ They have been removed, and assemble_features no longer
 derives or pads anything to cover their absence.
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
-
 
 MODEL_DIR = Path("models")
 
@@ -101,6 +101,7 @@ class PortablePipeline:
 def load_portable_bundle(path):
     """Load a version-proof bundle from .ubj booster + .json metadata."""
     import json
+
     import xgboost as xgb
 
     prefix = Path(path)

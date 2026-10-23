@@ -390,7 +390,10 @@ def test_the_stage_writes_byte_identical_files_twice(tmp_path, monkeypatch):
 
     import load_data
 
-    raw = load_data.resolve_raw_dir()
+    try:
+        raw = load_data.resolve_raw_dir()
+    except FileNotFoundError:
+        pytest.skip("raw NASA .mat files not present (see scripts/download_dataset.sh)")
 
     if not raw.is_absolute():
         raw = REPO / raw

@@ -171,9 +171,15 @@ def test_extrapolation_is_the_same_in_every_protocol():
 
 
 def _dataset():
-    raw = RG.resolve_raw_dir()
-    if not Path(raw).exists():
-        pytest.skip("raw NASA files not present")
+    try:
+        raw = RG.resolve_raw_dir()
+    except FileNotFoundError:
+        # resolve_raw_dir() raises when no candidate directory holds
+        # .mat files, so the existence check that used to sit here was
+        # unreachable: on a clone without the downloaded dataset these
+        # tests failed instead of skipping like the other data-dependent
+        # tests in this suite.
+        pytest.skip("raw NASA .mat files not present (see scripts/download_dataset.sh)")
     return RG.rul_dataset(RG.CLEAN, raw)
 
 

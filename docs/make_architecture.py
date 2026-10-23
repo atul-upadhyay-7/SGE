@@ -1,11 +1,14 @@
 """Draws docs/architecture.png. Run: python docs/make_architecture.py"""
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
 
 fig, ax = plt.subplots(figsize=(14, 7.2))
-ax.set_xlim(0, 14); ax.set_ylim(0, 7.2); ax.axis("off")
+ax.set_xlim(0, 14)
+ax.set_ylim(0, 7.2)
+ax.axis("off")
 
 def box(x, y, w, h, title, lines, fc, ec="#333"):
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.04,rounding_size=0.12",

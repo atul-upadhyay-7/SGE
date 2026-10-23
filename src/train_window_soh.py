@@ -46,12 +46,12 @@ call the backend estimator makes and scored by the same portable booster,
 so test_window_estimator.py can compare the two directly.
 """
 
+import sys
 from pathlib import Path
 
 import joblib
 import pandas as pd
 
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evaluation import build_model  # noqa: E402

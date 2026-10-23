@@ -63,16 +63,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from evaluation import loco_evaluate
+from features import drop_constant_features, make_xy
 from repro import rounded
-from evaluation import (
-    loco_evaluate
-)
-
-from features import (
-    drop_constant_features,
-    make_xy
-)
-
 
 DATA_FILE = Path(
     "data/processed/nasa_ml_dataset.csv"

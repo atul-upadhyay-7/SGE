@@ -42,20 +42,24 @@ Design notes
   point is the feature set, not the tuning.
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evaluation import build_model  # noqa: E402
 from features import (  # noqa: E402
     FEATURES,
-    WINDOW_FEATURES as VW_FEATURES,
-    WINDOW_MODEL_FEATURES as WINDOW_NORM_FEATURES,
     drop_constant_features,
+)
+from features import (
+    WINDOW_FEATURES as VW_FEATURES,
+)
+from features import (
+    WINDOW_MODEL_FEATURES as WINDOW_NORM_FEATURES,
 )
 from repro import rounded  # noqa: E402
 

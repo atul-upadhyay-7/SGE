@@ -74,12 +74,15 @@ def test_the_discharge_loader_drops_charge_and_the_charge_reader_keeps_it():
     """Count each reader against the raw cycle list so the claim is not
     taken on faith."""
 
-    from load_data import iter_discharge_traces, resolve_raw_dir, to_scalar
     from scipy.io import loadmat
 
     import charge_soh
+    from load_data import iter_discharge_traces, resolve_raw_dir, to_scalar
 
-    raw = resolve_raw_dir()
+    try:
+        raw = resolve_raw_dir()
+    except FileNotFoundError:
+        pytest.skip("raw NASA .mat files not present (see scripts/download_dataset.sh)")
     mat_path = raw / "B0005.mat"
 
     mat = loadmat(mat_path, squeeze_me=True, struct_as_record=False)

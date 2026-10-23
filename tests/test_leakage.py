@@ -13,12 +13,10 @@ target-derived column and asserts the pipeline refuses it.
 import numpy as np
 import pandas as pd
 import pytest
-
 from conftest import ACTIVE_FEATURES
 
 import evaluation
 import features
-
 
 # ----------------------------------------------------------------------
 # The canonical lists themselves

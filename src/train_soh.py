@@ -32,22 +32,14 @@ What this script reports
 """
 
 
-from pathlib import Path
-
 import os
+from pathlib import Path
 
 import joblib
 import pandas as pd
+from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import LeaveOneGroupOut, RandomizedSearchCV
 
-from sklearn.metrics import (
-    mean_absolute_error
-)
-from sklearn.model_selection import (
-    LeaveOneGroupOut,
-    RandomizedSearchCV
-)
-
-from repro import rounded
 from evaluation import (
     MODEL_NAMES,
     BlendRegressor,
@@ -55,14 +47,10 @@ from evaluation import (
     coulomb_baseline,
     loco_evaluate,
     score,
-    split_by_cell
+    split_by_cell,
 )
-
-from features import (
-    drop_constant_features,
-    make_xy
-)
-
+from features import drop_constant_features, make_xy
+from repro import rounded
 
 DATA_FILE = Path(
     "data/processed/nasa_ml_dataset_clean.csv"
@@ -918,6 +906,7 @@ def _save_portable(
 
     import json
     import platform
+
     import sklearn
     import xgboost
 

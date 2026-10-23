@@ -9,13 +9,14 @@ partial-window model trained on G1+G3. The point of the figure is the
 shape: the model sits near the level but does not follow the fade,
 which is what the negative R² measures.
 """
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
+matplotlib.use("Agg")
 from pathlib import Path
+
+import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parent.parent
 CSV = ROOT / "data" / "processed" / "soh_partial_predictions_B0053.csv"

@@ -37,8 +37,8 @@ import sys
 import time
 import warnings
 from datetime import datetime
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from importlib.metadata import version, PackageNotFoundError
 
 ROOT = Path(__file__).resolve().parent
 PROC = ROOT / "data" / "processed"
@@ -100,7 +100,7 @@ def preflight():
 
     for name in REQUIRED_PACKAGES:
         try:
-            mod = __import__(name)
+            __import__(name)
             lines.append(
                 f"ok   {name} {version({'sklearn': 'scikit-learn', 'flask_cors': 'flask-cors', 'paho.mqtt.client': 'paho-mqtt'}.get(name, name))}"
             )

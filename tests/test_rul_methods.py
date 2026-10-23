@@ -169,3 +169,27 @@ def test_extrapolation_bands_artifact_covers_the_held_out_cells():
     b = _load(EXTRAP_BANDS)
     assert set(b["cell_id"]) == set(CELLS)
     assert b.groupby("cell_id")["cycle"].count().min() > 0
+
+
+def test_save_load_round_trip_does_not_smooth_twice(tmp_path):
+    """save() persists the smoothed reference curves, so load() must not
+    smooth them again — the served references (src/pack/bridge.py loads
+    them this way) must equal the ones evaluation scored."""
+    import numpy as np
+
+    from rul_trajectory import TrajectoryRul
+
+    curves = {
+        "B0005": list(100 - 0.3 * np.arange(80) + np.sin(np.arange(80))),
+        "B0006": list(100 - 0.4 * np.arange(70)),
+    }
+    original = TrajectoryRul(curves)
+    path = tmp_path / "refs.json"
+    original.save(path)
+    loaded = TrajectoryRul.load(path)
+
+    assert loaded is not None
+    assert set(loaded.refs) == set(original.refs)
+    for cell, ref in original.refs.items():
+        assert loaded.refs[cell]["eol"] == ref["eol"]
+        assert np.allclose(loaded.refs[cell]["soh"], ref["soh"])

@@ -31,6 +31,7 @@ Usage
   PDM_LIVE_DB=/path/to/live_pack.db python dashboard/alert_exporter.py
 """
 
+import math
 import os
 import sqlite3
 import sys
@@ -41,7 +42,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_DB = ROOT / "data" / "live_pack.db"
 DEFAULT_PORT = 9101
-DEFAULT_HOST = "0.0.0.0"
+# Loopback by default, like grafana_api.py: the metrics are unauthenticated.
+# docker-compose sets PDM_EXPORTER_HOST=0.0.0.0 inside the compose network
+# and publishes the port on 127.0.0.1 only.
+DEFAULT_HOST = "127.0.0.1"
 
 
 def _escape(value):
@@ -70,7 +74,9 @@ def _number(value):
 
         return None
 
-    if number != number:  # NaN
+    # NaN and ±inf are all invalid in Prometheus exposition format;
+    # repr(float("inf")) == "inf" would poison the whole scrape.
+    if not math.isfinite(number):
 
         return None
 

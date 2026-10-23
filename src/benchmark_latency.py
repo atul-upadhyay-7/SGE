@@ -38,15 +38,15 @@ sys.path.insert(
     str(Path(__file__).resolve().parent / "streaming"),
 )
 
-import predict
 from cycle_tracker import CycleTracker
+
+import predict
 from causal import CausalFeatureTracker
 from predict import (
     assemble_features,
     load_soh_model,
     predict_soh,
 )
-
 
 PROCESSED_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
 

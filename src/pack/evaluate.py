@@ -40,8 +40,8 @@ from pack.monitor import (  # noqa: E402
     save_iforest,
 )
 from pack.simulate import FAULTS, inject, pack_frames, replay  # noqa: E402
-from rul_trajectory import TrajectoryRul  # noqa: E402
 from repro import rounded  # noqa: E402
+from rul_trajectory import TrajectoryRul  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROC = ROOT / "data" / "processed"
@@ -95,7 +95,15 @@ def load_df(cells=None):
             pd.concat(pred), on=["cell_id", "cycle"], how="left"
         )
     else:
-        df["predicted_soh"] = df["soh"]
+        # Never substitute the target for predictions: scoring the pack
+        # detector against true SOH labelled as "predicted" would
+        # fabricate detection performance. main() refuses to run with
+        # too few usable cells for the same reason.
+        raise RuntimeError(
+            "pack_evaluate found no per-cell SOH prediction files "
+            "(data/processed/soh_predictions_<cell>.csv); run the SOH "
+            "stage first. Refusing to score packs against true SOH."
+        )
 
     if cells is not None:
         df = df[df["cell_id"].isin(cells)].reset_index(drop=True)
