@@ -107,6 +107,11 @@ class Settings(BaseSettings):
     # and the staleness rule can never fire for that device. Seven days is
     # generous for clock skew; backfill of *past* samples stays unbounded.
     telemetry_max_future_skew_s: float = Field(default=7 * 86400.0, gt=0)
+    # Largest HTTP telemetry body accepted. A telemetry sample is a
+    # handful of numbers; anything near a megabyte is a bug or an
+    # attack, and without a bound the body is fully buffered and
+    # parsed before any schema limit gets a say.
+    telemetry_max_body_bytes: int = Field(default=1_048_576, gt=0)
 
     # --- Monitoring loop and alert rules (Phase 5) -----------------------
     # The loop is one asyncio task in the app lifespan: it aggregates any

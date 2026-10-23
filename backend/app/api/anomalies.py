@@ -54,9 +54,14 @@ async def list_anomalies(
     to: datetime | None = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=_MAX_PAGE),
+    sort: str = Query(
+        "detected_at",
+        pattern="^(detected_at|severity|anomaly_type|duration_seconds)$",
+    ),
+    sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     session: AsyncSession = Depends(get_session),
 ) -> AnomalyPage:
-    """List anomalies, newest first, with optional filters."""
+    """List anomalies with optional filters and server-side sorting."""
     start, end = _range(from_, to)
     items, total = await AnomalyRepository(session).list_events(
         device_id=device_id,
@@ -69,6 +74,8 @@ async def list_anomalies(
         end=end,
         limit=limit,
         offset=offset,
+        sort=sort,
+        sort_dir=sort_dir,
     )
     return AnomalyPage(
         device_id=device_id,
@@ -254,7 +261,18 @@ async def acknowledge_anomaly(
         note=payload.note,
     )
     if event.status == "open":
-        await repository.set_status(anomaly_id, "acknowledged")
+        changed = await repository.set_status(
+            anomaly_id, "acknowledged", allowed_from=("open",)
+        )
+        if not changed:
+            # A concurrent resolve won between the read and the
+            # update; the conditional UPDATE refused to resurrect
+            # the event, so the acknowledge did not happen either.
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="anomaly was resolved concurrently",
+            )
     await session.commit()
     await session.refresh(event)
     _publish(request, event)
@@ -291,7 +309,14 @@ async def add_anomaly_action(
         "open",
         "acknowledged",
     }:
-        await repository.set_status(anomaly_id, "investigating")
+        # Conditional: if the event was resolved concurrently the
+        # transition is skipped (the action itself stays as an
+        # audit entry) instead of resurrecting a terminal state.
+        await repository.set_status(
+            anomaly_id,
+            "investigating",
+            allowed_from=("open", "acknowledged"),
+        )
     await session.commit()
     return AnomalyActionRead.model_validate(action)
 
@@ -325,11 +350,20 @@ async def resolve_anomaly(
         note=payload.note,
         evidence={"classification": payload.classification, "outcome": payload.outcome or payload.note},
     )
-    event.status = payload.classification
-    event.resolution_outcome = payload.outcome or payload.note
-    event.ended_at = now
     span = (now - event.detected_at).total_seconds()
-    event.duration_seconds = max(span, event.duration_seconds)
+    changed = await repository.resolve_event(
+        anomaly_id,
+        classification=payload.classification,
+        outcome=payload.outcome or payload.note,
+        ended_at=now,
+        duration_seconds=max(span, event.duration_seconds),
+    )
+    if not changed:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="anomaly is already resolved",
+        )
     await session.commit()
     await session.refresh(event)
     _publish(request, event)

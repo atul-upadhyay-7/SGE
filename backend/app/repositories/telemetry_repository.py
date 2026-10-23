@@ -9,6 +9,7 @@ so operators can see that a device reused a message identifier.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -20,6 +21,31 @@ from app.db.models import Device, TelemetryRejection, TelemetrySample
 from app.schemas.telemetry import RejectionRecord, ValidatedSample
 
 _ROUND = 6
+
+# Cap on the quarantined copy of a rejected payload. The full
+# original is diagnostic gold for the first few KB and a storage
+# liability beyond that: rejections are attacker-controllable,
+# so an uncapped copy lets one bad sender grow the database
+# without limit, one row per message.
+_MAX_RAW_PAYLOAD_CHARS = 16_384
+
+
+def _bounded_payload(raw: dict | None) -> dict | None:
+    """Return ``raw`` unchanged unless its JSON form is oversized,
+    in which case store a marked preview instead of the whole."""
+    if raw is None:
+        return None
+    try:
+        text = json.dumps(raw, default=str)
+    except (TypeError, ValueError):
+        text = str(raw)
+    if len(text) <= _MAX_RAW_PAYLOAD_CHARS:
+        return raw
+    return {
+        "_truncated": True,
+        "original_chars": len(text),
+        "preview": text[:_MAX_RAW_PAYLOAD_CHARS],
+    }
 
 
 @dataclass
@@ -285,7 +311,7 @@ class TelemetryRepository:
                     source=r.source,
                     reason=r.reason,
                     detail=(r.detail or "")[:1024] or None,
-                    raw_payload=r.raw_payload,
+                    raw_payload=_bounded_payload(r.raw_payload),
                 )
                 for r in records
             ]

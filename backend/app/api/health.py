@@ -16,8 +16,6 @@ from app.db.models import TelemetryRejection
 
 router = APIRouter(tags=["health"])
 
-_settings = get_settings()
-
 
 @router.get("/health", summary="Application health")
 async def health(settings: Settings = Depends(get_settings)) -> dict:
@@ -78,18 +76,22 @@ async def health_ingestion(request: Request) -> dict:
 
 
 @router.get("/health/monitor", summary="Monitoring loop status")
-async def health_monitor(request: Request, response: Response) -> dict:
+async def health_monitor(
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+) -> dict:
     service = getattr(request.app.state, "monitor", None)
     if service is None:
         response.status_code = 503
         return {"status": "error", "monitor": "not_started"}
-    enabled = _settings.monitor_enabled
+    enabled = settings.monitor_enabled
     payload = {
         "status": "ok",
         "monitor": "running" if enabled else "disabled",
         "enabled": enabled,
-        "interval_s": _settings.monitor_interval_s,
-        "auto_aggregate": _settings.auto_aggregate,
+        "interval_s": settings.monitor_interval_s,
+        "auto_aggregate": settings.auto_aggregate,
         "runs": service.runs,
         "last_run_at": service.last_run_at,
         "last_error": service.last_error,

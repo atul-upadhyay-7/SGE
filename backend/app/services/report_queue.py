@@ -55,13 +55,38 @@ class ReportQueue:
         self._queue: asyncio.Queue[int] = asyncio.Queue()
         self._workers: list[asyncio.Task] = []
         self._active = 0
+        self._reserved = 0
 
     @property
     def pending(self) -> int:
-        return self._queue.qsize() + self._active
+        return self._queue.qsize() + self._active + self._reserved
 
     def has_room(self) -> bool:
         return self.pending < self._max_pending
+
+    def try_reserve(self) -> bool:
+        """Claim a pending slot synchronously, before any await.
+
+        The admission check used to be ``has_room()`` followed by an
+        awaited database insert and only then ``submit()`` — every
+        concurrent request passed the check during the others'
+        writes, so the bound was not a bound. Reserving is a plain
+        counter increment with no await in between, which the event
+        loop cannot interleave.
+        """
+        if not self.has_room():
+            return False
+        self._reserved += 1
+        return True
+
+    def release_reservation(self) -> None:
+        """Give back a reservation whose report never materialised."""
+        self._reserved = max(0, self._reserved - 1)
+
+    def submit_reserved(self, report_id: int) -> None:
+        """Enqueue a report that already holds a reservation."""
+        self._reserved = max(0, self._reserved - 1)
+        self._queue.put_nowait(report_id)
 
     def submit(self, report_id: int) -> None:
         self._queue.put_nowait(report_id)

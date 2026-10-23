@@ -311,13 +311,19 @@ class AnomalyEvent(Base):
         # One open event per (device, type, cell): the partial unique index is
         # what lets the detector extend an episode instead of double-opening,
         # and what stops a 1 Hz condition from minting one row per sample.
+        # "Open" here means every non-terminal state the app treats as an
+        # open episode (open_event() looks up all three); the index used to
+        # cover only status='open', leaving acknowledged/investigating
+        # episodes unprotected against a concurrent double-open.
         Index(
             "uq_anomaly_open_per_key",
             "device_id",
             "anomaly_type",
             "affected_cell",
             unique=True,
-            postgresql_where=text("status = 'open'"),
+            postgresql_where=text(
+                "status IN ('open', 'acknowledged', 'investigating')"
+            ),
         ),
     )
 

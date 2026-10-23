@@ -12,7 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import case, func, select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AnomalyAction, AnomalyEvent
@@ -74,26 +75,46 @@ class AnomalyRepository:
         (severity, observed/expected/threshold, evidence, causes, actions,
         detected_at). On extend, the *identity* is kept and the detail is
         refreshed so the episode reflects its worst/latest observation.
+
+        Two detection passes can race for the same key (the ingestion
+        writer and a synchronous HTTP ingest both detect). The widened
+        partial unique index rejects the second insert; that loser
+        re-reads the winner's row and extends it instead of failing the
+        whole detection pass.
         """
         existing = await self.open_event(
             fields["device_id"], fields["anomaly_type"], fields.get("affected_cell")
         )
         if existing is not None:
-            existing.last_detected_at = fields["last_detected_at"]
-            existing.duration_seconds = fields["duration_seconds"]
-            existing.severity = fields["severity"]
-            existing.observed_value = fields["observed_value"]
-            existing.expected_value = fields["expected_value"]
-            existing.threshold = fields["threshold"]
-            existing.diagnostic_evidence = fields["diagnostic_evidence"]
-            existing.likely_causes = fields["likely_causes"]
-            existing.recommended_actions = fields["recommended_actions"]
-            existing.rule_version = fields["rule_version"]
-            await self._session.flush()
-            return existing
+            return await self._extend(existing, fields)
 
         event = AnomalyEvent(**fields)
-        self._session.add(event)
+        try:
+            async with self._session.begin_nested():
+                self._session.add(event)
+                await self._session.flush()
+        except IntegrityError:
+            existing = await self.open_event(
+                fields["device_id"],
+                fields["anomaly_type"],
+                fields.get("affected_cell"),
+            )
+            if existing is None:
+                raise
+            return await self._extend(existing, fields)
+        return event
+
+    async def _extend(self, event: AnomalyEvent, fields: dict) -> AnomalyEvent:
+        event.last_detected_at = fields["last_detected_at"]
+        event.duration_seconds = fields["duration_seconds"]
+        event.severity = fields["severity"]
+        event.observed_value = fields["observed_value"]
+        event.expected_value = fields["expected_value"]
+        event.threshold = fields["threshold"]
+        event.diagnostic_evidence = fields["diagnostic_evidence"]
+        event.likely_causes = fields["likely_causes"]
+        event.recommended_actions = fields["recommended_actions"]
+        event.rule_version = fields["rule_version"]
         await self._session.flush()
         return event
 
@@ -136,8 +157,15 @@ class AnomalyRepository:
         end: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
+        sort: str = "detected_at",
+        sort_dir: str = "desc",
     ) -> tuple[list[AnomalyEvent], int]:
-        """A filtered page of events plus the unpaged total for the same filter."""
+        """A filtered page of events plus the unpaged total for the same filter.
+
+        Sorting is done here, in the query: the caller pages through
+        the result, so a client-side sort would only ever order the
+        current page while presenting itself as global.
+        """
         filters = _event_filters(device_id, start, end, severity, anomaly_type, status, affected_cell, min_recurrence)
 
         total = int(
@@ -147,10 +175,27 @@ class AnomalyRepository:
                 )
             ).scalar_one()
         )
+        severity_rank = case(
+            (AnomalyEvent.severity == "critical", 0),
+            (AnomalyEvent.severity == "warning", 1),
+            (AnomalyEvent.severity == "info", 2),
+            else_=3,
+        )
+        sort_columns = {
+            "detected_at": AnomalyEvent.detected_at,
+            "severity": severity_rank,
+            "anomaly_type": AnomalyEvent.anomaly_type,
+            "duration_seconds": AnomalyEvent.duration_seconds,
+        }
+        column = sort_columns.get(sort, AnomalyEvent.detected_at)
+        if sort_dir == "asc":
+            ordering = (column.asc(), AnomalyEvent.id.asc())
+        else:
+            ordering = (column.desc(), AnomalyEvent.id.desc())
         rows = await self._session.execute(
             select(AnomalyEvent)
             .where(*filters)
-            .order_by(AnomalyEvent.detected_at.desc(), AnomalyEvent.id.desc())
+            .order_by(*ordering)
             .offset(offset)
             .limit(limit)
         )
@@ -373,12 +418,87 @@ class AnomalyRepository:
         )
         return list(result.scalars().all())
 
-    async def set_status(self, anomaly_id: int, status: str) -> None:
-        await self._session.execute(
+    async def list_actions_for_events(
+        self, anomaly_ids: list[int]
+    ) -> dict[int, list[AnomalyAction]]:
+        """Action trails for many events in one query (report builds).
+
+        The per-event ``list_actions`` in a loop is an N+1: a max-size
+        report would issue ~10k sequential queries. Grouping preserves
+        each event's chronological order.
+        """
+        if not anomaly_ids:
+            return {}
+        result = await self._session.execute(
+            select(AnomalyAction)
+            .where(AnomalyAction.anomaly_id.in_(anomaly_ids))
+            .order_by(
+                AnomalyAction.anomaly_id.asc(),
+                AnomalyAction.created_at.asc(),
+                AnomalyAction.id.asc(),
+            )
+        )
+        grouped: dict[int, list[AnomalyAction]] = {}
+        for action in result.scalars().all():
+            grouped.setdefault(action.anomaly_id, []).append(action)
+        return grouped
+
+    async def set_status(
+        self,
+        anomaly_id: int,
+        status: str,
+        *,
+        allowed_from: tuple[str, ...],
+    ) -> bool:
+        """Transition status only from one of ``allowed_from``.
+
+        The predicate is part of the UPDATE, so a concurrent transition
+        (e.g. a resolve committed after the caller read the event)
+        cannot be overwritten back into a live state. Returns whether
+        the transition happened; False means the event moved first and
+        the caller decides how to report that (usually 409).
+        """
+        result = await self._session.execute(
             update(AnomalyEvent)
-            .where(AnomalyEvent.id == anomaly_id)
+            .where(
+                AnomalyEvent.id == anomaly_id,
+                AnomalyEvent.status.in_(allowed_from),
+            )
             .values(status=status)
         )
+        await self._session.flush()
+        return (result.rowcount or 0) > 0
+
+    async def resolve_event(
+        self,
+        anomaly_id: int,
+        *,
+        classification: str,
+        outcome: str | None,
+        ended_at: datetime,
+        duration_seconds: float,
+    ) -> bool:
+        """Resolve an event unless it is already in a terminal state.
+
+        Same conditional-update discipline as :meth:`set_status`: the
+        terminal-state predicate is evaluated by the database, not by
+        a stale in-memory read.
+        """
+        result = await self._session.execute(
+            update(AnomalyEvent)
+            .where(
+                AnomalyEvent.id == anomaly_id,
+                AnomalyEvent.status.notin_(["resolved", "false_positive"]),
+            )
+            .values(
+                status=classification,
+                resolution_outcome=outcome,
+                ended_at=ended_at,
+                duration_seconds=duration_seconds,
+            )
+        )
+        await self._session.flush()
+        return (result.rowcount or 0) > 0
 
 
 def _range_filters(

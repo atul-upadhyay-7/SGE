@@ -88,7 +88,7 @@ async def ack_alert(
     """Acknowledge an alert so it stops paging, without resolving it."""
     alert = await AlertRepository(session).ack_alert(
         alert_id,
-        acked_by=payload.acked_by[:64],
+        acked_by=payload.acked_by,
         acked_at=datetime.now(timezone.utc),
     )
     if alert is None:

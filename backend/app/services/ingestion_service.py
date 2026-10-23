@@ -15,6 +15,7 @@ Design contract:
 from __future__ import annotations
 
 import asyncio
+import json
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -58,6 +59,12 @@ REASON_VALUE_OUT_OF_RANGE = "value_out_of_range"
 REASON_MALFORMED_LEGACY = "malformed_legacy_payload"
 REASON_MALFORMED_PAYLOAD = "malformed_payload"
 REASON_CONFLICTING_DUPLICATE = "conflicting_duplicate"
+
+# How long a "device is not in the database" answer is trusted
+# before the cache-miss fallback asks again. Bounds the DB load
+# from a misconfigured or hostile sender repeating one unknown
+# id, without bricking a device that registers in the meantime.
+_CACHE_MISS_TTL_S = 30.0
 REASON_QUEUE_OVERFLOW = "queue_overflow"
 
 
@@ -91,6 +98,7 @@ class IngestionService:
         self._stop = asyncio.Event()
 
         self._started_at = monotonic()
+        self._cache_misses: dict[str, float] = {}
         self._recent_stores: deque[tuple[float, int]] = deque()
         self.stored = 0
         self.duplicates = 0
@@ -257,6 +265,19 @@ class IngestionService:
                 original,
             )
 
+        # Extras are persisted verbatim as additional_data, so an
+        # unbounded extras object is unbounded storage per sample.
+        if payload.extras and len(json.dumps(payload.extras, default=str)) > 16_384:
+            return self._reject(
+                REASON_INVALID_PAYLOAD,
+                "additional fields exceed the 16384-byte limit",
+                device_id,
+                payload.message_id,
+                topic,
+                source,
+                original,
+            )
+
         return ValidatedSample(
             device_id=payload.device_id,
             message_id=payload.message_id,
@@ -333,6 +354,44 @@ class IngestionService:
             raw_payload=raw,
         )
 
+    async def _ensure_device_known(self, device_id: str) -> None:
+        """Heal a stale device cache on miss instead of rejecting forever.
+
+        The cache is loaded once at startup; if that load failed (or a
+        device was registered by another process), every payload from
+        an existing device would be quarantined as ``unknown_device``
+        until a restart. On a miss, ask the database once: a found
+        device joins the cache, a genuine unknown is remembered for
+        ``_CACHE_MISS_TTL_S`` so a bad sender cannot turn the hot
+        path into a database query per message.
+        """
+        if device_id in self._cache:
+            return
+        now = monotonic()
+        missed_at = self._cache_misses.get(device_id)
+        if missed_at is not None and now - missed_at < _CACHE_MISS_TTL_S:
+            return
+        try:
+            async with self._session_factory() as session:
+                device = await DeviceRepository(session).get_by_device_id(
+                    device_id
+                )
+        except Exception:  # noqa: BLE001 - fall through to the cache verdict
+            logger.exception(
+                "Device cache miss lookup failed for %s", device_id
+            )
+            return
+        if device is not None:
+            self._cache.add(device)
+            self._cache_misses.pop(device_id, None)
+            logger.info(
+                "Recovered device %s into the ingestion cache from the "
+                "database (startup load had missed it)",
+                device_id,
+            )
+        else:
+            self._cache_misses[device_id] = now
+
     # -- transports --------------------------------------------------------
 
     async def ingest(
@@ -344,6 +403,7 @@ class IngestionService:
         presented_credential: str | None = None,
     ) -> None:
         """MQTT path: validate and hand off without touching the database."""
+        await self._ensure_device_known(device_id)
         item = self.build_item(
             device_id,
             raw,
@@ -383,6 +443,7 @@ class IngestionService:
         presented_credential: str | None = None,
     ) -> IngestOutcome:
         """HTTP path: validate and persist synchronously so the caller gets a verdict."""
+        await self._ensure_device_known(device_id)
         item = self.build_item(
             device_id,
             raw,
@@ -428,10 +489,23 @@ class IngestionService:
             except asyncio.TimeoutError:
                 continue
             batch = [first]
+            # Keep collecting until the batch is full or the flush
+            # interval elapses: draining with get_nowait() alone made
+            # almost every flush a single sample (one transaction
+            # plus one detection pass each) under a steady stream,
+            # which is the opposite of the batch design.
+            deadline = monotonic() + interval
             while len(batch) < batch_size:
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    break
                 try:
-                    batch.append(self._queue.get_nowait())
-                except asyncio.QueueEmpty:
+                    batch.append(
+                        await asyncio.wait_for(
+                            self._queue.get(), timeout=remaining
+                        )
+                    )
+                except asyncio.TimeoutError:
                     break
             await self._flush(batch)
         await self.flush_pending()
