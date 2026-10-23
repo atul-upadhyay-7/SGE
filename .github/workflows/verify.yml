@@ -74,3 +74,32 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 7
+  compose:
+    # Deployment smoke: builds the images and proves the API serves and
+    # Grafana boots with its provisioned datasources. This is CI evidence for
+    # the compose stack; it is not target-laptop (HTTPS) acceptance.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
+      - run: docker compose up -d
+      - name: API answers health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health; then exit 0; fi
+            sleep 5
+          done
+          docker compose logs bms-api
+          exit 1
+      - name: Grafana serves its login page
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3050/login; then exit 0; fi
+            sleep 5
+          done
+          docker compose logs grafana
+          exit 1
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
