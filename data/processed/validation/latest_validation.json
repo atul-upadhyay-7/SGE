@@ -1,0 +1,2669 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-23T14:04:05.473178+00:00",
+  "source": "lab_sample_nasa",
+  "dataset": "sample_input.csv",
+  "model": {
+    "name": "soh_window_all",
+    "artifact": "models/soh_window_all.ubj",
+    "algorithm": "XGBoost",
+    "live": true
+  },
+  "summary": {
+    "total_rows": 263,
+    "reference_rows": 15,
+    "scored_rows": 248,
+    "refused_rows": 0,
+    "refusals_by_reason": {},
+    "mae_pct": 0.1994,
+    "rmse_pct": 0.2562,
+    "bias_pct": -0.0192,
+    "max_abs_error_pct": 0.8425
+  },
+  "offline_benchmark": {
+    "label": "Offline benchmark only \u2014 not live, not deployed",
+    "source_file": "soh_window_heldout_B0005.csv",
+    "cell_id": "B0005",
+    "rows": 168,
+    "xgboost_mae_pct": 1.0562,
+    "elasticnet_mae_pct": 1.3375
+  },
+  "notes": [
+    "Live prediction is XGBoost (soh_window_all) only.",
+    "ElasticNet is an offline benchmark only \u2014 not deployed, not a live improvement.",
+    "SGE is a tested PoC, not a hardware-proven BMS.",
+    "This run is NOT real-sensor validation: its source is 'lab_sample_nasa'. Lab-sample cells come from the NASA dataset the model trained on, so these numbers verify the harness and pipeline, not held-out accuracy. Real-sensor validation is pending."
+  ],
+  "rows": [
+    {
+      "cell_id": "B0005",
+      "discharge_index": 1,
+      "actual_soh_pct": 101.1517,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 2,
+      "actual_soh_pct": 100.5981,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 3,
+      "actual_soh_pct": 100.0,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 4,
+      "actual_soh_pct": 99.9953,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 5,
+      "actual_soh_pct": 99.9617,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 6,
+      "actual_soh_pct": 100.017,
+      "predicted_soh_pct": 99.9193,
+      "error_pct": -0.0977,
+      "abs_error_pct": 0.0977,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 7,
+      "actual_soh_pct": 99.9889,
+      "predicted_soh_pct": 99.8496,
+      "error_pct": -0.1393,
+      "abs_error_pct": 0.1393,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 8,
+      "actual_soh_pct": 99.4774,
+      "predicted_soh_pct": 99.6948,
+      "error_pct": 0.2174,
+      "abs_error_pct": 0.2174,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 9,
+      "actual_soh_pct": 99.4238,
+      "predicted_soh_pct": 99.6461,
+      "error_pct": 0.2223,
+      "abs_error_pct": 0.2223,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 10,
+      "actual_soh_pct": 99.415,
+      "predicted_soh_pct": 99.2953,
+      "error_pct": -0.1197,
+      "abs_error_pct": 0.1197,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 11,
+      "actual_soh_pct": 99.4154,
+      "predicted_soh_pct": 99.2407,
+      "error_pct": -0.1747,
+      "abs_error_pct": 0.1747,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 12,
+      "actual_soh_pct": 98.8478,
+      "predicted_soh_pct": 98.8489,
+      "error_pct": 0.0011,
+      "abs_error_pct": 0.0011,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 13,
+      "actual_soh_pct": 98.8233,
+      "predicted_soh_pct": 98.9358,
+      "error_pct": 0.1125,
+      "abs_error_pct": 0.1125,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 14,
+      "actual_soh_pct": 98.8063,
+      "predicted_soh_pct": 98.9644,
+      "error_pct": 0.1581,
+      "abs_error_pct": 0.1581,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 15,
+      "actual_soh_pct": 98.2155,
+      "predicted_soh_pct": 98.4278,
+      "error_pct": 0.2123,
+      "abs_error_pct": 0.2123,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 16,
+      "actual_soh_pct": 98.1888,
+      "predicted_soh_pct": 98.3229,
+      "error_pct": 0.1341,
+      "abs_error_pct": 0.1341,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 17,
+      "actual_soh_pct": 98.2145,
+      "predicted_soh_pct": 98.314,
+      "error_pct": 0.0995,
+      "abs_error_pct": 0.0995,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 18,
+      "actual_soh_pct": 98.2412,
+      "predicted_soh_pct": 97.9566,
+      "error_pct": -0.2846,
+      "abs_error_pct": 0.2846,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 19,
+      "actual_soh_pct": 98.2253,
+      "predicted_soh_pct": 98.0297,
+      "error_pct": -0.1956,
+      "abs_error_pct": 0.1956,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 20,
+      "actual_soh_pct": 100.6362,
+      "predicted_soh_pct": 100.5862,
+      "error_pct": -0.05,
+      "abs_error_pct": 0.05,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 21,
+      "actual_soh_pct": 100.6575,
+      "predicted_soh_pct": 100.5641,
+      "error_pct": -0.0935,
+      "abs_error_pct": 0.0935,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 22,
+      "actual_soh_pct": 100.0451,
+      "predicted_soh_pct": 99.9068,
+      "error_pct": -0.1384,
+      "abs_error_pct": 0.1384,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 23,
+      "actual_soh_pct": 99.4787,
+      "predicted_soh_pct": 99.6231,
+      "error_pct": 0.1444,
+      "abs_error_pct": 0.1444,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 24,
+      "actual_soh_pct": 99.4423,
+      "predicted_soh_pct": 99.4769,
+      "error_pct": 0.0346,
+      "abs_error_pct": 0.0346,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 25,
+      "actual_soh_pct": 99.4678,
+      "predicted_soh_pct": 99.3744,
+      "error_pct": -0.0935,
+      "abs_error_pct": 0.0935,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 26,
+      "actual_soh_pct": 98.8385,
+      "predicted_soh_pct": 98.8852,
+      "error_pct": 0.0467,
+      "abs_error_pct": 0.0467,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 27,
+      "actual_soh_pct": 98.8787,
+      "predicted_soh_pct": 99.0181,
+      "error_pct": 0.1394,
+      "abs_error_pct": 0.1394,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 28,
+      "actual_soh_pct": 98.8351,
+      "predicted_soh_pct": 98.4908,
+      "error_pct": -0.3443,
+      "abs_error_pct": 0.3443,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 29,
+      "actual_soh_pct": 98.2247,
+      "predicted_soh_pct": 98.3964,
+      "error_pct": 0.1717,
+      "abs_error_pct": 0.1717,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 30,
+      "actual_soh_pct": 98.2961,
+      "predicted_soh_pct": 98.2916,
+      "error_pct": -0.0045,
+      "abs_error_pct": 0.0045,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 31,
+      "actual_soh_pct": 100.8965,
+      "predicted_soh_pct": 100.5864,
+      "error_pct": -0.3101,
+      "abs_error_pct": 0.3101,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 32,
+      "actual_soh_pct": 99.7469,
+      "predicted_soh_pct": 99.5773,
+      "error_pct": -0.1696,
+      "abs_error_pct": 0.1696,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 33,
+      "actual_soh_pct": 99.1585,
+      "predicted_soh_pct": 99.097,
+      "error_pct": -0.0615,
+      "abs_error_pct": 0.0615,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 34,
+      "actual_soh_pct": 98.5811,
+      "predicted_soh_pct": 98.592,
+      "error_pct": 0.0109,
+      "abs_error_pct": 0.0109,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 35,
+      "actual_soh_pct": 98.3252,
+      "predicted_soh_pct": 98.1243,
+      "error_pct": -0.2008,
+      "abs_error_pct": 0.2008,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 36,
+      "actual_soh_pct": 98.04,
+      "predicted_soh_pct": 97.8072,
+      "error_pct": -0.2329,
+      "abs_error_pct": 0.2329,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 37,
+      "actual_soh_pct": 97.4443,
+      "predicted_soh_pct": 97.0013,
+      "error_pct": -0.443,
+      "abs_error_pct": 0.443,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 38,
+      "actual_soh_pct": 97.1435,
+      "predicted_soh_pct": 96.6611,
+      "error_pct": -0.4824,
+      "abs_error_pct": 0.4824,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 39,
+      "actual_soh_pct": 96.6047,
+      "predicted_soh_pct": 96.481,
+      "error_pct": -0.1237,
+      "abs_error_pct": 0.1237,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 40,
+      "actual_soh_pct": 96.6049,
+      "predicted_soh_pct": 96.3083,
+      "error_pct": -0.2966,
+      "abs_error_pct": 0.2966,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 41,
+      "actual_soh_pct": 96.3235,
+      "predicted_soh_pct": 96.0926,
+      "error_pct": -0.2309,
+      "abs_error_pct": 0.2309,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 42,
+      "actual_soh_pct": 96.0207,
+      "predicted_soh_pct": 95.9396,
+      "error_pct": -0.0811,
+      "abs_error_pct": 0.0811,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 43,
+      "actual_soh_pct": 96.3096,
+      "predicted_soh_pct": 96.0765,
+      "error_pct": -0.233,
+      "abs_error_pct": 0.233,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 44,
+      "actual_soh_pct": 96.0399,
+      "predicted_soh_pct": 95.6858,
+      "error_pct": -0.3541,
+      "abs_error_pct": 0.3541,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 45,
+      "actual_soh_pct": 95.444,
+      "predicted_soh_pct": 94.908,
+      "error_pct": -0.536,
+      "abs_error_pct": 0.536,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 46,
+      "actual_soh_pct": 94.9056,
+      "predicted_soh_pct": 94.7374,
+      "error_pct": -0.1682,
+      "abs_error_pct": 0.1682,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 47,
+      "actual_soh_pct": 94.5919,
+      "predicted_soh_pct": 94.0353,
+      "error_pct": -0.5566,
+      "abs_error_pct": 0.5566,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 48,
+      "actual_soh_pct": 97.7266,
+      "predicted_soh_pct": 97.6987,
+      "error_pct": -0.0278,
+      "abs_error_pct": 0.0278,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 49,
+      "actual_soh_pct": 97.158,
+      "predicted_soh_pct": 97.0717,
+      "error_pct": -0.0863,
+      "abs_error_pct": 0.0863,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 50,
+      "actual_soh_pct": 96.2958,
+      "predicted_soh_pct": 96.2235,
+      "error_pct": -0.0723,
+      "abs_error_pct": 0.0723,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 51,
+      "actual_soh_pct": 95.7321,
+      "predicted_soh_pct": 95.6159,
+      "error_pct": -0.1162,
+      "abs_error_pct": 0.1162,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 52,
+      "actual_soh_pct": 95.1792,
+      "predicted_soh_pct": 94.9531,
+      "error_pct": -0.2261,
+      "abs_error_pct": 0.2261,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 53,
+      "actual_soh_pct": 94.8984,
+      "predicted_soh_pct": 94.6773,
+      "error_pct": -0.2212,
+      "abs_error_pct": 0.2212,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 54,
+      "actual_soh_pct": 94.6099,
+      "predicted_soh_pct": 94.5132,
+      "error_pct": -0.0967,
+      "abs_error_pct": 0.0967,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 55,
+      "actual_soh_pct": 94.0596,
+      "predicted_soh_pct": 93.7111,
+      "error_pct": -0.3485,
+      "abs_error_pct": 0.3485,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 56,
+      "actual_soh_pct": 93.4867,
+      "predicted_soh_pct": 93.1938,
+      "error_pct": -0.2928,
+      "abs_error_pct": 0.2928,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 57,
+      "actual_soh_pct": 93.1993,
+      "predicted_soh_pct": 92.8415,
+      "error_pct": -0.3578,
+      "abs_error_pct": 0.3578,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 58,
+      "actual_soh_pct": 92.9531,
+      "predicted_soh_pct": 92.9516,
+      "error_pct": -0.0015,
+      "abs_error_pct": 0.0015,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 59,
+      "actual_soh_pct": 92.6424,
+      "predicted_soh_pct": 92.4999,
+      "error_pct": -0.1425,
+      "abs_error_pct": 0.1425,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 60,
+      "actual_soh_pct": 92.3301,
+      "predicted_soh_pct": 91.9924,
+      "error_pct": -0.3377,
+      "abs_error_pct": 0.3377,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 61,
+      "actual_soh_pct": 91.8029,
+      "predicted_soh_pct": 91.438,
+      "error_pct": -0.3649,
+      "abs_error_pct": 0.3649,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 62,
+      "actual_soh_pct": 91.2346,
+      "predicted_soh_pct": 90.9674,
+      "error_pct": -0.2672,
+      "abs_error_pct": 0.2672,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 63,
+      "actual_soh_pct": 91.2398,
+      "predicted_soh_pct": 90.9338,
+      "error_pct": -0.306,
+      "abs_error_pct": 0.306,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 64,
+      "actual_soh_pct": 90.6485,
+      "predicted_soh_pct": 90.5112,
+      "error_pct": -0.1373,
+      "abs_error_pct": 0.1373,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 65,
+      "actual_soh_pct": 90.3923,
+      "predicted_soh_pct": 90.4364,
+      "error_pct": 0.0442,
+      "abs_error_pct": 0.0442,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 66,
+      "actual_soh_pct": 90.1111,
+      "predicted_soh_pct": 89.7283,
+      "error_pct": -0.3829,
+      "abs_error_pct": 0.3829,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 67,
+      "actual_soh_pct": 89.5009,
+      "predicted_soh_pct": 89.4456,
+      "error_pct": -0.0553,
+      "abs_error_pct": 0.0553,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 68,
+      "actual_soh_pct": 89.2396,
+      "predicted_soh_pct": 89.0407,
+      "error_pct": -0.1989,
+      "abs_error_pct": 0.1989,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 69,
+      "actual_soh_pct": 88.9605,
+      "predicted_soh_pct": 88.6873,
+      "error_pct": -0.2732,
+      "abs_error_pct": 0.2732,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 70,
+      "actual_soh_pct": 88.689,
+      "predicted_soh_pct": 88.4546,
+      "error_pct": -0.2344,
+      "abs_error_pct": 0.2344,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 71,
+      "actual_soh_pct": 88.3824,
+      "predicted_soh_pct": 88.1919,
+      "error_pct": -0.1905,
+      "abs_error_pct": 0.1905,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 72,
+      "actual_soh_pct": 87.794,
+      "predicted_soh_pct": 87.5088,
+      "error_pct": -0.2851,
+      "abs_error_pct": 0.2851,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 73,
+      "actual_soh_pct": 87.5345,
+      "predicted_soh_pct": 87.3632,
+      "error_pct": -0.1713,
+      "abs_error_pct": 0.1713,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 74,
+      "actual_soh_pct": 87.2594,
+      "predicted_soh_pct": 87.356,
+      "error_pct": 0.0966,
+      "abs_error_pct": 0.0966,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 75,
+      "actual_soh_pct": 86.6521,
+      "predicted_soh_pct": 86.8436,
+      "error_pct": 0.1915,
+      "abs_error_pct": 0.1915,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 76,
+      "actual_soh_pct": 86.4026,
+      "predicted_soh_pct": 86.621,
+      "error_pct": 0.2184,
+      "abs_error_pct": 0.2184,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 77,
+      "actual_soh_pct": 86.3565,
+      "predicted_soh_pct": 86.4646,
+      "error_pct": 0.1081,
+      "abs_error_pct": 0.1081,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 78,
+      "actual_soh_pct": 86.9331,
+      "predicted_soh_pct": 86.9853,
+      "error_pct": 0.0522,
+      "abs_error_pct": 0.0522,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 79,
+      "actual_soh_pct": 85.8,
+      "predicted_soh_pct": 85.7015,
+      "error_pct": -0.0985,
+      "abs_error_pct": 0.0985,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 80,
+      "actual_soh_pct": 85.2645,
+      "predicted_soh_pct": 85.023,
+      "error_pct": -0.2415,
+      "abs_error_pct": 0.2415,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 81,
+      "actual_soh_pct": 84.9847,
+      "predicted_soh_pct": 84.7913,
+      "error_pct": -0.1934,
+      "abs_error_pct": 0.1934,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 82,
+      "actual_soh_pct": 84.9692,
+      "predicted_soh_pct": 84.8252,
+      "error_pct": -0.144,
+      "abs_error_pct": 0.144,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 83,
+      "actual_soh_pct": 84.7081,
+      "predicted_soh_pct": 84.7426,
+      "error_pct": 0.0345,
+      "abs_error_pct": 0.0345,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 84,
+      "actual_soh_pct": 84.3912,
+      "predicted_soh_pct": 84.0573,
+      "error_pct": -0.334,
+      "abs_error_pct": 0.334,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 85,
+      "actual_soh_pct": 83.8117,
+      "predicted_soh_pct": 83.6795,
+      "error_pct": -0.1322,
+      "abs_error_pct": 0.1322,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 86,
+      "actual_soh_pct": 83.2492,
+      "predicted_soh_pct": 82.866,
+      "error_pct": -0.3833,
+      "abs_error_pct": 0.3833,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 87,
+      "actual_soh_pct": 83.2825,
+      "predicted_soh_pct": 82.7934,
+      "error_pct": -0.4892,
+      "abs_error_pct": 0.4892,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 88,
+      "actual_soh_pct": 82.9623,
+      "predicted_soh_pct": 82.8712,
+      "error_pct": -0.0911,
+      "abs_error_pct": 0.0911,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 89,
+      "actual_soh_pct": 82.6811,
+      "predicted_soh_pct": 82.5413,
+      "error_pct": -0.1398,
+      "abs_error_pct": 0.1398,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 90,
+      "actual_soh_pct": 87.4939,
+      "predicted_soh_pct": 86.7355,
+      "error_pct": -0.7585,
+      "abs_error_pct": 0.7585,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 91,
+      "actual_soh_pct": 85.2072,
+      "predicted_soh_pct": 85.0284,
+      "error_pct": -0.1788,
+      "abs_error_pct": 0.1788,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 92,
+      "actual_soh_pct": 84.3486,
+      "predicted_soh_pct": 84.6107,
+      "error_pct": 0.2621,
+      "abs_error_pct": 0.2621,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 93,
+      "actual_soh_pct": 83.4923,
+      "predicted_soh_pct": 83.8691,
+      "error_pct": 0.3768,
+      "abs_error_pct": 0.3768,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 94,
+      "actual_soh_pct": 83.1969,
+      "predicted_soh_pct": 83.2173,
+      "error_pct": 0.0205,
+      "abs_error_pct": 0.0205,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 95,
+      "actual_soh_pct": 82.6522,
+      "predicted_soh_pct": 82.7751,
+      "error_pct": 0.1228,
+      "abs_error_pct": 0.1228,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 96,
+      "actual_soh_pct": 82.3766,
+      "predicted_soh_pct": 82.4255,
+      "error_pct": 0.0489,
+      "abs_error_pct": 0.0489,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 97,
+      "actual_soh_pct": 82.086,
+      "predicted_soh_pct": 82.1898,
+      "error_pct": 0.1038,
+      "abs_error_pct": 0.1038,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 98,
+      "actual_soh_pct": 81.8125,
+      "predicted_soh_pct": 81.8824,
+      "error_pct": 0.0699,
+      "abs_error_pct": 0.0699,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 99,
+      "actual_soh_pct": 81.2295,
+      "predicted_soh_pct": 81.4654,
+      "error_pct": 0.2359,
+      "abs_error_pct": 0.2359,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 100,
+      "actual_soh_pct": 80.9583,
+      "predicted_soh_pct": 81.0134,
+      "error_pct": 0.0551,
+      "abs_error_pct": 0.0551,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 101,
+      "actual_soh_pct": 80.6611,
+      "predicted_soh_pct": 80.7982,
+      "error_pct": 0.137,
+      "abs_error_pct": 0.137,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 102,
+      "actual_soh_pct": 80.3776,
+      "predicted_soh_pct": 80.5674,
+      "error_pct": 0.1898,
+      "abs_error_pct": 0.1898,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 103,
+      "actual_soh_pct": 80.9603,
+      "predicted_soh_pct": 80.6581,
+      "error_pct": -0.3022,
+      "abs_error_pct": 0.3022,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 104,
+      "actual_soh_pct": 81.5154,
+      "predicted_soh_pct": 81.965,
+      "error_pct": 0.4497,
+      "abs_error_pct": 0.4497,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 105,
+      "actual_soh_pct": 80.6822,
+      "predicted_soh_pct": 80.933,
+      "error_pct": 0.2508,
+      "abs_error_pct": 0.2508,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 106,
+      "actual_soh_pct": 80.0804,
+      "predicted_soh_pct": 80.3854,
+      "error_pct": 0.305,
+      "abs_error_pct": 0.305,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 107,
+      "actual_soh_pct": 79.2166,
+      "predicted_soh_pct": 79.2854,
+      "error_pct": 0.0688,
+      "abs_error_pct": 0.0688,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 108,
+      "actual_soh_pct": 79.2299,
+      "predicted_soh_pct": 79.3872,
+      "error_pct": 0.1573,
+      "abs_error_pct": 0.1573,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 109,
+      "actual_soh_pct": 79.2778,
+      "predicted_soh_pct": 79.3889,
+      "error_pct": 0.1111,
+      "abs_error_pct": 0.1111,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 110,
+      "actual_soh_pct": 78.9519,
+      "predicted_soh_pct": 78.9778,
+      "error_pct": 0.026,
+      "abs_error_pct": 0.026,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 111,
+      "actual_soh_pct": 78.3868,
+      "predicted_soh_pct": 78.4957,
+      "error_pct": 0.109,
+      "abs_error_pct": 0.109,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 112,
+      "actual_soh_pct": 78.1021,
+      "predicted_soh_pct": 77.9382,
+      "error_pct": -0.1639,
+      "abs_error_pct": 0.1639,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 113,
+      "actual_soh_pct": 78.0994,
+      "predicted_soh_pct": 77.9807,
+      "error_pct": -0.1187,
+      "abs_error_pct": 0.1187,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 114,
+      "actual_soh_pct": 77.8089,
+      "predicted_soh_pct": 77.8728,
+      "error_pct": 0.0639,
+      "abs_error_pct": 0.0639,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 115,
+      "actual_soh_pct": 77.5286,
+      "predicted_soh_pct": 77.7106,
+      "error_pct": 0.1821,
+      "abs_error_pct": 0.1821,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 116,
+      "actual_soh_pct": 77.2294,
+      "predicted_soh_pct": 77.4402,
+      "error_pct": 0.2109,
+      "abs_error_pct": 0.2109,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 117,
+      "actual_soh_pct": 76.9559,
+      "predicted_soh_pct": 76.9101,
+      "error_pct": -0.0458,
+      "abs_error_pct": 0.0458,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 118,
+      "actual_soh_pct": 76.9651,
+      "predicted_soh_pct": 76.8128,
+      "error_pct": -0.1523,
+      "abs_error_pct": 0.1523,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 119,
+      "actual_soh_pct": 76.6938,
+      "predicted_soh_pct": 76.7351,
+      "error_pct": 0.0413,
+      "abs_error_pct": 0.0413,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 120,
+      "actual_soh_pct": 78.0991,
+      "predicted_soh_pct": 77.9713,
+      "error_pct": -0.1279,
+      "abs_error_pct": 0.1279,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 121,
+      "actual_soh_pct": 78.3641,
+      "predicted_soh_pct": 78.557,
+      "error_pct": 0.1929,
+      "abs_error_pct": 0.1929,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 122,
+      "actual_soh_pct": 77.2253,
+      "predicted_soh_pct": 77.5335,
+      "error_pct": 0.3081,
+      "abs_error_pct": 0.3081,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 123,
+      "actual_soh_pct": 76.6602,
+      "predicted_soh_pct": 76.7544,
+      "error_pct": 0.0942,
+      "abs_error_pct": 0.0942,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 124,
+      "actual_soh_pct": 76.3454,
+      "predicted_soh_pct": 76.4974,
+      "error_pct": 0.152,
+      "abs_error_pct": 0.152,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 125,
+      "actual_soh_pct": 76.1,
+      "predicted_soh_pct": 76.133,
+      "error_pct": 0.033,
+      "abs_error_pct": 0.033,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 126,
+      "actual_soh_pct": 75.8049,
+      "predicted_soh_pct": 75.9419,
+      "error_pct": 0.137,
+      "abs_error_pct": 0.137,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 127,
+      "actual_soh_pct": 75.5294,
+      "predicted_soh_pct": 75.5285,
+      "error_pct": -0.0009,
+      "abs_error_pct": 0.0009,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 128,
+      "actual_soh_pct": 75.2138,
+      "predicted_soh_pct": 75.1714,
+      "error_pct": -0.0424,
+      "abs_error_pct": 0.0424,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 129,
+      "actual_soh_pct": 74.9305,
+      "predicted_soh_pct": 74.9653,
+      "error_pct": 0.0348,
+      "abs_error_pct": 0.0348,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 130,
+      "actual_soh_pct": 74.6731,
+      "predicted_soh_pct": 74.7898,
+      "error_pct": 0.1167,
+      "abs_error_pct": 0.1167,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 131,
+      "actual_soh_pct": 74.6729,
+      "predicted_soh_pct": 74.7088,
+      "error_pct": 0.0359,
+      "abs_error_pct": 0.0359,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 132,
+      "actual_soh_pct": 74.3584,
+      "predicted_soh_pct": 74.35,
+      "error_pct": -0.0084,
+      "abs_error_pct": 0.0084,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 133,
+      "actual_soh_pct": 74.939,
+      "predicted_soh_pct": 74.8635,
+      "error_pct": -0.0755,
+      "abs_error_pct": 0.0755,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 134,
+      "actual_soh_pct": 75.523,
+      "predicted_soh_pct": 75.8848,
+      "error_pct": 0.3617,
+      "abs_error_pct": 0.3617,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 135,
+      "actual_soh_pct": 74.637,
+      "predicted_soh_pct": 75.0119,
+      "error_pct": 0.3749,
+      "abs_error_pct": 0.3749,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 136,
+      "actual_soh_pct": 74.3609,
+      "predicted_soh_pct": 74.3697,
+      "error_pct": 0.0088,
+      "abs_error_pct": 0.0088,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 137,
+      "actual_soh_pct": 73.791,
+      "predicted_soh_pct": 74.1267,
+      "error_pct": 0.3358,
+      "abs_error_pct": 0.3358,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 138,
+      "actual_soh_pct": 73.8084,
+      "predicted_soh_pct": 74.0818,
+      "error_pct": 0.2734,
+      "abs_error_pct": 0.2734,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 139,
+      "actual_soh_pct": 73.8118,
+      "predicted_soh_pct": 73.9209,
+      "error_pct": 0.1091,
+      "abs_error_pct": 0.1091,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 140,
+      "actual_soh_pct": 73.5182,
+      "predicted_soh_pct": 73.9921,
+      "error_pct": 0.474,
+      "abs_error_pct": 0.474,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 141,
+      "actual_soh_pct": 73.2389,
+      "predicted_soh_pct": 73.2403,
+      "error_pct": 0.0014,
+      "abs_error_pct": 0.0014,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 142,
+      "actual_soh_pct": 72.9557,
+      "predicted_soh_pct": 72.7993,
+      "error_pct": -0.1564,
+      "abs_error_pct": 0.1564,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 143,
+      "actual_soh_pct": 72.9515,
+      "predicted_soh_pct": 73.2072,
+      "error_pct": 0.2557,
+      "abs_error_pct": 0.2557,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 144,
+      "actual_soh_pct": 72.6841,
+      "predicted_soh_pct": 73.5266,
+      "error_pct": 0.8425,
+      "abs_error_pct": 0.8425,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 145,
+      "actual_soh_pct": 72.3919,
+      "predicted_soh_pct": 72.4516,
+      "error_pct": 0.0597,
+      "abs_error_pct": 0.0597,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 146,
+      "actual_soh_pct": 72.0937,
+      "predicted_soh_pct": 71.8735,
+      "error_pct": -0.2202,
+      "abs_error_pct": 0.2202,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 147,
+      "actual_soh_pct": 71.8212,
+      "predicted_soh_pct": 71.877,
+      "error_pct": 0.0558,
+      "abs_error_pct": 0.0558,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 148,
+      "actual_soh_pct": 71.8374,
+      "predicted_soh_pct": 71.8548,
+      "error_pct": 0.0174,
+      "abs_error_pct": 0.0174,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 149,
+      "actual_soh_pct": 71.8279,
+      "predicted_soh_pct": 71.844,
+      "error_pct": 0.0161,
+      "abs_error_pct": 0.0161,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 150,
+      "actual_soh_pct": 72.1319,
+      "predicted_soh_pct": 72.247,
+      "error_pct": 0.1151,
+      "abs_error_pct": 0.1151,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 151,
+      "actual_soh_pct": 74.107,
+      "predicted_soh_pct": 74.0618,
+      "error_pct": -0.0451,
+      "abs_error_pct": 0.0451,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 152,
+      "actual_soh_pct": 72.9851,
+      "predicted_soh_pct": 73.5855,
+      "error_pct": 0.6004,
+      "abs_error_pct": 0.6004,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 153,
+      "actual_soh_pct": 72.4128,
+      "predicted_soh_pct": 72.4075,
+      "error_pct": -0.0054,
+      "abs_error_pct": 0.0054,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 154,
+      "actual_soh_pct": 72.1211,
+      "predicted_soh_pct": 71.9635,
+      "error_pct": -0.1576,
+      "abs_error_pct": 0.1576,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 155,
+      "actual_soh_pct": 71.8465,
+      "predicted_soh_pct": 71.8057,
+      "error_pct": -0.0408,
+      "abs_error_pct": 0.0408,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 156,
+      "actual_soh_pct": 71.5654,
+      "predicted_soh_pct": 71.7383,
+      "error_pct": 0.1729,
+      "abs_error_pct": 0.1729,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 157,
+      "actual_soh_pct": 71.5505,
+      "predicted_soh_pct": 71.6348,
+      "error_pct": 0.0843,
+      "abs_error_pct": 0.0843,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 158,
+      "actual_soh_pct": 71.256,
+      "predicted_soh_pct": 71.653,
+      "error_pct": 0.3971,
+      "abs_error_pct": 0.3971,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 159,
+      "actual_soh_pct": 70.9965,
+      "predicted_soh_pct": 71.2943,
+      "error_pct": 0.2978,
+      "abs_error_pct": 0.2978,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 160,
+      "actual_soh_pct": 71.0141,
+      "predicted_soh_pct": 71.0963,
+      "error_pct": 0.0821,
+      "abs_error_pct": 0.0821,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 161,
+      "actual_soh_pct": 71.017,
+      "predicted_soh_pct": 71.065,
+      "error_pct": 0.048,
+      "abs_error_pct": 0.048,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 162,
+      "actual_soh_pct": 70.7161,
+      "predicted_soh_pct": 70.8104,
+      "error_pct": 0.0943,
+      "abs_error_pct": 0.0943,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 163,
+      "actual_soh_pct": 70.7262,
+      "predicted_soh_pct": 70.8928,
+      "error_pct": 0.1666,
+      "abs_error_pct": 0.1666,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 164,
+      "actual_soh_pct": 70.4751,
+      "predicted_soh_pct": 71.1671,
+      "error_pct": 0.692,
+      "abs_error_pct": 0.692,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 165,
+      "actual_soh_pct": 70.1776,
+      "predicted_soh_pct": 70.7728,
+      "error_pct": 0.5952,
+      "abs_error_pct": 0.5952,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 166,
+      "actual_soh_pct": 70.1476,
+      "predicted_soh_pct": 70.3814,
+      "error_pct": 0.2338,
+      "abs_error_pct": 0.2338,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 167,
+      "actual_soh_pct": 71.3224,
+      "predicted_soh_pct": 71.6985,
+      "error_pct": 0.3761,
+      "abs_error_pct": 0.3761,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0005",
+      "discharge_index": 168,
+      "actual_soh_pct": 72.1977,
+      "predicted_soh_pct": 72.6234,
+      "error_pct": 0.4258,
+      "abs_error_pct": 0.4258,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 1,
+      "actual_soh_pct": 93.4879,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 2,
+      "actual_soh_pct": 101.5944,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 3,
+      "actual_soh_pct": 100.5335,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 4,
+      "actual_soh_pct": 100.0,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 5,
+      "actual_soh_pct": 99.865,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 6,
+      "actual_soh_pct": 99.9677,
+      "predicted_soh_pct": 99.9723,
+      "error_pct": 0.0046,
+      "abs_error_pct": 0.0046,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 7,
+      "actual_soh_pct": 99.9219,
+      "predicted_soh_pct": 99.9338,
+      "error_pct": 0.0119,
+      "abs_error_pct": 0.0119,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 8,
+      "actual_soh_pct": 99.2066,
+      "predicted_soh_pct": 99.2591,
+      "error_pct": 0.0525,
+      "abs_error_pct": 0.0525,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 9,
+      "actual_soh_pct": 98.4803,
+      "predicted_soh_pct": 98.2899,
+      "error_pct": -0.1904,
+      "abs_error_pct": 0.1904,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 10,
+      "actual_soh_pct": 97.8147,
+      "predicted_soh_pct": 97.5412,
+      "error_pct": -0.2736,
+      "abs_error_pct": 0.2736,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 11,
+      "actual_soh_pct": 98.3219,
+      "predicted_soh_pct": 98.2536,
+      "error_pct": -0.0683,
+      "abs_error_pct": 0.0683,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 12,
+      "actual_soh_pct": 97.47,
+      "predicted_soh_pct": 97.5073,
+      "error_pct": 0.0373,
+      "abs_error_pct": 0.0373,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 13,
+      "actual_soh_pct": 96.7381,
+      "predicted_soh_pct": 96.8251,
+      "error_pct": 0.087,
+      "abs_error_pct": 0.087,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 14,
+      "actual_soh_pct": 96.618,
+      "predicted_soh_pct": 96.5671,
+      "error_pct": -0.0509,
+      "abs_error_pct": 0.0509,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 15,
+      "actual_soh_pct": 95.7889,
+      "predicted_soh_pct": 96.009,
+      "error_pct": 0.2201,
+      "abs_error_pct": 0.2201,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 16,
+      "actual_soh_pct": 98.0192,
+      "predicted_soh_pct": 97.4471,
+      "error_pct": -0.5721,
+      "abs_error_pct": 0.5721,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 17,
+      "actual_soh_pct": 97.244,
+      "predicted_soh_pct": 96.9024,
+      "error_pct": -0.3417,
+      "abs_error_pct": 0.3417,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 18,
+      "actual_soh_pct": 96.5107,
+      "predicted_soh_pct": 96.3047,
+      "error_pct": -0.2061,
+      "abs_error_pct": 0.2061,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 19,
+      "actual_soh_pct": 95.7191,
+      "predicted_soh_pct": 95.7893,
+      "error_pct": 0.0702,
+      "abs_error_pct": 0.0702,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 20,
+      "actual_soh_pct": 95.3447,
+      "predicted_soh_pct": 94.841,
+      "error_pct": -0.5036,
+      "abs_error_pct": 0.5036,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 21,
+      "actual_soh_pct": 95.7132,
+      "predicted_soh_pct": 95.6789,
+      "error_pct": -0.0343,
+      "abs_error_pct": 0.0343,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 22,
+      "actual_soh_pct": 94.8603,
+      "predicted_soh_pct": 94.4524,
+      "error_pct": -0.4079,
+      "abs_error_pct": 0.4079,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 23,
+      "actual_soh_pct": 94.6397,
+      "predicted_soh_pct": 94.5914,
+      "error_pct": -0.0484,
+      "abs_error_pct": 0.0484,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 24,
+      "actual_soh_pct": 93.6815,
+      "predicted_soh_pct": 94.0746,
+      "error_pct": 0.3931,
+      "abs_error_pct": 0.3931,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 25,
+      "actual_soh_pct": 93.2782,
+      "predicted_soh_pct": 93.0141,
+      "error_pct": -0.2641,
+      "abs_error_pct": 0.2641,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 26,
+      "actual_soh_pct": 94.3452,
+      "predicted_soh_pct": 94.3832,
+      "error_pct": 0.038,
+      "abs_error_pct": 0.038,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 27,
+      "actual_soh_pct": 93.4984,
+      "predicted_soh_pct": 93.6428,
+      "error_pct": 0.1445,
+      "abs_error_pct": 0.1445,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 28,
+      "actual_soh_pct": 93.0707,
+      "predicted_soh_pct": 92.6632,
+      "error_pct": -0.4074,
+      "abs_error_pct": 0.4074,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 29,
+      "actual_soh_pct": 92.8004,
+      "predicted_soh_pct": 92.4688,
+      "error_pct": -0.3316,
+      "abs_error_pct": 0.3316,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 30,
+      "actual_soh_pct": 92.4351,
+      "predicted_soh_pct": 92.331,
+      "error_pct": -0.104,
+      "abs_error_pct": 0.104,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 31,
+      "actual_soh_pct": 92.182,
+      "predicted_soh_pct": 91.7168,
+      "error_pct": -0.4652,
+      "abs_error_pct": 0.4652,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 32,
+      "actual_soh_pct": 91.9063,
+      "predicted_soh_pct": 92.112,
+      "error_pct": 0.2057,
+      "abs_error_pct": 0.2057,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 33,
+      "actual_soh_pct": 90.8306,
+      "predicted_soh_pct": 90.9091,
+      "error_pct": 0.0785,
+      "abs_error_pct": 0.0785,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 34,
+      "actual_soh_pct": 90.3741,
+      "predicted_soh_pct": 90.4939,
+      "error_pct": 0.1199,
+      "abs_error_pct": 0.1199,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 35,
+      "actual_soh_pct": 90.6312,
+      "predicted_soh_pct": 90.6205,
+      "error_pct": -0.0107,
+      "abs_error_pct": 0.0107,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 36,
+      "actual_soh_pct": 91.122,
+      "predicted_soh_pct": 90.5378,
+      "error_pct": -0.5842,
+      "abs_error_pct": 0.5842,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 37,
+      "actual_soh_pct": 90.6578,
+      "predicted_soh_pct": 90.3952,
+      "error_pct": -0.2627,
+      "abs_error_pct": 0.2627,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 38,
+      "actual_soh_pct": 89.633,
+      "predicted_soh_pct": 89.4582,
+      "error_pct": -0.1748,
+      "abs_error_pct": 0.1748,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 39,
+      "actual_soh_pct": 89.2222,
+      "predicted_soh_pct": 89.4952,
+      "error_pct": 0.2729,
+      "abs_error_pct": 0.2729,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0029",
+      "discharge_index": 40,
+      "actual_soh_pct": 88.7831,
+      "predicted_soh_pct": 88.7139,
+      "error_pct": -0.0693,
+      "abs_error_pct": 0.0693,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 1,
+      "actual_soh_pct": 94.5652,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 2,
+      "actual_soh_pct": 102.0774,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 3,
+      "actual_soh_pct": 101.7306,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 4,
+      "actual_soh_pct": 100.0,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 5,
+      "actual_soh_pct": 99.222,
+      "predicted_soh_pct": null,
+      "error_pct": null,
+      "abs_error_pct": null,
+      "status": "reference",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 6,
+      "actual_soh_pct": 98.4974,
+      "predicted_soh_pct": 98.5927,
+      "error_pct": 0.0953,
+      "abs_error_pct": 0.0953,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 7,
+      "actual_soh_pct": 96.0975,
+      "predicted_soh_pct": 96.2649,
+      "error_pct": 0.1674,
+      "abs_error_pct": 0.1674,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 8,
+      "actual_soh_pct": 94.1767,
+      "predicted_soh_pct": 93.8041,
+      "error_pct": -0.3726,
+      "abs_error_pct": 0.3726,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 9,
+      "actual_soh_pct": 95.6078,
+      "predicted_soh_pct": 95.4152,
+      "error_pct": -0.1926,
+      "abs_error_pct": 0.1926,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 10,
+      "actual_soh_pct": 95.9922,
+      "predicted_soh_pct": 95.9517,
+      "error_pct": -0.0406,
+      "abs_error_pct": 0.0406,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 11,
+      "actual_soh_pct": 92.9146,
+      "predicted_soh_pct": 92.4206,
+      "error_pct": -0.494,
+      "abs_error_pct": 0.494,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 12,
+      "actual_soh_pct": 95.9993,
+      "predicted_soh_pct": 96.235,
+      "error_pct": 0.2357,
+      "abs_error_pct": 0.2357,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 13,
+      "actual_soh_pct": 92.9464,
+      "predicted_soh_pct": 93.047,
+      "error_pct": 0.1006,
+      "abs_error_pct": 0.1006,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 14,
+      "actual_soh_pct": 93.8369,
+      "predicted_soh_pct": 93.8312,
+      "error_pct": -0.0057,
+      "abs_error_pct": 0.0057,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 15,
+      "actual_soh_pct": 94.6927,
+      "predicted_soh_pct": 94.6095,
+      "error_pct": -0.0831,
+      "abs_error_pct": 0.0831,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 16,
+      "actual_soh_pct": 90.5757,
+      "predicted_soh_pct": 90.6441,
+      "error_pct": 0.0683,
+      "abs_error_pct": 0.0683,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 17,
+      "actual_soh_pct": 94.3843,
+      "predicted_soh_pct": 94.5157,
+      "error_pct": 0.1314,
+      "abs_error_pct": 0.1314,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 18,
+      "actual_soh_pct": 90.9195,
+      "predicted_soh_pct": 90.8542,
+      "error_pct": -0.0653,
+      "abs_error_pct": 0.0653,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 19,
+      "actual_soh_pct": 91.3281,
+      "predicted_soh_pct": 91.2938,
+      "error_pct": -0.0342,
+      "abs_error_pct": 0.0342,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 20,
+      "actual_soh_pct": 93.3983,
+      "predicted_soh_pct": 93.9948,
+      "error_pct": 0.5965,
+      "abs_error_pct": 0.5965,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 21,
+      "actual_soh_pct": 92.3885,
+      "predicted_soh_pct": 92.6599,
+      "error_pct": 0.2714,
+      "abs_error_pct": 0.2714,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 22,
+      "actual_soh_pct": 91.5732,
+      "predicted_soh_pct": 91.551,
+      "error_pct": -0.0222,
+      "abs_error_pct": 0.0222,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 23,
+      "actual_soh_pct": 95.202,
+      "predicted_soh_pct": 95.312,
+      "error_pct": 0.1099,
+      "abs_error_pct": 0.1099,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 24,
+      "actual_soh_pct": 91.5651,
+      "predicted_soh_pct": 91.5119,
+      "error_pct": -0.0532,
+      "abs_error_pct": 0.0532,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 25,
+      "actual_soh_pct": 92.9985,
+      "predicted_soh_pct": 93.3794,
+      "error_pct": 0.3809,
+      "abs_error_pct": 0.3809,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 26,
+      "actual_soh_pct": 93.7861,
+      "predicted_soh_pct": 93.81,
+      "error_pct": 0.0238,
+      "abs_error_pct": 0.0238,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 27,
+      "actual_soh_pct": 90.5456,
+      "predicted_soh_pct": 90.377,
+      "error_pct": -0.1687,
+      "abs_error_pct": 0.1687,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 28,
+      "actual_soh_pct": 92.5704,
+      "predicted_soh_pct": 92.6928,
+      "error_pct": 0.1223,
+      "abs_error_pct": 0.1223,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 29,
+      "actual_soh_pct": 88.7249,
+      "predicted_soh_pct": 88.7507,
+      "error_pct": 0.0258,
+      "abs_error_pct": 0.0258,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 30,
+      "actual_soh_pct": 92.5323,
+      "predicted_soh_pct": 92.6086,
+      "error_pct": 0.0763,
+      "abs_error_pct": 0.0763,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 31,
+      "actual_soh_pct": 89.8318,
+      "predicted_soh_pct": 90.1187,
+      "error_pct": 0.2869,
+      "abs_error_pct": 0.2869,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 32,
+      "actual_soh_pct": 90.6614,
+      "predicted_soh_pct": 90.7565,
+      "error_pct": 0.0951,
+      "abs_error_pct": 0.0951,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 33,
+      "actual_soh_pct": 86.6925,
+      "predicted_soh_pct": 86.8139,
+      "error_pct": 0.1215,
+      "abs_error_pct": 0.1215,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 34,
+      "actual_soh_pct": 91.7027,
+      "predicted_soh_pct": 92.174,
+      "error_pct": 0.4714,
+      "abs_error_pct": 0.4714,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 35,
+      "actual_soh_pct": 90.8228,
+      "predicted_soh_pct": 90.9071,
+      "error_pct": 0.0843,
+      "abs_error_pct": 0.0843,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 36,
+      "actual_soh_pct": 89.7798,
+      "predicted_soh_pct": 90.1853,
+      "error_pct": 0.4055,
+      "abs_error_pct": 0.4055,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 37,
+      "actual_soh_pct": 87.606,
+      "predicted_soh_pct": 87.6171,
+      "error_pct": 0.0111,
+      "abs_error_pct": 0.0111,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 38,
+      "actual_soh_pct": 89.739,
+      "predicted_soh_pct": 89.5639,
+      "error_pct": -0.175,
+      "abs_error_pct": 0.175,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 39,
+      "actual_soh_pct": 86.7807,
+      "predicted_soh_pct": 87.2966,
+      "error_pct": 0.5158,
+      "abs_error_pct": 0.5158,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 40,
+      "actual_soh_pct": 88.8184,
+      "predicted_soh_pct": 89.1844,
+      "error_pct": 0.366,
+      "abs_error_pct": 0.366,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 41,
+      "actual_soh_pct": 89.1414,
+      "predicted_soh_pct": 89.6798,
+      "error_pct": 0.5384,
+      "abs_error_pct": 0.5384,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 42,
+      "actual_soh_pct": 86.8978,
+      "predicted_soh_pct": 87.4846,
+      "error_pct": 0.5869,
+      "abs_error_pct": 0.5869,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 43,
+      "actual_soh_pct": 98.1506,
+      "predicted_soh_pct": 97.9086,
+      "error_pct": -0.242,
+      "abs_error_pct": 0.242,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 44,
+      "actual_soh_pct": 98.5046,
+      "predicted_soh_pct": 97.9682,
+      "error_pct": -0.5364,
+      "abs_error_pct": 0.5364,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 45,
+      "actual_soh_pct": 91.8551,
+      "predicted_soh_pct": 91.7713,
+      "error_pct": -0.0837,
+      "abs_error_pct": 0.0837,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 46,
+      "actual_soh_pct": 95.2498,
+      "predicted_soh_pct": 94.9477,
+      "error_pct": -0.3021,
+      "abs_error_pct": 0.3021,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 47,
+      "actual_soh_pct": 94.8331,
+      "predicted_soh_pct": 94.4883,
+      "error_pct": -0.3448,
+      "abs_error_pct": 0.3448,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 48,
+      "actual_soh_pct": 89.5517,
+      "predicted_soh_pct": 89.3677,
+      "error_pct": -0.184,
+      "abs_error_pct": 0.184,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 49,
+      "actual_soh_pct": 90.9258,
+      "predicted_soh_pct": 90.7992,
+      "error_pct": -0.1266,
+      "abs_error_pct": 0.1266,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 50,
+      "actual_soh_pct": 91.1398,
+      "predicted_soh_pct": 90.8739,
+      "error_pct": -0.266,
+      "abs_error_pct": 0.266,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 51,
+      "actual_soh_pct": 93.3689,
+      "predicted_soh_pct": 93.1422,
+      "error_pct": -0.2268,
+      "abs_error_pct": 0.2268,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 52,
+      "actual_soh_pct": 88.548,
+      "predicted_soh_pct": 88.3547,
+      "error_pct": -0.1932,
+      "abs_error_pct": 0.1932,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 53,
+      "actual_soh_pct": 92.5789,
+      "predicted_soh_pct": 92.0126,
+      "error_pct": -0.5662,
+      "abs_error_pct": 0.5662,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 54,
+      "actual_soh_pct": 92.6229,
+      "predicted_soh_pct": 92.3382,
+      "error_pct": -0.2847,
+      "abs_error_pct": 0.2847,
+      "status": "scored",
+      "refusal_reason": null
+    },
+    {
+      "cell_id": "B0053",
+      "discharge_index": 55,
+      "actual_soh_pct": 89.3584,
+      "predicted_soh_pct": 88.9546,
+      "error_pct": -0.4038,
+      "abs_error_pct": 0.4038,
+      "status": "scored",
+      "refusal_reason": null
+    }
+  ]
+}

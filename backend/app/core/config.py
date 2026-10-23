@@ -172,6 +172,12 @@ class Settings(BaseSettings):
     # Resolved relative to the repo root, like the SoH model artifacts.
     rul_reference_path: str | None = None
 
+    # --- Model validation (PoC) -------------------------------------------
+    # Where scripts/validate_real_data.py wrote the latest validation
+    # report served by GET /validation/summary. Unset uses the repo
+    # default (data/processed/validation/latest_validation.json).
+    validation_report_path: str | None = None
+
     # --- Live stream (Phase 8) -------------------------------------------
     # The SSE endpoint and the in-process event bus behind it. On by
     # default; a deployment that only polls the REST API can turn it off to

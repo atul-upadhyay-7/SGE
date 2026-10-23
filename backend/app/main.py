@@ -26,6 +26,7 @@ from app.api import (
     rul,
     stream,
     telemetry,
+    validation,
 )
 from app.api.deps import require_read_access
 from app.core.config import get_settings
@@ -212,3 +213,4 @@ app.include_router(alerts.router, prefix=settings.api_prefix)
 app.include_router(anomalies.router, prefix=settings.api_prefix)
 app.include_router(reports.router, prefix=settings.api_prefix)
 app.include_router(stream.router, prefix=settings.api_prefix)
+app.include_router(validation.router, prefix=settings.api_prefix)
