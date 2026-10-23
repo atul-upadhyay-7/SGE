@@ -46,4 +46,4 @@ xgboost==3.4.0
 joblib==1.5.2
 
 # Stored-snapshot PDF export
-reportlab==4.4.10
+reportlab==5.0.1
