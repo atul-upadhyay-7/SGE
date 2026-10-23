@@ -94,6 +94,22 @@ def load_df(cells=None):
         df = df.merge(
             pd.concat(pred), on=["cell_id", "cycle"], how="left"
         )
+
+        # A left-join miss leaves NaN predictions for cycles the
+        # SOH stage never scored. Scoring those rows anyway would
+        # silently drop or corrupt them downstream, so refuse:
+        # partial prediction coverage is a pipeline error, not
+        # data to average away.
+        missing = int(df["predicted_soh"].isna().sum())
+
+        if missing:
+
+            raise RuntimeError(
+                "pack_evaluate: "
+                f"{missing} cycle(s) have no SOH prediction; "
+                "the per-cell prediction files do not cover the "
+                "cleaned dataset. Re-run the SOH stage."
+            )
     else:
         # Never substitute the target for predictions: scoring the pack
         # detector against true SOH labelled as "predicted" would

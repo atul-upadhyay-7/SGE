@@ -56,6 +56,13 @@ reference capacity is the cell's own first measured capacity, so
 a cell that was already partly aged when it was first seen will
 read high throughout and its early cycles may be flagged as
 apparent recovery.
+
+Thresholds are causal: the bounds that judge a cycle are
+computed from that cell's earlier cycles only, never from the
+cycle itself or anything after it, so a flag at cycle t is the
+flag an online monitor could have raised at cycle t. The cost
+is a warm-up: a detector stays silent until it has seen
+CAUSAL_MIN_HISTORY earlier cycles of the quantity it judges.
 """
 
 from pathlib import Path
@@ -64,15 +71,21 @@ import numpy as np
 import pandas as pd
 
 from evaluation import loco_evaluate
-from features import drop_constant_features, make_xy
+from features import drop_preregistered_constants, make_xy
 from repro import rounded
 
-DATA_FILE = Path(
-    "data/processed/nasa_ml_dataset.csv"
+ROOT = Path(__file__).resolve().parent.parent
+
+# The cleaned dataset, like every other downstream stage
+# (data_cleaning.py: "the dataset every downstream stage
+# reads"). The uncleaned file's SOH uses a different reference
+# rule and includes cells the audit excluded.
+DATA_FILE = (
+    ROOT / "data/processed/nasa_ml_dataset_clean.csv"
 )
 
-RESULT_DIR = Path(
-    "data/processed"
+RESULT_DIR = (
+    ROOT / "data/processed"
 )
 
 TARGET = "soh"
@@ -106,6 +119,12 @@ KNEE_RATE_K = 3.0
 # data. Without it every threshold below would be optimistic by
 # roughly half.
 MAD_TO_SIGMA = 1.4826
+
+# Earlier observations a detector must have seen before it may
+# judge a cycle. Below this the median/MAD are too unstable to
+# threshold against, so the cycle is left unflagged rather than
+# judged against a scale invented from almost nothing.
+CAUSAL_MIN_HISTORY = 10
 
 
 def robust_sigma(values):
@@ -200,6 +219,66 @@ def residual_bounds(
     )
 
 
+def causal_robust_bounds(
+    values,
+    k,
+    min_history=CAUSAL_MIN_HISTORY
+):
+    """
+    Per-row robust bounds computed from earlier values only.
+
+    Row i is judged against the finite values at rows < i, so
+    the bounds never see the present or the future. Until
+    `min_history` finite values have accumulated the row's
+    bounds are NaN, which callers treat as "not judged".
+
+    Returns (lower, upper, center, sigma) as float arrays
+    aligned with `values`.
+    """
+
+    values = np.asarray(
+        values,
+        dtype=float
+    )
+
+    count = len(values)
+
+    center = np.full(count, np.nan)
+    sigma = np.full(count, np.nan)
+    lower = np.full(count, np.nan)
+    upper = np.full(count, np.nan)
+
+    history = []
+
+    for index, value in enumerate(values):
+
+        if len(history) >= min_history:
+
+            (
+                lower[index],
+                upper[index],
+                center[index],
+                sigma[index]
+            ) = residual_bounds(
+                np.asarray(
+                    history,
+                    dtype=float
+                ),
+                k=k
+            )
+
+        if np.isfinite(value):
+
+            history.append(float(value))
+
+    return (
+        lower,
+        upper,
+        center,
+        sigma
+    )
+
+
 def flag_residuals(
     frame,
     k=ANOMALY_RESIDUAL_K
@@ -213,6 +292,10 @@ def flag_residuals(
     faster than any comparable cell has (a degradation event)
     or it faded slower, which on this dataset is far more often
     a measurement artefact than a genuine recovery.
+
+    The bounds are causal (earlier cycles of this cell only),
+    so the centre/sigma columns vary per row; early cycles
+    without enough history carry NaN bounds and are not flagged.
     """
 
     frame = frame.copy()
@@ -221,9 +304,13 @@ def flag_residuals(
         frame[TARGET] - frame[PREDICTION_COLUMN]
     )
 
+    # Bounds from this cell's earlier residuals only (see
+    # causal_robust_bounds). The previous whole-series bounds
+    # let a cycle's flag depend on cycles that had not happened
+    # yet, which an early-warning detector cannot claim.
     lower, upper, center, sigma = (
-        residual_bounds(
-            frame["residual"],
+        causal_robust_bounds(
+            frame["residual"].to_numpy(dtype=float),
             k=k
         )
     )
@@ -358,6 +445,10 @@ def flag_knee(
     robust sigmas, so a cell that fades fast everywhere is not
     flagged simply for fading fast, only for the step change
     that marks the knee. Adds knee_anomaly and fade_rate_sigma.
+
+    The centre and sigma come from earlier rates only (see
+    causal_robust_bounds): a knee flag must be raisable at the
+    cycle it names, without knowing how the cell faded later.
     """
 
     frame = trailing_fade_rate(
@@ -367,22 +458,19 @@ def flag_knee(
 
     rate = frame["fade_rate_pct_per_cycle"]
 
-    sigma = robust_sigma(rate)
-
-    center = float(
-        np.nanmedian(
-            rate.to_numpy(dtype=float)
+    _, upper, center, sigma = (
+        causal_robust_bounds(
+            rate.to_numpy(dtype=float),
+            k=k
         )
     )
 
-    threshold = center + k * sigma
-
     frame["fade_rate_center"] = center
     frame["fade_rate_sigma"] = sigma
-    frame["fade_rate_threshold"] = threshold
+    frame["fade_rate_threshold"] = upper
 
     frame["knee_anomaly"] = (
-        rate > threshold
+        rate > upper
     )
 
     return frame
@@ -489,8 +577,8 @@ def residual_predictions(
         target
     )
 
-    features, _ = drop_constant_features(
-        df[features]
+    features, _ = drop_preregistered_constants(
+        features
     )
 
     _, predictions, _ = loco_evaluate(
@@ -533,9 +621,13 @@ def summarise(frames):
             "residual_anomalies": int(
                 frame["residual_anomaly"].sum()
             ),
+            # Sigma is per-row now (causal bounds); report the
+            # most recent judged scale, or NaN if the cell never
+            # accumulated enough history to be judged.
             "residual_sigma": float(
-                frame["residual_sigma"].iloc[0]
-            ),
+                frame["residual_sigma"].dropna().iloc[-1]
+            ) if frame["residual_sigma"].notna().any()
+            else float("nan"),
             "capacity_anomalies": int(
                 frame["capacity_anomaly"].sum()
             ),
@@ -575,7 +667,8 @@ def load_dataset(path=DATA_FILE):
 
         raise FileNotFoundError(
             f"{path} not found.\n"
-            "Run load_data.py and preprocessing.py first."
+            "Run load_data.py, preprocessing.py and "
+            "data_cleaning.py first."
         )
 
     return pd.read_csv(path)

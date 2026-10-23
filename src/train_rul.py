@@ -51,14 +51,16 @@ from features import make_xy
 from preprocessing import EARLY_SLOPE_WINDOW, EOL_SOH_THRESHOLD
 from repro import rounded
 
-DATA_FILE = Path(
-    "data/processed/nasa_ml_dataset_clean.csv"
+ROOT = Path(__file__).resolve().parent.parent
+
+DATA_FILE = (
+    ROOT / "data/processed/nasa_ml_dataset_clean.csv"
 )
 
-MODEL_DIR = Path("models")
+MODEL_DIR = ROOT / "models"
 
-RESULT_DIR = Path(
-    "data/processed"
+RESULT_DIR = (
+    ROOT / "data/processed"
 )
 
 TARGET = "rul_cycles_80"
@@ -100,21 +102,6 @@ LEAKY_COLUMNS = [
 # over the full feature set.
 
 
-def select_features(features, drop):
-    """
-    Return the feature list with an optional column removed.
-    """
-
-    if drop is None:
-
-        return list(features)
-
-    return [
-        feature for feature in features
-        if feature != drop
-    ]
-
-
 def rul_frame(df):
     """
     Return the rows that have a defined, non-negative RUL.
@@ -130,8 +117,7 @@ def rul_frame(df):
 
 def evaluate(
     df,
-    model_name,
-    drop
+    model_name
 ):
     """
     Leave-one-cell-out evaluation for one model and
@@ -142,11 +128,6 @@ def evaluate(
         df,
         TARGET,
         leaky_columns=LEAKY_COLUMNS
-    )
-
-    features = select_features(
-        features,
-        drop
     )
 
     rows, predictions, baselines = loco_evaluate(
@@ -160,7 +141,7 @@ def evaluate(
 
     for record in rows:
 
-        record["drop"] = drop or "(none)"
+        record["drop"] = "(none)"
 
     for frame in predictions:
 
@@ -350,8 +331,7 @@ def main():
 
         rows, predictions, baselines = evaluate(
             df,
-            model_name,
-            None
+            model_name
         )
 
         all_rows.extend(rows)
@@ -574,11 +554,6 @@ def main():
         df,
         TARGET,
         leaky_columns=LEAKY_COLUMNS
-    )
-
-    features = select_features(
-        features,
-        None
     )
 
     for cell in sorted(df["cell_id"].unique()):

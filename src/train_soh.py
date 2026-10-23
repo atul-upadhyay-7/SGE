@@ -49,17 +49,19 @@ from evaluation import (
     score,
     split_by_cell,
 )
-from features import drop_constant_features, make_xy
+from features import drop_preregistered_constants, make_xy
 from repro import rounded
 
-DATA_FILE = Path(
-    "data/processed/nasa_ml_dataset_clean.csv"
+ROOT = Path(__file__).resolve().parent.parent
+
+DATA_FILE = (
+    ROOT / "data/processed/nasa_ml_dataset_clean.csv"
 )
 
-MODEL_DIR = Path("models")
+MODEL_DIR = ROOT / "models"
 
-RESULT_DIR = Path(
-    "data/processed"
+RESULT_DIR = (
+    ROOT / "data/processed"
 )
 
 TARGET = "soh"
@@ -380,8 +382,11 @@ def main():
         TARGET
     )
 
-    features, dropped = drop_constant_features(
-        df[features]
+    # Pre-registered constants only: running the data-driven
+    # drop on the full frame here would let held-out cells
+    # influence the feature set before LOCO splits exist.
+    features, dropped = drop_preregistered_constants(
+        features
     )
 
     MODEL_DIR.mkdir(

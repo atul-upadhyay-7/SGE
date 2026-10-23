@@ -47,7 +47,9 @@ from preprocessing import (  # noqa: E402
 )
 from repro import rounded  # noqa: E402
 
-PROC = Path("data/processed")
+ROOT = Path(__file__).resolve().parent.parent
+
+PROC = ROOT / "data/processed"
 IN = PROC / "nasa_ml_dataset.csv"
 OUT_CLEAN = PROC / "nasa_ml_dataset_clean.csv"
 OUT_AUDIT = PROC / "cell_audit.csv"

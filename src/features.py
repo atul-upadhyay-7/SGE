@@ -491,3 +491,43 @@ def drop_constant_features(X_train):
     ]
 
     return usable, dropped
+
+
+# Features excluded from training by decision, not by looking at
+# the data. Callers that need a feature list *before* any split
+# exists (training entry points, experiment runners) must use
+# this set instead of running drop_constant_features on the full
+# frame: a data-driven drop over every row lets the held-out
+# cells influence which features are considered, which is the
+# protocol breach drop_constant_features exists to prevent.
+#
+# ambient_temperature is here because the group-1 rig runs at a
+# fixed 24 C by design (see load_data.GROUPS), so the column is
+# constant for every cell this pipeline trains on — a fact about
+# the experiment, known before any data is read. If a future
+# dataset varies ambient temperature, remove it from this tuple
+# and drop_constant_features will judge it per training split.
+PREREGISTERED_CONSTANT_FEATURES = ("ambient_temperature",)
+
+
+def drop_preregistered_constants(columns):
+    """
+    Split `columns` into (usable, dropped) using only the
+    pre-registered constant set. Pure function of the column
+    names: no data is inspected, so it is safe to call on the
+    full frame before a train/test split exists.
+    """
+
+    usable = [
+        feature
+        for feature in columns
+        if feature not in PREREGISTERED_CONSTANT_FEATURES
+    ]
+
+    dropped = [
+        feature
+        for feature in columns
+        if feature in PREREGISTERED_CONSTANT_FEATURES
+    ]
+
+    return usable, dropped

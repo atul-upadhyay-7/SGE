@@ -69,8 +69,10 @@ from run_experiments import (  # noqa: E402
 )
 from train_soh import _save_portable  # noqa: E402
 
-PROC = Path("data/processed")
-MODEL_DIR = Path("models")
+ROOT = Path(__file__).resolve().parent.parent
+
+PROC = ROOT / "data/processed"
+MODEL_DIR = ROOT / "models"
 
 CLEAN = PROC / "nasa_ml_dataset_clean.csv"
 TARGET = "soh"

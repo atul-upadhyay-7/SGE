@@ -40,7 +40,9 @@ import joblib
 import numpy as np
 import pandas as pd
 
-MODEL_DIR = Path("models")
+MODEL_DIR = (
+    Path(__file__).resolve().parent.parent / "models"
+)
 
 # The default model can be overridden via environment variable.
 # The demo service sets PDM_SOH_MODEL=models/soh_xgb_demo.joblib

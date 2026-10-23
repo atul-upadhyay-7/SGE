@@ -53,7 +53,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from evaluation import build_model  # noqa: E402
 from features import (  # noqa: E402
     FEATURES,
-    drop_constant_features,
+    drop_preregistered_constants,
 )
 from features import (
     WINDOW_FEATURES as VW_FEATURES,
@@ -63,7 +63,9 @@ from features import (
 )
 from repro import rounded  # noqa: E402
 
-PROC = Path("data/processed")
+ROOT = Path(__file__).resolve().parent.parent
+
+PROC = ROOT / "data/processed"
 EXP = PROC / "experiments"
 EXP.mkdir(parents=True, exist_ok=True)
 
@@ -99,10 +101,12 @@ def _r2(actual, predicted):
 
 
 def production_features(df):
-    """The model input set: features.FEATURES, minus any constant."""
+    """The model input set: features.FEATURES, minus the
+    pre-registered constant features (see features.py). Judged
+    from column names only, never from the full frame's data."""
 
     available = [f for f in FEATURES if f in df.columns]
-    usable, _ = drop_constant_features(df[available])
+    usable, _ = drop_preregistered_constants(available)
     return usable
 
 
@@ -400,12 +404,14 @@ def cell_relative_features(df, ref_window=REF_WINDOW):
             .transform(lambda s: s.dropna().head(ref_window).median())
         )
         # A cell whose baseline is zero (or missing) would divide
-        # by zero; fall back to the cell's own median, then to 1.0
-        # so the column stays finite.
+        # by zero; fall back to 1.0 so the column stays finite.
+        # The fallback must not consult later discharges: the old
+        # whole-lifetime median fill read the cell's future,
+        # contradicting this function's opening-discharges-only
+        # contract. features.window_model_row ends at the same
+        # 1.0 fallback for the same reason.
         ref = ref.replace(0.0, np.nan)
-        ref = ref.fillna(
-            df.groupby("cell_id")[column].transform("median")
-        )
+        ref = ref.fillna(1.0)
         df[new_name] = df[column] / ref
 
     df["temperature_rise"] = (
