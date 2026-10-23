@@ -4,38 +4,51 @@
  * Dark monitoring theme (PRD §5). Severity colours are defined here and are
  * always paired with a text label + glyph in the components (PRD §7), so the
  * palette is never the only signal.
+ *
+ * The palette is a deep blue-tinted charcoal with a single electric-blue
+ * accent; panels layer with hairline borders, soft shadows and a faint
+ * top-light gradient rather than flat fills, so the console reads as one
+ * designed surface instead of stacked boxes.
  */
 :root {
   color-scheme: dark;
 
-  --bg: #14171c;
-  --bg-elevated: #1b2027;
-  --bg-panel: #212832;
-  --bg-inset: #171b21;
-  --border: #2c3541;
-  --border-strong: #3a4552;
+  --bg: #090b0f;
+  --bg-elevated: #0d1015;
+  --bg-panel: #12161e;
+  --bg-inset: #0a0d12;
+  --border: #1e2632;
+  --border-strong: #303b4c;
 
-  --text: #e6ebf2;
-  --text-muted: #97a3b4;
-  --text-dim: #6b7686;
+  --text: #eef2f7;
+  --text-muted: #9aa7ba;
+  --text-dim: #66738a;
 
-  --accent: #3b82f6;
+  --accent: #4f83ff;
+  --accent-strong: #3f6fe0;
+  --accent-2: #38bdf8;
 
-  --normal: #22c55e;
-  --warning: #eab308;
-  --high: #f97316;
-  --critical: #ef4444;
-  --info: #3b82f6;
+  --normal: #34d399;
+  --warning: #fbbf24;
+  --high: #fb923c;
+  --critical: #fb7185;
+  --info: #60a5fa;
 
-  --normal-bg: rgba(34, 197, 94, 0.14);
-  --warning-bg: rgba(234, 179, 8, 0.14);
-  --high-bg: rgba(249, 115, 22, 0.14);
-  --critical-bg: rgba(239, 68, 68, 0.14);
-  --info-bg: rgba(59, 130, 246, 0.14);
+  --normal-bg: rgba(52, 211, 153, 0.13);
+  --warning-bg: rgba(251, 191, 36, 0.13);
+  --high-bg: rgba(251, 146, 60, 0.13);
+  --critical-bg: rgba(251, 113, 133, 0.13);
+  --info-bg: rgba(96, 165, 250, 0.13);
 
-  --radius: 8px;
-  --radius-sm: 6px;
-  --gap: 16px;
+  --radius: 12px;
+  --radius-sm: 9px;
+  --gap: 18px;
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
   --font-mono: "Cascadia Mono", "Consolas", "SFMono-Regular", monospace;
-  --sidebar-width: 220px;
+  --sidebar-width: 236px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35),
+    0 10px 30px -14px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 12px 40px -8px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4);
 }
