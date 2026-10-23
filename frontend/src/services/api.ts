@@ -6,7 +6,11 @@
  * :class:`ApiError` so pages can render a consistent message without guessing
  * at fetch/HTTP/parse failures.
  */
-import { getOperatorKey } from "@/services/operatorKey";
+import {
+  AUTH_REQUIRED_EVENT,
+  getOperatorKey,
+  readAccessHeaders,
+} from "@/services/operatorKey";
 import { config } from "@/config";
 
 export class ApiError extends Error {
@@ -88,6 +92,7 @@ export async function apiFetch<T>(
       method,
       headers: {
         Accept: "application/json",
+        ...readAccessHeaders(),
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(method !== "GET" && getOperatorKey()
           ? { [OPERATOR_KEY_HEADER]: getOperatorKey() as string }
@@ -112,6 +117,10 @@ export async function apiFetch<T>(
   const parsed: unknown = text ? safeParse(text) : null;
 
   if (!response.ok) {
+    if (response.status === 401 && method === "GET") {
+      window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+      throw new ApiError("Sign-in required: enter the viewer key.", 401, parsed);
+    }
     throw new ApiError(messageFor(response.status, parsed), response.status, parsed);
   }
   return parsed as T;

@@ -1276,3 +1276,6 @@ input {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+
+.auth-gate { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.auth-gate__form { display: flex; flex-direction: column; gap: 10px; width: min(420px, 100%); }

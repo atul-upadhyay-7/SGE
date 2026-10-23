@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.deps import require_read_access
 from app.api import (
     alerts,
     anomalies,
@@ -105,6 +106,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     lifespan=lifespan,
+    dependencies=[Depends(require_read_access)],
 )
 
 # CORS for a browser frontend on another origin. Credentials are off by

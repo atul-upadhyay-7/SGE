@@ -44,9 +44,13 @@ def test_production_refuses_to_start_without_both_keys() -> None:
     assert Settings(environment="production").access_control_problems() == [
         "BMS_ADMIN_API_KEY is not set",
         "BMS_OPERATOR_API_KEY is not set",
+        "BMS_VIEWER_API_KEY is not set",
     ]
     assert Settings(
-        environment="production", admin_api_key="a", operator_api_key="b"
+        environment="production",
+        admin_api_key="a",
+        operator_api_key="b",
+        viewer_api_key="c",
     ).access_control_problems() == []
     assert Settings(environment="local").access_control_problems() == []
 
@@ -86,7 +90,7 @@ def test_write_actions_need_the_operator_key(
 
 def test_reads_stay_open_and_health_reports_protection(client, operator_key) -> None:
     body = client.get("/api/v1/health").json()
-    assert body["write_protection"]["operator_key"] is True
+    assert body["access_control"]["operator_key"] is True
     assert OPERATOR_KEY not in str(body)
     assert client.get("/api/v1/alerts").status_code in {200, 503}
 

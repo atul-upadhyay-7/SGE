@@ -128,6 +128,10 @@ class Settings(BaseSettings):
     # per-device credential. Unset keeps local development open; in a
     # production environment the app refuses to start without both keys.
     operator_api_key: str | None = None
+    # Optional viewer key guarding every read (REST and the SSE stream) except
+    # the bare ``/health`` liveness probe. The operator and admin keys also
+    # grant read access. Unset keeps reads open for local development.
+    viewer_api_key: str | None = None
     # Reject device secrets shorter than this at registration time. Long
     # enough to force a random value, short enough for a QR-code sticker.
     min_credential_length: int = 8
@@ -163,6 +167,8 @@ class Settings(BaseSettings):
             problems.append("BMS_ADMIN_API_KEY is not set")
         if not self.operator_api_key:
             problems.append("BMS_OPERATOR_API_KEY is not set")
+        if not self.viewer_api_key:
+            problems.append("BMS_VIEWER_API_KEY is not set")
         return problems
 
     @property

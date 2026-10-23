@@ -8,6 +8,7 @@
  */
 import { config } from "@/config";
 import { ApiError, apiFetch, NetworkError } from "@/services/api";
+import { readAccessHeaders } from "@/services/operatorKey";
 import type {
   ReportCreate,
   ReportDetail,
@@ -61,7 +62,9 @@ export async function downloadReport(
 
   let response: Response;
   try {
-    response = await fetch(url, { headers: { Accept: "*/*" } });
+    response = await fetch(url, {
+      headers: { Accept: "*/*", ...readAccessHeaders() },
+    });
   } catch {
     throw new NetworkError(`Could not reach the backend at ${config.apiBaseUrl}`);
   }

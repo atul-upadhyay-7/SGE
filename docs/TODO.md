@@ -69,8 +69,9 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
 - [x] Write authorization: every dashboard write route needs `X-Operator-Key` when
   `BMS_OPERATOR_API_KEY` is set; production refuses to start without admin and
   operator keys; a route-inventory test blocks unguarded writes (local, awaiting push review).
-- [ ] Read-API authorization: reads and the SSE stream are still open. Needs viewer
-  authentication at a reverse proxy or a real session design before public deployment.
+- [x] Read authorization: `BMS_VIEWER_API_KEY` guards all reads and the SSE stream by default
+  (header, dashboard unlock prompt, route-walk test). Shared-key scheme, not per-user
+  accounts; `/docs` and `/openapi.json` not covered; needs HTTPS in front (local, awaiting push review).
 - [ ] Confirm full-stack recovery/backpressure/resource behavior under expected
   device counts and retention volumes.
 

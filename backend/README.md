@@ -144,14 +144,20 @@ are different. Never swap them without a separate ingestion/feature design.
   `X-Operator-Key` header. The dashboard asks the operator to type the key
   into a top-bar control; it lives in `sessionStorage` for that tab only and
   is never part of the built bundle. With `BMS_ENVIRONMENT=production` the
-  app refuses to start unless both the admin and operator keys are set.
+  app refuses to start unless the admin, operator and viewer keys are set.
   `GET /api/v1/health` reports booleans only for whether each key is set.
-- Read endpoints are NOT keyed. Anomaly, telemetry, report and health reads
-  (and the SSE stream) are open to anyone who can reach the API. Before any
-  public deployment put the API behind a reverse proxy or VPN that
-  authenticates viewers. This is a known remaining gap, not a finished
-  read-access design. A test fails if a new write route is added without a
-  guard.
+- Optional viewer key. Setting `BMS_VIEWER_API_KEY` guards every read, including
+  the SSE stream, with an `X-Viewer-Key` header. The guard is registered once on
+  the app, so a new GET route is protected by default; only the bare
+  `/api/v1/health` liveness probe stays open, and a test walks every GET route
+  to prove it. The operator and admin keys also grant read access. The
+  dashboard shows an unlock prompt and keeps the key in `sessionStorage` for
+  that tab (the stream uses `fetch`, because `EventSource` cannot send headers
+  and a key in the URL would leak into logs). Production start requires all
+  three keys. Limits: this is a shared-key scheme, not per-user accounts, and
+  the FastAPI `/docs` and `/openapi.json` pages are not covered. Serve the API
+  over HTTPS (reverse proxy) so keys are not sent in clear text. Grafana
+  keeps its own viewer login.
 - Comparison uses `hmac.compare_digest`, so a timing probe cannot recover
   the stored digest byte by byte.
 - Broker-side security is configuration, not code: run Mosquitto with a TLS

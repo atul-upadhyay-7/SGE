@@ -27,10 +27,11 @@ async def health(settings: Settings = Depends(get_settings)) -> dict:
         "app": settings.app_name,
         "version": settings.app_version,
         "environment": settings.environment,
-        # Booleans only: whether write protection is configured, never a key.
-        "write_protection": {
+        # Booleans only: whether access control is configured, never a key.
+        "access_control": {
             "admin_key": settings.admin_api_key is not None,
             "operator_key": settings.operator_api_key is not None,
+            "viewer_key": settings.viewer_api_key is not None,
         },
     }
 
