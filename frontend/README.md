@@ -24,6 +24,23 @@ baked into the bundle at build time — never put a secret here.
 The backend must allow this origin via CORS; its `BMS_CORS_ALLOW_ORIGINS`
 already defaults to the Vite dev ports.
 
+## Run the full stack (Docker)
+
+From the repository root, one command brings up Postgres, the backend
+and this dashboard (nginx serving the built bundle, proxying `/api` to
+the backend):
+
+```bash
+docker compose up -d --build postgres bms-api frontend
+# optional: load the demo fleet (4 packs, telemetry, anomalies)
+docker compose --profile demo run --rm demo-seed
+```
+
+Then open http://localhost:5173. No access keys are configured in the
+compose stack, so the dashboard opens directly. Grafana and the
+ingestion services are separate compose services and are not needed
+for the dashboard itself.
+
 ## Scripts
 
 ```bash

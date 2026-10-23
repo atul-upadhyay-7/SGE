@@ -168,5 +168,31 @@ services:
       --fault CELL2:resistance_spike:40 --fault CELL3:thermal:60
     depends_on: [soh, bridge]
 
+
+  frontend:                  # React dashboard (built bundle served by nginx)
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    # nginx serves the app and proxies /api to bms-api, so the browser
+    # only needs this one port. Open http://localhost:5173
+    ports: ["127.0.0.1:5173:80"]
+    depends_on:
+      bms-api:
+        condition: service_started
+
+  demo-seed:                 # one-off: load the demo fleet into Postgres
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      BMS_DATABASE_URL: postgresql+asyncpg://bms:${BMS_POSTGRES_PASSWORD:-bms}@postgres:5432/bms
+    volumes:
+      - ./scripts:/app/scripts:ro
+    command: ["python", "/app/scripts/seed_demo_data.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["demo"]
+
 volumes:
   bms_pgdata:

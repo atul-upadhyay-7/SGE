@@ -22,5 +22,13 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Dev-only: proxy API calls to the local backend so the app can
+    // be reached through a single origin (LAN address, tunnel)
+    // without CORS or a second exposed port. Pair with
+    // VITE_API_BASE_URL=/api/v1. Production builds talk to
+    // VITE_API_BASE_URL directly and are unaffected.
+    proxy: {
+      "/api": "http://localhost:8000",
+    },
   },
 });
