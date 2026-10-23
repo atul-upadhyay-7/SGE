@@ -71,7 +71,7 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
   operator keys; a route-inventory test blocks unguarded writes (local, awaiting push review).
 - [x] Read authorization: `BMS_VIEWER_API_KEY` guards all reads and the SSE stream by default
   (header, dashboard unlock prompt, route-walk test). Shared-key scheme, not per-user
-  accounts; `/docs` and `/openapi.json` not covered; needs HTTPS in front (local, awaiting push review).
+  accounts; `/docs`, `/redoc` and `/openapi.json` are disabled in production; needs HTTPS in front (local, awaiting push review).
 - [ ] Confirm full-stack recovery/backpressure/resource behavior under expected
   device counts and retention volumes.
 

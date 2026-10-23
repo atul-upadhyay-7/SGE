@@ -107,6 +107,11 @@ app = FastAPI(
     version=settings.app_version,
     lifespan=lifespan,
     dependencies=[Depends(require_read_access)],
+    # The interactive docs and schema list every route and are not covered by
+    # the read guard, so production does not serve them at all.
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 # CORS for a browser frontend on another origin. Credentials are off by

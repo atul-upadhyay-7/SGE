@@ -154,8 +154,9 @@ are different. Never swap them without a separate ingestion/feature design.
   dashboard shows an unlock prompt and keeps the key in `sessionStorage` for
   that tab (the stream uses `fetch`, because `EventSource` cannot send headers
   and a key in the URL would leak into logs). Production start requires all
-  three keys. Limits: this is a shared-key scheme, not per-user accounts, and
-  the FastAPI `/docs` and `/openapi.json` pages are not covered. Serve the API
+  three keys. Limits: this is a shared-key scheme, not per-user accounts. In production
+  `/docs`, `/redoc` and `/openapi.json` are not served at all (they are open in
+  local development). Serve the API
   over HTTPS (reverse proxy) so keys are not sent in clear text. Grafana
   keeps its own viewer login.
 - Comparison uses `hmac.compare_digest`, so a timing probe cannot recover
