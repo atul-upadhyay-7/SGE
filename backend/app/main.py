@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
         SessionLocal,
         max_pending=settings.report_queue_max_pending,
         concurrency=settings.report_worker_concurrency,
+        running_stale_seconds=settings.report_running_stale_seconds,
     )
     app.state.report_queue = report_queue
     await report_queue.start()

@@ -5,16 +5,25 @@
 the row becomes ``ready`` (or ``failed`` with the error type) when the snapshot
 is built. The request never holds a connection while a large snapshot builds.
 
-The queue is deliberately in-process: a restart re-queues ``queued`` rows and
-puts rows that were mid-build back in the queue, so nothing is lost, but there
-is no cross-process work distribution. Running several API replicas would
-need a shared queue, which this does not provide.
+The queue is deliberately in-process, but the database row is the source of
+truth and claiming is atomic (``UPDATE ... WHERE status = 'queued'``), so
+several API worker processes sharing one database can never build the same
+report twice: the loser of the claim sees the row already ``running`` and
+skips it. Restart recovery re-queues ``queued`` rows and returns rows stuck
+``running`` for longer than ``running_stale_seconds`` (a crashed process) to
+the queue; a healthy build that exceeds that threshold could be claimed twice,
+so the threshold must stay well above the slowest expected build. What remains
+per-process is the pending bound and work distribution: a strict global bound
+or balanced load across replicas would need a shared external queue, which
+this does not provide.
 """
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,10 +43,12 @@ class ReportQueue:
         *,
         max_pending: int = 20,
         concurrency: int = 1,
+        running_stale_seconds: int = 900,
     ) -> None:
         self._session_factory = session_factory
         self._max_pending = max_pending
         self._concurrency = max(1, concurrency)
+        self._running_stale_seconds = running_stale_seconds
         self._queue: asyncio.Queue[int] = asyncio.Queue()
         self._workers: list[asyncio.Task] = []
         self._active = 0
@@ -53,9 +64,17 @@ class ReportQueue:
         self._queue.put_nowait(report_id)
 
     async def start(self) -> None:
+        stale_before = datetime.now(timezone.utc) - timedelta(
+            seconds=self._running_stale_seconds
+        )
         async with self._session_factory() as session:
+            # Only a row stuck "running" beyond the stale threshold belongs to
+            # a crashed process; a fresh one is being built right now, possibly
+            # by another worker process, and must be left alone.
             await session.execute(
-                update(Report).where(Report.status == "running").values(status="queued")
+                update(Report)
+                .where(Report.status == "running", Report.created_at < stale_before)
+                .values(status="queued")
             )
             ids = (
                 await session.execute(
@@ -103,12 +122,22 @@ class ReportQueue:
         )
 
         async with self._session_factory() as session:
-            report = await session.get(Report, report_id)
-            if report is None or report.status != "queued":
+            # Atomic claim: only the worker that flips queued -> running owns
+            # the build, so duplicate queue entries or a second process's
+            # recovery scan can never build the same report twice.
+            claimed = (
+                await session.execute(
+                    update(Report)
+                    .where(Report.id == report_id, Report.status == "queued")
+                    .values(status="running")
+                    .returning(Report.id)
+                )
+            ).scalar_one_or_none()
+            if claimed is None:
                 return
-            report.status = "running"
-            request_data = (report.payload or {}).get("request") or {}
             await session.commit()
+            report = await session.get(Report, report_id)
+            request_data = (report.payload or {}).get("request") or {}
             try:
                 request = ReportCreate.model_validate(request_data)
                 device = None

@@ -1,4 +1,4 @@
-"""Queued report generation: lifecycle, failure, back-pressure and recovery."""
+"""Queued report generation: lifecycle, failure, back-pressure, recovery and claiming."""
 
 from __future__ import annotations
 
@@ -78,13 +78,14 @@ def test_full_queue_pushes_back_with_429(client, require_db, monkeypatch) -> Non
 def test_interrupted_report_is_resumed_on_start(client, require_db) -> None:
     async def scenario() -> int:
         async with SessionLocal() as session:
+            # created_at aged past the stale threshold: this row's process died.
             row = (
                 await session.execute(
                     text(
                         "INSERT INTO reports (report_type, status, sections, payload, "
                         "format_version, row_count, created_at) VALUES "
                         "('full', 'running', '{}'::jsonb, '{\"request\": {}}'::jsonb, "
-                        "'report-v3', 0, now()) RETURNING id"
+                        "'report-v3', 0, now() - interval '1 hour') RETURNING id"
                     )
                 )
             ).scalar_one()
@@ -105,4 +106,61 @@ def test_interrupted_report_is_resumed_on_start(client, require_db) -> None:
         return row, state
 
     report_id, state = asyncio.run(scenario())
+    assert state == "ready"
+
+
+def _insert_report(sql_status: str, created: str) -> str:
+    return (
+        "INSERT INTO reports (report_type, status, sections, payload, "
+        "format_version, row_count, created_at) VALUES "
+        f"('full', '{sql_status}', '{{}}'::jsonb, '{{\"request\": {{}}}}'::jsonb, "
+        f"'report-v3', 0, {created}) RETURNING id"
+    )
+
+
+def test_fresh_running_row_is_not_stolen_on_start(client, require_db) -> None:
+    """A row another process is actively building must survive our startup."""
+
+    async def scenario() -> tuple[int, str]:
+        async with SessionLocal() as session:
+            row = (
+                await session.execute(text(_insert_report("running", "now()")))
+            ).scalar_one()
+            await session.commit()
+        queue = ReportQueue(SessionLocal, max_pending=5, concurrency=1)
+        await queue.start()
+        await asyncio.sleep(0.5)
+        async with SessionLocal() as session:
+            state = (
+                await session.execute(
+                    text("SELECT status FROM reports WHERE id = :i"), {"i": row}
+                )
+            ).scalar_one()
+        await queue.stop()
+        return row, state
+
+    _, state = asyncio.run(scenario())
+    assert state == "running"
+
+
+def test_claim_is_atomic_so_a_ready_row_is_never_rebuilt(client, require_db) -> None:
+    """A duplicate queue entry or a second process's scan is a no-op."""
+
+    async def scenario() -> tuple[int, str]:
+        async with SessionLocal() as session:
+            row = (
+                await session.execute(text(_insert_report("ready", "now()")))
+            ).scalar_one()
+            await session.commit()
+        queue = ReportQueue(SessionLocal, max_pending=5, concurrency=1)
+        await queue._build(row)  # claim must fail: the row is not "queued"
+        async with SessionLocal() as session:
+            state = (
+                await session.execute(
+                    text("SELECT status FROM reports WHERE id = :i"), {"i": row}
+                )
+            ).scalar_one()
+        return row, state
+
+    _, state = asyncio.run(scenario())
     assert state == "ready"

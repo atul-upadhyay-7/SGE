@@ -140,6 +140,9 @@ class Settings(BaseSettings):
     # Background builds for ``POST /reports`` with ``queued: true``.
     report_queue_max_pending: int = 20
     report_worker_concurrency: int = 1
+    # A "running" report older than this is treated as orphaned by a crashed
+    # process and re-queued. Must stay well above the slowest expected build.
+    report_running_stale_seconds: int = 900
 
     # --- RUL / EOL (Phase 7) ---------------------------------------------
     # How many of a device's newest predicted SoH values feed the

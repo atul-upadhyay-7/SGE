@@ -45,8 +45,12 @@ reviewed and pushed. Do not interpret code milestones as production acceptance.
   offers background queueing and follows queued/running status automatically.
   Load test (5 devices x 20k samples, 3 concurrent reports): sync probe
   p50 8.4 ms / p95 338.5 ms, queued probe p50 6.7 ms / p95 482.1 ms, ~2 s per
-  report in both modes. Limit: the queue is in-process, so it is per-replica,
-  not shared across API replicas.
+  report in both modes. Claiming is atomic (UPDATE ... WHERE status='queued'),
+  so multiple uvicorn worker processes on one database cannot build the same
+  report twice; restart recovery only re-queues rows stuck "running" beyond
+  report_running_stale_seconds (default 15 min), never a fresh build. What a
+  shared external queue would still add: a global pending bound and balanced
+  distribution across replicas (both are per-process today).
 - [x] Fleet-report telemetry and per-device latest SoH aggregation (local, awaiting push review).
 - [x] Internal per-device data-gap summaries and receipt-time rejection totals in report-v3 (local, awaiting push review).
 
