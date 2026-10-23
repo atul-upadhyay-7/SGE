@@ -52,6 +52,9 @@ class ReportCreate(BaseModel):
     anomaly_type: str | None = None
     sections: ReportSections = Field(default_factory=ReportSections)
     generated_by: str | None = Field(default=None, max_length=128)
+    # Build in the background worker instead of inside the request. The call
+    # returns 202 with a ``queued`` report to poll until it is ``ready``.
+    queued: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
 

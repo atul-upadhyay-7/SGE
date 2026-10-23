@@ -14,6 +14,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import require_read_access
+from app.services.report_queue import ReportQueue
 from app.api import (
     alerts,
     anomalies,
@@ -92,9 +93,18 @@ async def lifespan(app: FastAPI):
     app.state.monitor = monitor
     await monitor.start()
 
+    report_queue = ReportQueue(
+        SessionLocal,
+        max_pending=settings.report_queue_max_pending,
+        concurrency=settings.report_worker_concurrency,
+    )
+    app.state.report_queue = report_queue
+    await report_queue.start()
+
     try:
         yield
     finally:
+        await report_queue.stop()
         await monitor.stop()
         await manager.stop()
         await ingestion.stop()

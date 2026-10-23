@@ -136,6 +136,11 @@ class Settings(BaseSettings):
     # enough to force a random value, short enough for a QR-code sticker.
     min_credential_length: int = 8
 
+    # --- Report queue ------------------------------------------------------
+    # Background builds for ``POST /reports`` with ``queued: true``.
+    report_queue_max_pending: int = 20
+    report_worker_concurrency: int = 1
+
     # --- RUL / EOL (Phase 7) ---------------------------------------------
     # How many of a device's newest predicted SoH values feed the
     # reference-trajectory match. Matches SMOOTH_WINDOW in

@@ -16,7 +16,7 @@ import io
 from datetime import datetime, timezone
 
 from starlette.concurrency import run_in_threadpool
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,6 +46,8 @@ _MAX_PAGE = 1000
 )
 async def create_report(
     request: ReportCreate,
+    http_request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_session),
 ) -> ReportDetail:
     """Generate and persist a report (synchronous, PRD §4.7).
@@ -62,9 +64,38 @@ async def create_report(
                 detail=f"device '{request.device_id}' not registered",
             )
 
+    start, end = _as_utc(request.from_), _as_utc(request.to)
+
+    if request.queued:
+        queue = getattr(http_request.app.state, "report_queue", None)
+        if queue is None or not queue.has_room():
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="report queue is full; try again shortly",
+                headers={"Retry-After": "30"},
+            )
+        report = await ReportRepository(session).create(
+            report_type=request.report_type,
+            device_id=request.device_id,
+            period_start=start,
+            period_end=end,
+            status="queued",
+            filters=None,
+            sections=request.sections.model_dump(),
+            payload={"request": request.model_dump(mode="json", by_alias=True)},
+            format_version=FORMAT_VERSION,
+            table_name="anomaly_events",
+            row_count=0,
+            generated_by=request.generated_by,
+        )
+        await session.commit()
+        await session.refresh(report)
+        queue.submit(report.id)
+        response.status_code = status.HTTP_202_ACCEPTED
+        return ReportDetail.model_validate(report)
+
     payload = await ReportService(session).build(request, device)
     rows = csv_rows(payload)
-    start, end = _as_utc(request.from_), _as_utc(request.to)
 
     report = await ReportRepository(session).create(
         report_type=request.report_type,
@@ -127,6 +158,11 @@ async def download_report(
 ) -> Response:
     """Download a stored report as JSON or CSV (PRD §4.7 export formats)."""
     report = await _require_report(session, report_id)
+    if report.status != "ready":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"report {report_id} is {report.status}, not ready to download",
+        )
     fmt = format.lower()
     if fmt == "json":
         return JSONResponse(
