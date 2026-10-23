@@ -56,3 +56,23 @@ def test_this_suite_is_actually_running_against_a_test_database():
     assert database_name(os.environ["BMS_DATABASE_URL"]) == database_name(
         get_settings().database_url
     )
+
+
+def test_explicit_override_equal_to_business_url_fails_closed_even_with_test_suffix():
+    with pytest.raises(RuntimeError, match="same database"):
+        resolve_test_database_url(
+            {
+                "BMS_DATABASE_URL": "postgresql+asyncpg://bms:bms@localhost:5433/bms_test",
+                "BMS_TEST_DATABASE_URL": "postgresql+asyncpg://bms:bms@localhost:5433/bms_test",
+            }
+        )
+
+
+def test_explicit_override_same_name_on_a_different_server_is_allowed():
+    url = resolve_test_database_url(
+        {
+            "BMS_DATABASE_URL": "postgresql+asyncpg://bms:bms@localhost:5433/bms_test",
+            "BMS_TEST_DATABASE_URL": "postgresql+asyncpg://bms:bms@localhost:5544/bms_test",
+        }
+    )
+    assert database_name(url) == "bms_test"

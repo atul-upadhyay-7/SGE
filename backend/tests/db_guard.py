@@ -7,7 +7,9 @@ against a database whose name contains ``test``.
 
 Resolution order:
 1. ``BMS_TEST_DATABASE_URL`` - explicit override; must already name a test
-   database, otherwise the suite refuses to start (fail closed).
+   database, and must not name the same database as ``BMS_DATABASE_URL``
+   (same name on the same server), otherwise the suite refuses to start
+   (fail closed). A ``_test`` suffix alone is not proof of isolation.
 2. ``BMS_DATABASE_URL`` - the database name is rewritten to ``<name>_test``,
    so ``pytest`` next to a running demo stack can never touch the demo data.
 """
@@ -31,16 +33,24 @@ def resolve_test_database_url(env: dict[str, str] | None = None) -> str:
     """The database URL the test suite is allowed to use."""
     env = os.environ if env is None else env
     explicit = env.get("BMS_TEST_DATABASE_URL")
+    base = env.get("BMS_DATABASE_URL", DEFAULT_URL)
     if explicit:
-        _, name, _ = split_url(explicit)
+        explicit_prefix, name, _ = split_url(explicit)
         if TEST_MARKER not in name.lower():
             raise RuntimeError(
                 "BMS_TEST_DATABASE_URL must name a dedicated test database "
                 f"(name containing 'test'), got {name!r}. Refusing to run: "
                 "tests drop and recreate tables."
             )
+        base_prefix, base_name, _ = split_url(base)
+        if (explicit_prefix, name) == (base_prefix, base_name):
+            raise RuntimeError(
+                "BMS_TEST_DATABASE_URL names the same database "
+                f"({name!r} on the same server) as BMS_DATABASE_URL. A name "
+                "ending in '_test' is not proof of isolation. Refusing to "
+                "run: tests drop and recreate tables."
+            )
         return explicit
-    base = env.get("BMS_DATABASE_URL", DEFAULT_URL)
     prefix, name, query = split_url(base)
     if TEST_MARKER not in name.lower():
         name = f"{name}_test"
