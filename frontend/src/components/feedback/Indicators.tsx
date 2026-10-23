@@ -43,6 +43,8 @@ const STATUS_LABEL: Record<string, string> = {
   ready: "Ready",
   failed: "Failed",
   generating: "Generating",
+  queued: "Queued",
+  running: "Running",
 };
 
 export function StatusPill({ status }: { status: string }) {

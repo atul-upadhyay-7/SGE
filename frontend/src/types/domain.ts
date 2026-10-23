@@ -391,6 +391,8 @@ export interface ReportCreate {
   anomaly_type?: string | null;
   sections?: ReportSections;
   generated_by?: string | null;
+  /** When true the backend queues generation and answers 202 (PRD §4.7). */
+  queued?: boolean;
 }
 
 /**

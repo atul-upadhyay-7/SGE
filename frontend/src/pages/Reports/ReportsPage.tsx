@@ -6,7 +6,7 @@
  * backend; every value shown comes from the stored snapshot, never recomputed
  * or invented in the client (PRD §4.7, §10).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Card, KpiCard, PageHeader } from "@/components/cards/Cards";
 import { StackedBarChart } from "@/components/charts/Charts";
@@ -57,6 +57,7 @@ interface FormState {
   anomalyType: string;
   sections: ReportSections;
   generatedBy: string;
+  queueInBackground: boolean;
 }
 
 export function ReportsPage() {
@@ -69,16 +70,26 @@ export function ReportsPage() {
     anomalyType: "",
     sections: DEFAULT_SECTIONS,
     generatedBy: "",
+    queueInBackground: false,
   });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Poll quickly while a queued report is generating, then settle back.
+  const [hasPending, setHasPending] = useState(false);
   const listState = usePolling(
     (signal) => listReports({ limit: 50 }, signal),
-    20_000,
+    hasPending ? 3_000 : 20_000,
   );
   const reports = listState.data?.items ?? [];
+  useEffect(() => {
+    setHasPending(
+      reports.some(
+        (report) => report.status === "queued" || report.status === "running",
+      ),
+    );
+  }, [reports]);
 
   const detailState = usePolling(
     (signal) =>
@@ -100,10 +111,15 @@ export function ReportsPage() {
         anomaly_type: form.anomalyType || null,
         sections: form.sections,
         generated_by: form.generatedBy || null,
+        queued: form.queueInBackground || undefined,
       };
       const created = await createReport(payload);
       setSelectedId(created.id);
-      setMessage(`Report #${created.id} generated (${created.row_count} anomaly rows).`);
+      setMessage(
+        created.status === "queued"
+          ? `Report #${created.id} queued; the list updates automatically when it is ready.`
+          : `Report #${created.id} generated (${created.row_count} anomaly rows).`,
+      );
       listState.refresh();
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Generation failed");
@@ -206,9 +222,26 @@ export function ReportsPage() {
             ))}
           </fieldset>
 
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={form.queueInBackground}
+              onChange={(e) =>
+                setForm({ ...form, queueInBackground: e.target.checked })
+              }
+            />
+            Queue in background (for large reports)
+          </label>
+
           <div className="form__actions">
             <button type="submit" className="btn btn--primary" disabled={busy}>
-              {busy ? "Generating…" : "Generate report"}
+              {busy
+                ? form.queueInBackground
+                  ? "Queueing…"
+                  : "Generating…"
+                : form.queueInBackground
+                  ? "Queue report"
+                  : "Generate report"}
             </button>
           </div>
         </form>
@@ -279,6 +312,7 @@ export function ReportsPage() {
                         <button
                           type="button"
                           className="btn btn--sm"
+                          disabled={report.status !== "ready"}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDownload(report.id, "json");
@@ -289,6 +323,7 @@ export function ReportsPage() {
                         <button
                           type="button"
                           className="btn btn--sm"
+                          disabled={report.status !== "ready"}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDownload(report.id, "csv");
@@ -314,6 +349,7 @@ export function ReportsPage() {
               <button
                 type="button"
                 className="btn"
+                disabled={detailState.data?.status !== "ready"}
                 onClick={() => handleDownload(selectedId, "json")}
               >
                 Download JSON
@@ -321,11 +357,12 @@ export function ReportsPage() {
               <button
                 type="button"
                 className="btn"
+                disabled={detailState.data?.status !== "ready"}
                 onClick={() => handleDownload(selectedId, "csv")}
               >
                 Download CSV
               </button>
-              <button type="button" className="btn" onClick={() => handleDownload(selectedId, "pdf")}>Download PDF</button>
+              <button type="button" className="btn" disabled={detailState.data?.status !== "ready"} onClick={() => handleDownload(selectedId, "pdf")}>Download PDF</button>
             </div>
           }
         >
@@ -336,7 +373,18 @@ export function ReportsPage() {
               onRetry={detailState.refresh}
             />
           )}
-          {detailState.data?.payload ? (
+          {detailState.data &&
+          (detailState.data.status === "queued" ||
+            detailState.data.status === "running") ? (
+            <EmptyState
+              title={
+                detailState.data.status === "queued"
+                  ? "Report is queued"
+                  : "Report is generating"
+              }
+              detail="The background worker is building this report; this view updates automatically when it is ready."
+            />
+          ) : detailState.data?.payload?.summary ? (
             <ReportView report={detailState.data} payload={detailState.data.payload} />
           ) : (
             detailState.data && (

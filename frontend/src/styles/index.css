@@ -367,7 +367,10 @@ input {
   background: var(--critical-bg);
   border-color: var(--critical);
 }
-.pill--status-acked {
+.pill--status-acked,
+.pill--status-queued,
+.pill--status-running,
+.pill--status-generating {
   background: var(--info-bg);
   border-color: var(--info);
 }

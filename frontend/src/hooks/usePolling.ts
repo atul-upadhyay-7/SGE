@@ -23,15 +23,21 @@ export function usePolling<T>(
   fnRef.current = fn;
   const refreshRef = useRef<() => void>(() => {});
 
+  // Reset only when the request inputs change; an interval-only change
+  // (e.g. faster polling while a report is queued) must not blank the data,
+  // or the view would flap between Loading and the list on every tick.
   useEffect(() => {
-    let active = true;
-    let inFlight = false;
-    let controller: AbortController | null = null;
-    // Never keep another device's values while the new request is pending.
     setData(null);
     setError(null);
     setLastUpdated(null);
     setLoading(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps]);
+
+  useEffect(() => {
+    let active = true;
+    let inFlight = false;
+    let controller: AbortController | null = null;
     const run = async () => {
       if (!active || inFlight) return;
       inFlight = true;

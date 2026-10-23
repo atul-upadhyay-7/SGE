@@ -72,6 +72,10 @@ export function OverviewPage() {
   const telemetry = telemetryState.data;
   const device = deviceState.data;
   const soh = sohState.data;
+  // A malformed or unrelated payload must never crash the dashboard; only a
+  // numeric prediction counts as a real SoH value.
+  const sohValid =
+    soh !== null && typeof soh.predicted_soh === "number";
 
   const freshness = deriveFreshness(telemetry, device);
   const connected = freshness.connected;
@@ -138,13 +142,13 @@ export function OverviewPage() {
         />
         <KpiCard
           label="Current SoH (predicted)"
-          value={soh ? `${soh.predicted_soh.toFixed(1)}%` : "—"}
+          value={sohValid ? `${soh.predicted_soh.toFixed(1)}%` : "—"}
           hint={
-            soh
-              ? `measured ${soh.measured_soh === null ? "n/a" : `${soh.measured_soh.toFixed(1)}%`} · ${relativeTime(soh.predicted_at)}`
+            sohValid
+              ? `measured ${typeof soh.measured_soh === "number" ? `${soh.measured_soh.toFixed(1)}%` : "n/a"} · ${relativeTime(soh.predicted_at)}`
               : "no prediction yet"
           }
-          tone={soh ? "info" : "default"}
+          tone={sohValid ? "info" : "default"}
         />
         <KpiCard
           label="Device status"
