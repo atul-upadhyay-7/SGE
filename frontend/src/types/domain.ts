@@ -402,30 +402,6 @@ export interface ReportCreate {
  */
 export type CountMap = Record<string, number> | [string, number][];
 
-export interface RulInfo {
-  device_id: string;
-  status: string;
-  rul_discharges: number | null;
-  p10_discharges: number | null;
-  p90_discharges: number | null;
-  model_version: string | null;
-  message: string | null;
-}
-
-export interface Alert {
-  id: number;
-  device_id: string;
-  rule_code: string;
-  severity: Severity | string;
-  message: string;
-  details: Record<string, unknown> | null;
-  status: string;
-  first_seen_at: string;
-  last_seen_at: string;
-  resolved_at: string | null;
-  acked_at: string | null;
-}
-
 /** Backend health is reported per subsystem and must stay distinguishable. */
 export interface HealthStatus {
   status: string;

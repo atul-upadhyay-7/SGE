@@ -13,10 +13,6 @@ export interface DeviceCreate {
   credential?: string | null;
 }
 
-export interface DeviceCredentialUpdate {
-  credential: string | null;
-}
-
 export function listDevices(signal?: AbortSignal): Promise<Device[]> {
   return apiFetch<Device[]>("/devices", { signal });
 }
@@ -32,18 +28,6 @@ export function createDevice(
 ): Promise<Device> {
   return apiFetch<Device>("/devices", {
     method: "POST",
-    body: payload,
-    headers: adminKey ? { "X-Admin-Key": adminKey } : undefined,
-  });
-}
-
-export function updateDeviceCredential(
-  deviceId: string,
-  payload: DeviceCredentialUpdate,
-  adminKey?: string,
-): Promise<Device> {
-  return apiFetch<Device>(`/devices/${encodeURIComponent(deviceId)}/credential`, {
-    method: "PUT",
     body: payload,
     headers: adminKey ? { "X-Admin-Key": adminKey } : undefined,
   });

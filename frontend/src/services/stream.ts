@@ -8,6 +8,7 @@
 import { config } from "@/config";
 import { apiFetch } from "@/services/api";
 import { AUTH_REQUIRED_EVENT, readAccessHeaders } from "@/services/operatorKey";
+import { isLiveEvent } from "@/services/validate";
 import type { LiveEvent } from "@/types/domain";
 
 export type StreamState = "connecting" | "open" | "closed" | "error";
@@ -56,7 +57,11 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
       .join("\n");
     if (!data) return;
     try {
-      handlers.onEvent(JSON.parse(data) as LiveEvent);
+      const parsed: unknown = JSON.parse(data);
+      // Shape-check before handing to the UI: a parsed-but-wrong
+      // frame (error JSON, a future event kind with no data) must
+      // be skipped, not cast into a LiveEvent the panels trust.
+      if (isLiveEvent(parsed)) handlers.onEvent(parsed);
     } catch {
       // A malformed frame must not tear down the stream; skip it.
     }

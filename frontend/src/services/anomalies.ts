@@ -14,7 +14,6 @@ import type {
   AnomalyHourly,
   AnomalyPage,
   AnomalySummary,
-  RecurrenceReport,
 } from "@/types/domain";
 
 export interface AnomalyQuery {
@@ -28,6 +27,9 @@ export interface AnomalyQuery {
   to?: string;
   offset?: number;
   limit?: number;
+  /** Server-side ordering (the API sorts before paging). */
+  sort?: "detected_at" | "severity" | "anomaly_type" | "duration_seconds";
+  sort_dir?: "asc" | "desc";
 }
 
 export interface AnomalyRangeQuery extends AnomalyQuery {
@@ -58,16 +60,6 @@ export function getAnomalyHourly(
   signal?: AbortSignal,
 ): Promise<AnomalyHourly> {
   return apiFetch<AnomalyHourly>("/anomalies/hourly", {
-    query: { ...query },
-    signal,
-  });
-}
-
-export function getAnomalyRecurrence(
-  query: AnomalyRangeQuery & { limit?: number } = {},
-  signal?: AbortSignal,
-): Promise<RecurrenceReport> {
-  return apiFetch<RecurrenceReport>("/anomalies/recurrence", {
     query: { ...query },
     signal,
   });

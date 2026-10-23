@@ -116,6 +116,7 @@ export function GrafanaEmbed({
             title={title}
             src={src}
             className="grafana-embed__iframe"
+            loading="lazy"
             onLoad={() => setState("loaded")}
             onError={() => setState("error")}
           />

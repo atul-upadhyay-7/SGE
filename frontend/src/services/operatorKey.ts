@@ -50,3 +50,7 @@ export function readAccessHeaders(): Record<string, string> {
 }
 
 export const AUTH_REQUIRED_EVENT = "bms:auth-required";
+/** Dispatched when a key prompt completes successfully, so data
+ * hooks can reload what the 401 interrupted — without remounting
+ * the app and discarding in-progress form state. */
+export const AUTH_RESOLVED_EVENT = "bms:auth-resolved";

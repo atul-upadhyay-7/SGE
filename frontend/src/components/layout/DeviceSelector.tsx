@@ -20,8 +20,15 @@ export function DeviceSelector() {
   );
 
   useEffect(() => {
-    if (deviceId === null && devices && devices.length > 0) {
+    if (!devices || devices.length === 0) return;
+    if (deviceId === null) {
       setDeviceId(devices[0].device_id);
+    } else if (!devices.some((device) => device.device_id === deviceId)) {
+      // The selected device was deleted or unregistered: clear the
+      // selection (which re-auto-selects a live device) instead of
+      // leaving every page querying a device that no longer exists
+      // while the <select> renders blank.
+      setDeviceId(null);
     }
   }, [deviceId, devices, setDeviceId]);
 
