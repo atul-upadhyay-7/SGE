@@ -391,6 +391,11 @@ class Report(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Touched by the queue worker while a queued build runs; restart recovery
+    # treats a stale heartbeat (not the row's age) as proof the builder died.
+    heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         Index("ix_report_device_created", "device_id", "created_at"),

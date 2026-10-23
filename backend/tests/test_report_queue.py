@@ -136,6 +136,10 @@ def test_fresh_running_row_is_not_stolen_on_start(client, require_db) -> None:
                     text("SELECT status FROM reports WHERE id = :i"), {"i": row}
                 )
             ).scalar_one()
+            # Never leave a permanent "running" fixture behind: it would age
+            # past the stale threshold and be reclaimed by later tests.
+            await session.execute(text("DELETE FROM reports WHERE id = :i"), {"i": row})
+            await session.commit()
         await queue.stop()
         return row, state
 
@@ -164,3 +168,90 @@ def test_claim_is_atomic_so_a_ready_row_is_never_rebuilt(client, require_db) -> 
 
     _, state = asyncio.run(scenario())
     assert state == "ready"
+
+
+def test_stale_heartbeat_is_reclaimed_despite_fresh_creation(client, require_db) -> None:
+    """Liveness, not row age, decides: a dead builder's row is re-queued."""
+
+    async def scenario() -> str:
+        async with SessionLocal() as session:
+            row = (
+                await session.execute(
+                    text(
+                        "INSERT INTO reports (report_type, status, sections, payload, "
+                        "format_version, row_count, created_at, heartbeat_at) VALUES "
+                        "('full', 'running', '{}'::jsonb, '{\"request\": {}}'::jsonb, "
+                        "'report-v3', 0, now(), now() - interval '1 hour') RETURNING id"
+                    )
+                )
+            ).scalar_one()
+            await session.commit()
+        queue = ReportQueue(
+            SessionLocal, max_pending=5, concurrency=1,
+            running_stale_seconds=60, heartbeat_seconds=1,
+        )
+        await queue.start()
+        state = "running"
+        for _ in range(100):
+            async with SessionLocal() as session:
+                state = (
+                    await session.execute(
+                        text("SELECT status FROM reports WHERE id = :i"), {"i": row}
+                    )
+                ).scalar_one()
+            if state == "ready":
+                break
+            await asyncio.sleep(0.1)
+        await queue.stop()
+        return state
+
+    assert asyncio.run(scenario()) == "ready"
+
+
+def test_live_heartbeat_protects_a_long_build(client, require_db, monkeypatch) -> None:
+    """A build outliving the stale threshold is not stolen while heartbeating."""
+    calls = {"n": 0}
+    original = ReportService.build
+
+    async def slow_build(self, request, device):
+        calls["n"] += 1
+        await asyncio.sleep(3)
+        return await original(self, request, device)
+
+    monkeypatch.setattr(ReportService, "build", slow_build)
+
+    async def scenario() -> str:
+        async with SessionLocal() as session:
+            row = (
+                await session.execute(text(_insert_report("queued", "now()")))
+            ).scalar_one()
+            await session.commit()
+        queue = ReportQueue(
+            SessionLocal, max_pending=5, concurrency=1,
+            running_stale_seconds=1, heartbeat_seconds=0.2,
+        )
+        await queue.start()
+        await asyncio.sleep(1.5)  # build in progress, past the stale threshold
+        # A second process boots; its recovery must leave the live build alone.
+        other = ReportQueue(
+            SessionLocal, max_pending=5, concurrency=1,
+            running_stale_seconds=1, heartbeat_seconds=0.2,
+        )
+        await other.start()
+        await other.stop()
+        state = "queued"
+        for _ in range(100):
+            async with SessionLocal() as session:
+                state = (
+                    await session.execute(
+                        text("SELECT status FROM reports WHERE id = :i"), {"i": row}
+                    )
+                ).scalar_one()
+            if state == "ready":
+                break
+            await asyncio.sleep(0.1)
+        await queue.stop()
+        return state
+
+    assert asyncio.run(scenario()) == "ready"
+    assert calls["n"] == 1

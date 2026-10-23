@@ -9,13 +9,15 @@ The queue is deliberately in-process, but the database row is the source of
 truth and claiming is atomic (``UPDATE ... WHERE status = 'queued'``), so
 several API worker processes sharing one database can never build the same
 report twice: the loser of the claim sees the row already ``running`` and
-skips it. Restart recovery re-queues ``queued`` rows and returns rows stuck
-``running`` for longer than ``running_stale_seconds`` (a crashed process) to
-the queue; a healthy build that exceeds that threshold could be claimed twice,
-so the threshold must stay well above the slowest expected build. What remains
-per-process is the pending bound and work distribution: a strict global bound
-or balanced load across replicas would need a shared external queue, which
-this does not provide.
+skips it. While a build runs, the worker keeps the row's ``heartbeat_at``
+fresh; restart recovery re-queues ``queued`` rows and only returns a
+``running`` row to the queue once its heartbeat (falling back to
+``created_at`` for rows written before heartbeats existed) is older than
+``running_stale_seconds``. A build may therefore run as long as it needs -
+only a genuinely dead builder is ever reclaimed. What remains per-process is
+the pending bound and work distribution: a strict global bound or balanced
+load across replicas would need a shared external queue, which this does not
+provide.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from collections.abc import Callable
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
@@ -44,11 +46,13 @@ class ReportQueue:
         max_pending: int = 20,
         concurrency: int = 1,
         running_stale_seconds: int = 900,
+        heartbeat_seconds: int = 60,
     ) -> None:
         self._session_factory = session_factory
         self._max_pending = max_pending
         self._concurrency = max(1, concurrency)
         self._running_stale_seconds = running_stale_seconds
+        self._heartbeat_seconds = max(1, heartbeat_seconds)
         self._queue: asyncio.Queue[int] = asyncio.Queue()
         self._workers: list[asyncio.Task] = []
         self._active = 0
@@ -68,12 +72,16 @@ class ReportQueue:
             seconds=self._running_stale_seconds
         )
         async with self._session_factory() as session:
-            # Only a row stuck "running" beyond the stale threshold belongs to
-            # a crashed process; a fresh one is being built right now, possibly
-            # by another worker process, and must be left alone.
+            # Only a row whose heartbeat stopped beyond the stale threshold
+            # belongs to a crashed process; a live builder heartbeats, so a
+            # long healthy build is never stolen. Rows written before the
+            # heartbeat column existed fall back to their creation time.
             await session.execute(
                 update(Report)
-                .where(Report.status == "running", Report.created_at < stale_before)
+                .where(
+                    Report.status == "running",
+                    func.coalesce(Report.heartbeat_at, Report.created_at) < stale_before,
+                )
                 .values(status="queued")
             )
             ids = (
@@ -129,7 +137,10 @@ class ReportQueue:
                 await session.execute(
                     update(Report)
                     .where(Report.id == report_id, Report.status == "queued")
-                    .values(status="running")
+                    .values(
+                        status="running",
+                        heartbeat_at=datetime.now(timezone.utc),
+                    )
                     .returning(Report.id)
                 )
             ).scalar_one_or_none()
@@ -138,6 +149,7 @@ class ReportQueue:
             await session.commit()
             report = await session.get(Report, report_id)
             request_data = (report.payload or {}).get("request") or {}
+            heartbeat = asyncio.create_task(self._heartbeat(report_id))
             try:
                 request = ReportCreate.model_validate(request_data)
                 device = None
@@ -161,4 +173,23 @@ class ReportQueue:
                 report.status = "failed"
                 report.payload = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
                 logger.warning("Report %s failed: %s", report_id, type(exc).__name__)
+            finally:
+                heartbeat.cancel()
             await session.commit()
+
+    async def _heartbeat(self, report_id: int) -> None:
+        """Keep the claimed row's liveness timestamp fresh during the build."""
+        try:
+            while True:
+                await asyncio.sleep(self._heartbeat_seconds)
+                async with self._session_factory() as session:
+                    await session.execute(
+                        update(Report)
+                        .where(Report.id == report_id, Report.status == "running")
+                        .values(heartbeat_at=datetime.now(timezone.utc))
+                    )
+                    await session.commit()
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - heartbeat loss must not kill a build
+            logger.exception("Report %s heartbeat stopped", report_id)

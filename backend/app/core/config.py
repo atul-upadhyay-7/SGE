@@ -140,9 +140,11 @@ class Settings(BaseSettings):
     # Background builds for ``POST /reports`` with ``queued: true``.
     report_queue_max_pending: int = 20
     report_worker_concurrency: int = 1
-    # A "running" report older than this is treated as orphaned by a crashed
-    # process and re-queued. Must stay well above the slowest expected build.
+    # A "running" report whose heartbeat is older than this is treated as
+    # orphaned by a crashed process and re-queued. Heartbeats keep long builds
+    # safe, so this bounds detection latency, not build length.
     report_running_stale_seconds: int = 900
+    report_heartbeat_seconds: int = 60
 
     # --- RUL / EOL (Phase 7) ---------------------------------------------
     # How many of a device's newest predicted SoH values feed the
