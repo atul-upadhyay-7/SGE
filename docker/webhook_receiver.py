@@ -96,6 +96,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802 (http.server's name)
 
         length = int(self.headers.get("Content-Length", 0) or 0)
+        # Cap the body: this receiver is unauthenticated inside the
+        # compose network, and an unbounded read lets any neighbour fill
+        # the alert log (and the disk behind it). Grafana alert payloads
+        # are a few KB; 1 MiB is generous.
+        if length > 1_048_576:
+            self._reply(413, b"payload too large\n", "text/plain; charset=utf-8")
+            return
         body = self.rfile.read(length) if length else b""
 
         record(self.log_path, self.path, body)

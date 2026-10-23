@@ -6,7 +6,8 @@
  * status so a score is reproducible (PRD §4.6).
  */
 import { apiFetch } from "@/services/api";
-import type { ModelInfo, RulInfo, SohPrediction } from "@/types/domain";
+import { isSohPrediction } from "@/services/validate";
+import type { ModelInfo, SohPrediction } from "@/types/domain";
 
 export interface PredictionHistoryQuery {
   from?: string;
@@ -32,7 +33,7 @@ export function getLatestPrediction(
 ): Promise<SohPrediction> {
   return apiFetch<SohPrediction>(
     `/predictions/latest/${encodeURIComponent(deviceId)}`,
-    { signal },
+    { signal, validate: isSohPrediction },
   );
 }
 
@@ -43,7 +44,15 @@ export function getPredictionHistory(
 ): Promise<PredictionHistoryPage> {
   return apiFetch<PredictionHistoryPage>(
     `/predictions/history/${encodeURIComponent(deviceId)}`,
-    { query: { ...query }, signal },
+    {
+      query: { ...query },
+      signal,
+      validate: (parsed) =>
+        typeof parsed === "object" &&
+        parsed !== null &&
+        Array.isArray((parsed as PredictionHistoryPage).items) &&
+        (parsed as PredictionHistoryPage).items.every(isSohPrediction),
+    },
   );
 }
 
@@ -54,8 +63,4 @@ export function getActiveModels(signal?: AbortSignal): Promise<{
   return apiFetch<{ count: number; items: ModelInfo[] }>("/models/active", {
     signal,
   });
-}
-
-export function getRul(deviceId: string, signal?: AbortSignal): Promise<RulInfo> {
-  return apiFetch<RulInfo>("/rul", { query: { device_id: deviceId }, signal });
 }

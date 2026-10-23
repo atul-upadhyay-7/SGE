@@ -3,8 +3,9 @@
 Revision ID: f217a3b4c901
 Revises: e10622a1
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+
 revision = "f217a3b4c901"
 down_revision = "e10622a1"
 branch_labels = None

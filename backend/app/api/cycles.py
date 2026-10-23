@@ -11,6 +11,8 @@ owns cycles only.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,8 +43,12 @@ async def aggregate_cycles(
     session: AsyncSession = Depends(get_session),
 ) -> AggregationResult:
     """Replay stored telemetry into cycles and refresh this device's SoH."""
-    await _require_device(session, device_id)
+    device = await _require_device(session, device_id)
     result = await CycleAggregationService(session).aggregate_device(device_id)
+    # Keep the monitor's staleness bookkeeping honest: a manual
+    # aggregation is an aggregation, so the monitor must not
+    # immediately redo it (it keys off last_aggregated_at).
+    device.last_aggregated_at = datetime.now(UTC)
     await session.commit()
     return result
 

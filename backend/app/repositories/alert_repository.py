@@ -105,14 +105,21 @@ class AlertRepository:
     async def ack_alert(
         self, alert_id: int, *, acked_by: str, acked_at: datetime
     ) -> DeviceAlert | None:
-        alert = await self.get_by_id(alert_id)
-        if alert is None or alert.status == "resolved":
-            return None
-        alert.status = "acked"
-        alert.acked_by = acked_by
-        alert.acked_at = acked_at
+        # Conditional UPDATE rather than read-modify-write: the
+        # evaluator's resolve sweep must not be undone by an ack
+        # that read the alert just before it resolved.
+        result = await self._session.execute(
+            update(DeviceAlert)
+            .where(
+                DeviceAlert.id == alert_id,
+                DeviceAlert.status != "resolved",
+            )
+            .values(status="acked", acked_by=acked_by, acked_at=acked_at)
+        )
         await self._session.flush()
-        return alert
+        if (result.rowcount or 0) == 0:
+            return None
+        return await self.get_by_id(alert_id)
 
     async def list_alerts(
         self,

@@ -27,8 +27,6 @@ logger = get_logger(__name__)
 
 router = APIRouter(tags=["stream"])
 
-_settings = get_settings()
-
 # How often to emit a keep-alive comment when nothing is happening. Below the
 # usual 30-60s idle timeouts of reverse proxies.
 HEARTBEAT_S = 15.0
@@ -49,7 +47,7 @@ async def stream_events(
         ),
     ),
 ) -> StreamingResponse:
-    if not _settings.stream_enabled:
+    if not get_settings().stream_enabled:
         return StreamingResponse(
             _one_shot("stream disabled"),
             media_type="text/event-stream",

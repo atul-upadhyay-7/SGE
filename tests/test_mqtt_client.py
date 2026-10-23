@@ -16,13 +16,9 @@ import json
 import threading
 import time
 
-import pytest
-
 from conftest import discharge_samples, make_bundle
-
-import mqtt_client
 from mqtt_client import MqttConfig, MqttSohClient
-from soh_service import OK, SohService, WARMING_UP
+from soh_service import OK, WARMING_UP, SohService
 
 
 class FakeMessage:

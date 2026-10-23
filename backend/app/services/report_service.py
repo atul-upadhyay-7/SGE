@@ -18,12 +18,11 @@ The sections map onto the PRD's report contents:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
 from app.db.models import Device
 from app.repositories.anomaly_repository import AnomalyRepository
 from app.repositories.cycle_repository import CycleRepository
@@ -35,13 +34,20 @@ from app.services import anomaly_rules
 FORMAT_VERSION = "report-v3"
 MAX_REPORT_ROWS = 10_000
 
+# Widest window the gap summary will window-scan when the report
+# itself is unbounded. gap_summary runs a lag() over every sample
+# in scope, so a default fleet report used to sort the entire
+# telemetry table; gaps are a recent-operations question, and the
+# window actually used is recorded in the section.
+GAP_MAX_WINDOW_DAYS = 90
+
 
 def _check_report_size(count: int) -> None:
     if count > MAX_REPORT_ROWS:
         raise HTTPException(
             status_code=422,
-            detail=("Report exceeds 10,000 rows; narrow the time range or filters. "
-                    "Queued large-report generation is not available yet."),
+            detail=("Report exceeds 10,000 rows; narrow the time range or filters, "
+                    "or request a queued report instead."),
         )
 
 # The primary tabular section each report renders as CSV: the detailed anomaly
@@ -116,10 +122,26 @@ class ReportService:
             device.device_id if device else None, start=start, end=end
         )
         rejections = await repository.count_rejections_by_reason(device.device_id if device else None, start=start, end=end)
+        gap_start, gap_end = start, end
+        if gap_start is None or gap_end is None:
+            last = stats["last_measured_at"]
+            if last is not None:
+                if gap_end is None:
+                    gap_end = last
+                if gap_start is None:
+                    gap_start = gap_end - timedelta(days=GAP_MAX_WINDOW_DAYS)
+        gaps = await repository.gap_summary(
+            device.device_id if device else None, start=gap_start, end=gap_end
+        )
+        gaps = {
+            **gaps,
+            "window_start": _iso(gap_start),
+            "window_end": _iso(gap_end),
+        }
         return {
             "scope": "device" if device else "fleet",
             "rejection_time_basis": "received_at",
-            "gaps": await repository.gap_summary(device.device_id if device else None, start=start, end=end),
+            "gaps": gaps,
             "sample_count": stats["sample_count"],
             "first_measured_at": _iso(stats["first_measured_at"]),
             "last_measured_at": _iso(stats["last_measured_at"]),
@@ -239,10 +261,14 @@ class ReportService:
             severity=request.severity, anomaly_type=request.anomaly_type
         )
         _check_report_size(total)
+        # One batched query for every event's trail; the per-event
+        # loop this replaces issued up to MAX_REPORT_ROWS queries.
+        trails = await repository.list_actions_for_events(
+            [event.id for event in events]
+        )
         actions: list[dict] = []
         for event in events:
-            trail = await repository.list_actions(event.id)
-            for action in trail:
+            for action in trails.get(event.id, []):
                 actions.append(
                     {
                         "anomaly_id": event.id,

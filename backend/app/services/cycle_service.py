@@ -25,7 +25,9 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.db.models import TelemetrySample
 from app.ml import registry
@@ -40,7 +42,6 @@ from app.ml.estimator import (
 )
 from app.repositories.cycle_repository import CycleRepository
 from app.repositories.telemetry_repository import TelemetryRepository
-
 from streaming.cycle_tracker import CycleTracker  # noqa: E402  (sys.path set above)
 
 # Samples read per page while replaying history. Bounds memory on long streams
@@ -72,7 +73,17 @@ class CycleAggregationService:
 
         Writes only — the caller owns the transaction (mirrors the device
         endpoints, which commit explicitly).
+
+        A per-device advisory lock serialises concurrent aggregations
+        (manual endpoint vs monitor tick): predictions are replaced by
+        delete+insert with no natural key, so two interleaved runs would
+        double the prediction history. The lock is transaction-scoped —
+        it is held until the caller commits or rolls back.
         """
+        await self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key)::bigint)"),
+            {"lock_key": f"bms-aggregate:{device_id}"},
+        )
         cycle_rows, samples = await self._replay(device_id)
 
         reference = _reference_capacity(cycle_rows)
@@ -81,7 +92,7 @@ class CycleAggregationService:
         await self._session.flush()
 
         id_map = await self._cycle_repo.cycle_id_map(device_id)
-        predictions, refused = _predictions(
+        predictions, refused = await _predictions(
             device_id, cycle_rows, id_map, _measured_soh(values)
         )
 
@@ -218,7 +229,7 @@ def _measured_soh(values: list[dict]) -> dict[int, float | None]:
     return {v["cycle_number"]: v["measured_soh"] for v in values}
 
 
-def _predictions(
+async def _predictions(
     device_id: str,
     cycle_rows: list[tuple[dict, datetime]],
     id_map: dict[int, int],
@@ -243,7 +254,10 @@ def _predictions(
 
     for row, _ in cycle_rows:
         try:
-            predicted = predict_soh(row, opening)
+            # XGBoost inference is synchronous CPU work; running it
+            # inline would stall the single event loop that also
+            # serves ingestion, the API and MQTT (see app/main.py).
+            predicted = await run_in_threadpool(predict_soh, row, opening)
         except (InsufficientReferenceError, WindowRangeError, ValueError):
             refused += 1
             continue

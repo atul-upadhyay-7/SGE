@@ -5,13 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
-
 from app.schemas.telemetry import (
     TelemetryPayload,
     adapt_legacy_payload,
     looks_like_legacy,
 )
+from pydantic import ValidationError
 
 
 def valid_payload(**overrides) -> dict:

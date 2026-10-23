@@ -15,10 +15,10 @@ import csv
 import io
 from datetime import datetime, timezone
 
-from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import require_operator_key
 from app.db.database import get_session
@@ -68,29 +68,36 @@ async def create_report(
 
     if request.queued:
         queue = getattr(http_request.app.state, "report_queue", None)
-        if queue is None or not queue.has_room():
+        # Reserve the slot synchronously, before the first await:
+        # checking has_room() here and submitting after the insert
+        # let every concurrent request pass the bound at once.
+        if queue is None or not queue.try_reserve():
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="report queue is full; try again shortly",
                 headers={"Retry-After": "30"},
             )
-        report = await ReportRepository(session).create(
-            report_type=request.report_type,
-            device_id=request.device_id,
-            period_start=start,
-            period_end=end,
-            status="queued",
-            filters=None,
-            sections=request.sections.model_dump(),
-            payload={"request": request.model_dump(mode="json", by_alias=True)},
-            format_version=FORMAT_VERSION,
-            table_name="anomaly_events",
-            row_count=0,
-            generated_by=request.generated_by,
-        )
-        await session.commit()
-        await session.refresh(report)
-        queue.submit(report.id)
+        try:
+            report = await ReportRepository(session).create(
+                report_type=request.report_type,
+                device_id=request.device_id,
+                period_start=start,
+                period_end=end,
+                status="queued",
+                filters=None,
+                sections=request.sections.model_dump(),
+                payload={"request": request.model_dump(mode="json", by_alias=True)},
+                format_version=FORMAT_VERSION,
+                table_name="anomaly_events",
+                row_count=0,
+                generated_by=request.generated_by,
+            )
+            await session.commit()
+            await session.refresh(report)
+        except Exception:
+            queue.release_reservation()
+            raise
+        queue.submit_reserved(report.id)
         response.status_code = status.HTTP_202_ACCEPTED
         return ReportDetail.model_validate(report)
 

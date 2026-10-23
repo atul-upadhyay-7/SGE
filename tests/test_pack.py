@@ -200,8 +200,9 @@ def test_isolation_forest_flags_outlier_row():
 
 def test_bridge_updates_on_new_discharge_only(tmp_path):
 
-    from pack.bridge import PackBridge
     import sqlite3
+
+    from pack.bridge import PackBridge
 
     b = PackBridge("P", ["a", "b"], db_path=tmp_path / "live.db")
 

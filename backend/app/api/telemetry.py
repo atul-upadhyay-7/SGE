@@ -76,6 +76,15 @@ async def ingest_telemetry(
         presented_credential=x_device_credential,
     )
 
+    if outcome.status == "error":
+        # Persistence failed and was rolled back; nothing was stored.
+        # 503 (not 201) so the device retries instead of believing the
+        # sample landed.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"reason": outcome.reason, "detail": outcome.detail},
+        )
+
     if outcome.status == "rejected":
         # A credential failure is an authentication problem, not a data
         # problem: answer 401 so clients and monitors treat it as such.

@@ -37,6 +37,52 @@ function niceMax(value: number): number {
 }
 
 /**
+ * The accessible data-table alternative the header comment
+ * promises: the same numbers as the SVG, in a real table that
+ * assistive technology (and anyone who cannot use hover) can
+ * read. Visually hidden; the chart stays the visual surface.
+ */
+function ChartDataTable({
+  title,
+  columns,
+  rows,
+}: {
+  title: string;
+  columns: string[];
+  rows: (string | number)[][];
+}) {
+  return (
+    <table className="sr-only">
+      <caption>{title}</caption>
+      <thead>
+        <tr>
+          {columns.map((column) => (
+            <th key={column} scope="col">
+              {column}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, index) => (
+          <tr key={index}>
+            {row.map((cell, cellIndex) =>
+              cellIndex === 0 ? (
+                <th key={cellIndex} scope="row">
+                  {cell}
+                </th>
+              ) : (
+                <td key={cellIndex}>{cell}</td>
+              ),
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/**
  * A stacked bar chart for per-bucket counts.
  *
  * It draws one bar per x label, stacking each series bottom-up. Hovering a bar
@@ -72,6 +118,7 @@ export function StackedBarChart({
   const barW = Math.max(2, Math.min(slot * 0.7, 40));
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    f,
     y: padding.top + plotH - f * plotH,
     value: Math.round(f * max),
   }));
@@ -98,7 +145,7 @@ export function StackedBarChart({
           </text>
         )}
         {gridLines.map((line) => (
-          <g key={line.value}>
+          <g key={line.f}>
             <line
               x1={padding.left}
               x2={width - padding.right}
@@ -129,7 +176,7 @@ export function StackedBarChart({
             value: s.values[index] ?? 0,
           }));
           return (
-            <g key={label}>
+            <g key={`${index}-${label}`}>
               {parts.map((part) => {
                 const h = (part.value / max) * plotH;
                 cursorY -= h;
@@ -178,6 +225,14 @@ export function StackedBarChart({
         </text>
       </svg>
       <Legend items={series.map((s) => ({ label: s.label, color: s.color }))} />
+      <ChartDataTable
+        title={title}
+        columns={["Bucket", ...series.map((s) => s.label)]}
+        rows={labels.map((label, index) => [
+          label,
+          ...series.map((s) => s.values[index] ?? 0),
+        ])}
+      />
     </figure>
   );
 }
@@ -274,6 +329,7 @@ export function LineChart({
   const sy = (y: number) => padding.top + plotH - ((y - lo) / ySpan) * plotH;
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    f,
     y: padding.top + plotH - f * plotH,
     value: lo + f * ySpan,
   }));
@@ -281,6 +337,7 @@ export function LineChart({
   const xTicks = formatX
     ? Array.from({ length: 5 }, (_, i) => xLo + (i / 4) * xSpan)
     : [];
+  const formatTick = formatX;
 
   return (
     <figure className="chart">
@@ -304,7 +361,7 @@ export function LineChart({
           </text>
         )}
         {gridLines.map((line) => (
-          <g key={line.value}>
+          <g key={line.f}>
             <line
               x1={padding.left}
               x2={width - padding.right}
@@ -354,17 +411,18 @@ export function LineChart({
             </circle>
           )),
         )}
-        {xTicks.map((tick, i) => (
-          <text
-            key={i}
-            x={sx(tick)}
-            y={height - 20}
-            textAnchor="middle"
-            className="chart__axis"
-          >
-            {formatX!(tick)}
-          </text>
-        ))}
+        {formatTick &&
+          xTicks.map((tick, i) => (
+            <text
+              key={i}
+              x={sx(tick)}
+              y={height - 20}
+              textAnchor="middle"
+              className="chart__axis"
+            >
+              {formatTick(tick)}
+            </text>
+          ))}
         <text
           x={padding.left + plotW / 2}
           y={height - 4}
@@ -375,6 +433,17 @@ export function LineChart({
         </text>
       </svg>
       <Legend items={series.map((s) => ({ label: s.label, color: s.color }))} />
+      <ChartDataTable
+        title={title}
+        columns={["Series", xLabel, `Value${unit ? ` (${unit})` : ""}`]}
+        rows={series.flatMap((s) =>
+          s.points.map((p) => [
+            s.label,
+            formatX ? formatX(p.x) : p.x,
+            formatY(p.y),
+          ]),
+        )}
+      />
     </figure>
   );
 }

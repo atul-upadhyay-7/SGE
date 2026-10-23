@@ -40,8 +40,8 @@ from pack.monitor import (  # noqa: E402
     save_iforest,
 )
 from pack.simulate import FAULTS, inject, pack_frames, replay  # noqa: E402
-from rul_trajectory import TrajectoryRul  # noqa: E402
 from repro import rounded  # noqa: E402
+from rul_trajectory import TrajectoryRul  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 PROC = ROOT / "data" / "processed"
@@ -94,8 +94,32 @@ def load_df(cells=None):
         df = df.merge(
             pd.concat(pred), on=["cell_id", "cycle"], how="left"
         )
+
+        # A left-join miss leaves NaN predictions for cycles the
+        # SOH stage never scored. Scoring those rows anyway would
+        # silently drop or corrupt them downstream, so refuse:
+        # partial prediction coverage is a pipeline error, not
+        # data to average away.
+        missing = int(df["predicted_soh"].isna().sum())
+
+        if missing:
+
+            raise RuntimeError(
+                "pack_evaluate: "
+                f"{missing} cycle(s) have no SOH prediction; "
+                "the per-cell prediction files do not cover the "
+                "cleaned dataset. Re-run the SOH stage."
+            )
     else:
-        df["predicted_soh"] = df["soh"]
+        # Never substitute the target for predictions: scoring the pack
+        # detector against true SOH labelled as "predicted" would
+        # fabricate detection performance. main() refuses to run with
+        # too few usable cells for the same reason.
+        raise RuntimeError(
+            "pack_evaluate found no per-cell SOH prediction files "
+            "(data/processed/soh_predictions_<cell>.csv); run the SOH "
+            "stage first. Refusing to score packs against true SOH."
+        )
 
     if cells is not None:
         df = df[df["cell_id"].isin(cells)].reset_index(drop=True)

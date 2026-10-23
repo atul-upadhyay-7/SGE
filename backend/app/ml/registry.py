@@ -51,15 +51,30 @@ def artifact_path() -> str:
     return str(_ARTIFACT_PATH)
 
 
+_VERSION_CACHE: tuple[int, int, str] | None = None
+
+
 def model_version() -> str:
-    """A reproducible version tag: the first 12 hex of the artifact hash."""
+    """A reproducible version tag: the first 12 hex of the artifact hash.
+
+    Cached on (mtime, size): this is called on every cycle aggregation,
+    and re-reading + re-hashing the whole artifact each time put
+    megabytes of synchronous I/O on the event loop for a value that only
+    changes when the artifact is replaced.
+    """
+    global _VERSION_CACHE
     if not _ARTIFACT_PATH.is_file():
         raise FileNotFoundError(
             f"partial-window SOH model not found at {_ARTIFACT_PATH}. "
             "Train one with:  python src/train_window_soh.py"
         )
+    stat = _ARTIFACT_PATH.stat()
+    key = (stat.st_mtime_ns, stat.st_size)
+    if _VERSION_CACHE is not None and _VERSION_CACHE[:2] == key:
+        return _VERSION_CACHE[2]
     digest = hashlib.sha256(_ARTIFACT_PATH.read_bytes()).hexdigest()
-    return digest[:12]
+    _VERSION_CACHE = (*key, digest[:12])
+    return _VERSION_CACHE[2]
 
 
 def artifact_metadata() -> dict:

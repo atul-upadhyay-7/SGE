@@ -6,6 +6,7 @@ Load all processed CSV files into a SQLite database for Grafana.
 
 import os
 import sqlite3
+
 import pandas as pd
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

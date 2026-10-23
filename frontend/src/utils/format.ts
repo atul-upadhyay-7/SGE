@@ -85,6 +85,11 @@ export function formatAxisTime(value: number): string {
 }
 
 export function formatPercent(value: number | null | undefined): string {
+  // The HTTP boundary is typed but not runtime-checked everywhere,
+  // so a malformed payload (string, NaN) must render as "no value"
+  // instead of throwing inside a page render.
   if (value === null || value === undefined) return "—";
-  return `${value.toFixed(1)}%`;
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return `${number.toFixed(1)}%`;
 }

@@ -19,7 +19,6 @@ duration (vw_time_s / discharge_duration_s) that lies inside the
   * the README limits row and the model card both carry the numbers.
 """
 
-import sys
 from pathlib import Path
 
 import numpy as np

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from app.db.models import Report
 
@@ -55,6 +56,10 @@ class ReportRepository:
         rows = await self._session.execute(
             select(Report)
             .where(*filters)
+            # The list view renders summaries only; the snapshot
+            # payload (a full report JSONB) is deferred so listing
+            # a page does not transfer every snapshot in it.
+            .options(defer(Report.payload))
             .order_by(Report.created_at.desc(), Report.id.desc())
             .offset(offset)
             .limit(limit)

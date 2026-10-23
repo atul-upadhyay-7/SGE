@@ -16,7 +16,6 @@ import {
   StaleBadge,
 } from "@/components/feedback/Feedback";
 import { StatusPill } from "@/components/feedback/Indicators";
-import { useAsync } from "@/hooks/useAsync";
 import { usePolling } from "@/hooks/usePolling";
 import { useStream } from "@/hooks/useEventStream";
 import { getActiveModels } from "@/services/predictions";
@@ -363,8 +362,9 @@ function DeviceHealthRow({
   status: string;
   lastSeen: string | null;
 }) {
-  const summary = useAsync(
+  const summary = usePolling(
     (signal) => getTelemetrySummary(deviceId, {}, signal),
+    15_000,
     [deviceId],
   );
 

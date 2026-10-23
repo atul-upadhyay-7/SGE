@@ -6,7 +6,9 @@ export function Topbar() {
   return (
     <header className="topbar">
       <div className="topbar__title">
-        <h1>Battery Monitoring</h1>
+        {/* Brand, not a heading: each page renders its own single <h1>
+            via PageHeader, so the document outline has exactly one. */}
+        <p>Battery Monitoring</p>
       </div>
       <div className="topbar__controls">
         <DeviceSelector />

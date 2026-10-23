@@ -1,5 +1,5 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pandas as pd
 
@@ -7,7 +7,6 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from data_cleaning import REFERENCE_RULE, reference_capacity  # noqa: E402
-
 
 AUDIT = Path("data/processed/cell_audit.csv")
 CLEAN = Path("data/processed/nasa_ml_dataset_clean.csv")

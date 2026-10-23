@@ -29,7 +29,6 @@ from sklearn.dummy import DummyRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 
-
 ROOT = Path(__file__).resolve().parent.parent
 
 # The streaming modules import each other by bare name when run
@@ -66,7 +65,6 @@ for extra in (ROOT / "src", ROOT / "src" / "streaming"):
 # of them, so a reintroduction fails here rather than passing
 # silently.
 ACTIVE_FEATURES = [
-    "cycle",
     "voltage_mean",
     "voltage_min",
     "voltage_max",
@@ -90,6 +88,29 @@ ACTIVE_FEATURES = [
     "vw_voltage_mean",
     "vw_dqdv_peak_v",
     "vw_dqdv_peak_height",
+    # Causal features (src/causal.py), merged into features.FEATURES and
+    # computed at serve time by CausalFeatureTracker. This list used to
+    # omit all sixteen of them and include "cycle" instead — which
+    # features.py deliberately excludes ("absolute cycle count is not a
+    # feature") — so the fixture bundle did not mirror the shipped
+    # artifact's contract at all. test_predict.py now asserts this list
+    # equals features.FEATURES minus ambient_temperature.
+    "load_a",
+    "last_load_a",
+    "delta_load_a",
+    "prev_capacity_change_ah",
+    "d_voltage_mean",
+    "d_voltage_end",
+    "d_voltage_drop",
+    "d_discharge_duration_s",
+    "d_resistance_proxy_ohm",
+    "d_temperature_mean",
+    "sl_voltage_mean",
+    "sl_voltage_end",
+    "sl_voltage_drop",
+    "sl_discharge_duration_s",
+    "sl_resistance_proxy_ohm",
+    "sl_temperature_mean",
 ]
 
 
@@ -174,6 +195,24 @@ def cycle_row():
         "vw_voltage_mean": 3.72,
         "vw_dqdv_peak_v": 3.65,
         "vw_dqdv_peak_height": 0.012,
+        # Causal fields, as CausalFeatureTracker would emit them for a
+        # steady 2 A discharge early in the cell's life.
+        "load_a": 2.0,
+        "last_load_a": 2.0,
+        "delta_load_a": 0.0,
+        "prev_capacity_change_ah": 0.0,
+        "d_voltage_mean": 0.0,
+        "d_voltage_end": 0.0,
+        "d_voltage_drop": 0.0,
+        "d_discharge_duration_s": 0.0,
+        "d_resistance_proxy_ohm": 0.0,
+        "d_temperature_mean": 0.0,
+        "sl_voltage_mean": 0.0,
+        "sl_voltage_end": 0.0,
+        "sl_voltage_drop": 0.0,
+        "sl_discharge_duration_s": 0.0,
+        "sl_resistance_proxy_ohm": 0.0,
+        "sl_temperature_mean": 0.0,
     }
 
     return row

@@ -13,7 +13,8 @@ Endpoints:
 
 import os
 import sqlite3
-from flask import Flask, request, jsonify
+
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

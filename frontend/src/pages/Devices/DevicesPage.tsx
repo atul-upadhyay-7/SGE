@@ -57,6 +57,7 @@ export function DevicesPage() {
       setMessage(`Registered ${form.device_id}`);
       setForm(EMPTY_FORM);
       setCredential("");
+      setAdminKey("");
       refresh();
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Registration failed");
@@ -234,8 +235,12 @@ function DeviceRow({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const summary = useAsync(
+  // Poll at the parent list's interval: a one-shot useAsync left
+  // these columns frozen at mount while the rest of the row's
+  // table refreshed every 15 s.
+  const summary = usePolling(
     (signal) => getTelemetrySummary(device.device_id, {}, signal),
+    15_000,
     [device.device_id],
   );
   const errors = summary.data?.rejection_count ?? null;
@@ -249,6 +254,7 @@ function DeviceRow({
       aria-expanded={selected}
       onClick={onSelect}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onSelect();

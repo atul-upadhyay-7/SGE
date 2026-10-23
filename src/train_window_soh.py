@@ -46,12 +46,12 @@ call the backend estimator makes and scored by the same portable booster,
 so test_window_estimator.py can compare the two directly.
 """
 
+import sys
 from pathlib import Path
 
 import joblib
 import pandas as pd
 
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from evaluation import build_model  # noqa: E402
@@ -69,8 +69,10 @@ from run_experiments import (  # noqa: E402
 )
 from train_soh import _save_portable  # noqa: E402
 
-PROC = Path("data/processed")
-MODEL_DIR = Path("models")
+ROOT = Path(__file__).resolve().parent.parent
+
+PROC = ROOT / "data/processed"
+MODEL_DIR = ROOT / "models"
 
 CLEAN = PROC / "nasa_ml_dataset_clean.csv"
 TARGET = "soh"

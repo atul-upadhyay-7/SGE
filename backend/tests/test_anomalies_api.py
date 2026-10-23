@@ -12,11 +12,10 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.db.database import SessionLocal
 from app.repositories.anomaly_repository import AnomalyRepository
 from app.repositories.device_repository import DeviceRepository
+from fastapi.testclient import TestClient
 
 UTC = timezone.utc
 

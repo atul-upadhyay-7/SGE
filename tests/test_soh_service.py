@@ -11,18 +11,9 @@ asserted here rather than assumed.
 import time
 
 import pytest
-
-from conftest import discharge_samples, feed
-
 import soh_service
-from soh_service import (
-    FAILED,
-    OK,
-    STALE,
-    WARMING_UP,
-    SohService,
-    check_model_available
-)
+from conftest import discharge_samples, feed
+from soh_service import FAILED, OK, STALE, WARMING_UP, SohService, check_model_available
 
 
 def close_with_charge(tracker, start=10_000.0, n=5):

@@ -2,4 +2,18 @@ venv/
 .git/
 __pycache__/
 .pytest_cache/
+.ruff_cache/
 .grafana-data/
+
+# Secrets and local state must never be baked into an image layer.
+# .gitignore already keeps these out of git; without this block a
+# populated .env (or a stray key file) in the build context was copied
+# in by `COPY . .` / `COPY backend/ ./backend` anyway.
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+logs/
+frontend/node_modules/
+frontend/dist/

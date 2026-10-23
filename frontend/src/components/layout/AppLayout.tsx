@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 
+import { LoadingState } from "@/components/feedback/Feedback";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 
@@ -13,7 +15,9 @@ export function AppLayout() {
       <div className="app-main">
         <Topbar />
         <main id="main-content" tabIndex={-1} className="app-content">
-          <Outlet />
+          <Suspense fallback={<LoadingState label="Loading page…" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

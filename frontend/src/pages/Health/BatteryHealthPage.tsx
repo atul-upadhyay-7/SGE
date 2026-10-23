@@ -83,8 +83,13 @@ export function BatteryHealthPage() {
     );
   }
 
+  // Only a 404 means "no prediction yet". Any other failure (500,
+  // network) is an error with a retry — the old code conflated the
+  // two by treating every error as pending, and branched on the
+  // rendered "Not found" message string to tell them apart.
+  const failed = latestState.error !== null && latestState.errorStatus !== 404;
   const pending =
-    latestState.error !== null ||
+    latestState.errorStatus === 404 ||
     (latest ? PENDING_QUALITY.has(latest.input_quality_status) : false);
 
   return (
@@ -97,16 +102,23 @@ export function BatteryHealthPage() {
 
       {latestState.loading && !latest && <LoadingState />}
 
-      {!latestState.loading && pending && (
+      {!latestState.loading && failed && (
+        <Card>
+          <ErrorState
+            message={latestState.error ?? "Could not load the latest prediction"}
+            onRetry={latestState.refresh}
+          />
+        </Card>
+      )}
+
+      {!latestState.loading && !failed && pending && (
         <Card>
           <EmptyState
             title="No SoH prediction available yet"
             detail={
               latest
                 ? `The latest prediction's input data was "${latest.input_quality_status}". SoH is only produced once sufficient cycle-level features exist; it is never inferred from live telemetry (PRD §4.6).`
-                : latestState.error === "Not found"
-                  ? "No stored prediction yet. Complete and aggregate enough discharge windows to form the model reference baseline."
-                  : latestState.error ?? "Waiting for sufficient discharge-window features."
+                : "No stored prediction yet. Complete and aggregate enough discharge windows to form the model reference baseline."
             }
           />
           {latest && <PredictionMeta prediction={latest} />}
@@ -237,6 +249,16 @@ export function BatteryHealthPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {modelsState.data && modelsState.data.items.length > 0 && (
+          <p className="detail-note">
+            <span className="pill">Live model: XGBoost</span>{" "}
+            <span className="mono">
+              {modelsState.data.items.map((m) => m.model_name).join(", ")}
+            </span>{" "}
+            is the only model used for live prediction. ElasticNet is an
+            offline benchmark only — not deployed, not a live improvement.
+          </p>
         )}
         {latest && (
           <>

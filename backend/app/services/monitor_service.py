@@ -17,7 +17,6 @@ from datetime import datetime, timezone
 
 from app.core.config import Settings
 from app.core.logging import get_logger
-from app.db.database import SessionLocal
 from app.repositories.device_repository import DeviceRepository
 from app.services.alert_service import reconcile
 from app.services.cycle_service import CycleAggregationService
@@ -35,6 +34,7 @@ class MonitorService:
         self._stopped = asyncio.Event()
         self.last_run_at: datetime | None = None
         self.last_error: str | None = None
+        self.last_tick_failures = 0
         self.runs = 0
 
     async def start(self) -> None:
@@ -83,15 +83,25 @@ class MonitorService:
         processed: list[str] = []
         async with self._session_factory() as session:
             devices = await DeviceRepository(session).all_devices()
+        failures = 0
         for device in devices:
             try:
                 await self._process_device(device.device_id, now)
                 processed.append(device.device_id)
             except Exception:  # noqa: BLE001 - isolate per-device failures
+                failures += 1
                 logger.exception("Monitoring failed for device %s", device.device_id)
         self.last_run_at = now
         self.runs += 1
-        self.last_error = None
+        self.last_tick_failures = failures
+        # A tick where some (or all) devices failed is not "healthy":
+        # health derives its 503 from last_error, so per-device failures
+        # must surface here instead of being logged and forgotten.
+        self.last_error = (
+            f"{failures} device(s) failed in the last tick; see logs"
+            if failures
+            else None
+        )
         if self._events is not None:
             self._events.publish(
                 EVENT_MONITOR,

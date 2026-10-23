@@ -1,6 +1,5 @@
 """Training workflow regressions: no slow fitting needed."""
 import importlib.util
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -151,8 +150,9 @@ def test_preflight_rejects_wrong_case_raw_filenames(tmp_path, monkeypatch):
 
 
 def test_model_version_warning_fails_gate(monkeypatch):
-    import joblib
     import warnings
+
+    import joblib
     def unsafe_load(*args):
         warnings.warn("incompatible model version", UserWarning)
     monkeypatch.setattr(joblib, "load", unsafe_load)

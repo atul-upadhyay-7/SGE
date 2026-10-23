@@ -8,6 +8,7 @@
 import { config } from "@/config";
 import { apiFetch } from "@/services/api";
 import { AUTH_REQUIRED_EVENT, readAccessHeaders } from "@/services/operatorKey";
+import { isLiveEvent } from "@/services/validate";
 import type { LiveEvent } from "@/types/domain";
 
 export type StreamState = "connecting" | "open" | "closed" | "error";
@@ -23,6 +24,11 @@ export interface StreamConnection {
 }
 
 const RETRY_MS = 3000;
+const RETRY_MAX_MS = 60_000;
+// A peer that never sends the blank-line frame boundary would otherwise
+// grow this buffer without bound; a legitimate frame is a small JSON
+// object, so anything past 1 MiB is a stuck/corrupt stream — drop it.
+const MAX_BUFFER_CHARS = 1_048_576;
 
 /**
  * Opens the SSE stream with ``fetch`` instead of ``EventSource`` so the viewer
@@ -40,6 +46,7 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
   let closed = false;
   let controller: AbortController | null = null;
   let retryTimer: number | undefined;
+  let retryDelay = RETRY_MS;
   handlers.onState?.("connecting");
 
   function dispatch(frame: string) {
@@ -50,7 +57,11 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
       .join("\n");
     if (!data) return;
     try {
-      handlers.onEvent(JSON.parse(data) as LiveEvent);
+      const parsed: unknown = JSON.parse(data);
+      // Shape-check before handing to the UI: a parsed-but-wrong
+      // frame (error JSON, a future event kind with no data) must
+      // be skipped, not cast into a LiveEvent the panels trust.
+      if (isLiveEvent(parsed)) handlers.onEvent(parsed);
     } catch {
       // A malformed frame must not tear down the stream; skip it.
     }
@@ -69,6 +80,7 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
         return;
       }
       if (!response.ok || !response.body) throw new Error(`stream ${response.status}`);
+      retryDelay = RETRY_MS;
       handlers.onState?.("open");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -77,6 +89,7 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+        if (buffer.length > MAX_BUFFER_CHARS) buffer = "";
         let boundary = buffer.indexOf("\n\n");
         while (boundary !== -1) {
           dispatch(buffer.slice(0, boundary));
@@ -89,7 +102,10 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
     }
     if (closed) return;
     handlers.onState?.("error");
-    retryTimer = window.setTimeout(run, RETRY_MS);
+    // Exponential backoff (3s -> 60s cap): a fixed 3s retry loop made
+    // every open tab hammer a permanently failing endpoint forever.
+    retryTimer = window.setTimeout(run, retryDelay);
+    retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
   }
 
   void run();

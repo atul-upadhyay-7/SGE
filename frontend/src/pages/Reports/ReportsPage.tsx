@@ -6,7 +6,7 @@
  * backend; every value shown comes from the stored snapshot, never recomputed
  * or invented in the client (PRD §4.7, §10).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card, KpiCard, PageHeader } from "@/components/cards/Cards";
 import { StackedBarChart } from "@/components/charts/Charts";
@@ -76,6 +76,16 @@ export function ReportsPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // The form's Device field follows the shared selection until the
+  // user types in it; after that their text wins. Without this the
+  // field kept whatever the selection was on first render (usually
+  // blank, because the selector resolves asynchronously).
+  const formDeviceTouched = useRef(false);
+  useEffect(() => {
+    if (formDeviceTouched.current) return;
+    setForm((current) => ({ ...current, deviceId: selectedDevice ?? "" }));
+  }, [selectedDevice]);
+
   // Poll quickly while a queued report is generating, then settle back.
   const [hasPending, setHasPending] = useState(false);
   const listState = usePolling(
@@ -91,12 +101,26 @@ export function ReportsPage() {
     );
   }, [reports]);
 
+  // A stored report is immutable once it reaches a terminal state;
+  // polling it forever re-fetches a snapshot that cannot change.
+  // Poll only while it can still move (queued/running), then stop.
+  const [detailWatching, setDetailWatching] = useState(true);
+  useEffect(() => {
+    setDetailWatching(true);
+  }, [selectedId]);
   const detailState = usePolling(
     (signal) =>
       selectedId !== null ? getReport(selectedId, signal) : Promise.resolve(null),
     30_000,
     [selectedId],
+    detailWatching,
   );
+  useEffect(() => {
+    const status = detailState.data?.status;
+    if (status === "ready" || status === "failed") {
+      setDetailWatching(false);
+    }
+  }, [detailState.data]);
 
   async function handleGenerate(event: React.FormEvent) {
     event.preventDefault();
@@ -152,7 +176,10 @@ export function ReportsPage() {
             Device
             <input
               value={form.deviceId}
-              onChange={(e) => setForm({ ...form, deviceId: e.target.value })}
+              onChange={(e) => {
+                formDeviceTouched.current = true;
+                setForm({ ...form, deviceId: e.target.value });
+              }}
               placeholder="blank = all devices"
             />
           </label>
@@ -288,6 +315,9 @@ export function ReportsPage() {
                     tabIndex={0}
                     onClick={() => setSelectedId(report.id)}
                     onKeyDown={(e) => {
+                      // Keys from nested controls (the download
+                      // buttons) belong to them, not the row.
+                      if (e.target !== e.currentTarget) return;
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         setSelectedId(report.id);

@@ -5,19 +5,20 @@ Clean, filter, and normalize raw battery cycle data.
 """
 
 
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from causal import add_causal_features
 from repro import rounded
+
 try:
-    from load_data import GROUPS, CELL_TO_GROUP
+    from load_data import CELL_TO_GROUP, GROUPS
 except ImportError:
-    from .load_data import GROUPS, CELL_TO_GROUP
+    from .load_data import CELL_TO_GROUP, GROUPS
 
 INPUT_FILE = Path(
     "data/processed/nasa_cycle_features_raw.csv"

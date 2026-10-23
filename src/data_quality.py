@@ -27,8 +27,11 @@ import pandas as pd
 
 from repro import rounded  # noqa: E402
 
-
-PROCESSED_DIR = Path("data/processed")
+PROCESSED_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "processed"
+)
 
 ML_DATASET = PROCESSED_DIR / "nasa_ml_dataset.csv"
 

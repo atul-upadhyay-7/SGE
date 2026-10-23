@@ -177,15 +177,9 @@ import numpy as np
 from pack.resistance import estimate_dcr
 
 try:
-    from load_data import (
-        MIN_CYCLE_SAMPLES,
-        build_cycle_features
-    )
+    from load_data import MIN_CYCLE_SAMPLES, build_cycle_features
 except ImportError:
-    from ..load_data import (
-        MIN_CYCLE_SAMPLES,
-        build_cycle_features
-    )
+    from ..load_data import MIN_CYCLE_SAMPLES, build_cycle_features
 
 
 # Upper bound on samples held for one cycle, at 1 Hz this is

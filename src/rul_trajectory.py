@@ -77,10 +77,16 @@ def _first_eol_position(soh, threshold=THRESHOLD):
 
 class TrajectoryRul:
 
-    def __init__(self, curves, threshold=THRESHOLD):
+    def __init__(self, curves, threshold=THRESHOLD, smooth=True):
         """
         curves: {cell_id: [soh at discharge 1, 2, ...]} of actual
         SOH from reference cells that reached the threshold.
+
+        ``smooth=False`` takes the curves as already smoothed. It exists
+        for :meth:`load`: :meth:`save` persists the *smoothed* reference
+        curves, so loading them through the smoothing constructor again
+        smoothed them a second time and the served references drifted
+        from the ones evaluation scored.
         """
 
         self.threshold = float(threshold)
@@ -89,10 +95,12 @@ class TrajectoryRul:
         for cell, soh in curves.items():
 
             a = pd.Series(np.asarray(soh, dtype=float))
-            smooth = (
+            smoothed = (
                 a.rolling(REF_SMOOTH, min_periods=1, center=True)
                 .median()
                 .to_numpy()
+                if smooth
+                else a.to_numpy()
             )
 
             # This reference-curve position is a modelling quantity,
@@ -101,14 +109,14 @@ class TrajectoryRul:
             # "how many discharges did this reference have left"
             # subtraction below. The end of life every table reports is
             # first_eol_discharge on the measured SOH.
-            below = smooth <= self.threshold
+            below = smoothed <= self.threshold
 
             if not below.any():
 
                 continue  # never retired: no remaining-life label
 
             self.refs[cell] = {
-                "soh": smooth,
+                "soh": smoothed,
                 "eol": int(np.argmax(below)),
             }
 
@@ -223,7 +231,8 @@ class TrajectoryRul:
 
             d = json.load(f)
 
-        return cls(d["curves"], d["threshold"])
+        # save() wrote the smoothed curves; do not smooth them again.
+        return cls(d["curves"], d["threshold"], smooth=False)
 
 
 def evaluate_loco(df, preds, threshold=THRESHOLD, start=10, cells=None):

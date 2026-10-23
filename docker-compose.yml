@@ -49,7 +49,9 @@ services:
       POSTGRES_DB: bms
     # Host port 5433 (not 5432) so a Postgres already installed on the host
     # does not collide. The bms-api container reaches it at postgres:5432.
-    ports: ["5433:5432"]
+    # Loopback only, like the other services: the database has no reason
+    # to be reachable from the LAN.
+    ports: ["127.0.0.1:5433:5432"]
     volumes:
       - bms_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -117,7 +119,10 @@ services:
     dns:
       - 1.1.1.1
       - 8.8.8.8
-    ports: ["3050:3000"]
+    # Loopback only: Grafana is operated from this host (or via an
+    # authenticated reverse proxy in a real deployment); publishing it on
+    # all interfaces exposes the default-credential login to the LAN.
+    ports: ["127.0.0.1:3050:3000"]
     environment:
       GF_INSTALL_PLUGINS: simpod-json-datasource
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -162,6 +167,32 @@ services:
       python src/pack/publisher.py --host mosquitto --delay 1
       --fault CELL2:resistance_spike:40 --fault CELL3:thermal:60
     depends_on: [soh, bridge]
+
+
+  frontend:                  # React dashboard (built bundle served by nginx)
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    # nginx serves the app and proxies /api to bms-api, so the browser
+    # only needs this one port. Open http://localhost:5173
+    ports: ["127.0.0.1:5173:80"]
+    depends_on:
+      bms-api:
+        condition: service_started
+
+  demo-seed:                 # one-off: load the demo fleet into Postgres
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      BMS_DATABASE_URL: postgresql+asyncpg://bms:${BMS_POSTGRES_PASSWORD:-bms}@postgres:5432/bms
+    volumes:
+      - ./scripts:/app/scripts:ro
+    command: ["python", "/app/scripts/seed_demo_data.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["demo"]
 
 volumes:
   bms_pgdata:

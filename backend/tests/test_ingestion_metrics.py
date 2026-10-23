@@ -1,10 +1,10 @@
 """Committed-row metrics, bounded rolling rate and failure behaviour."""
 from unittest.mock import patch
-import pytest
+
 from app.core.config import Settings
+from app.schemas.telemetry import RejectionRecord
 from app.services.device_cache import DeviceCache
 from app.services.ingestion_service import IngestionService
-from app.schemas.telemetry import RejectionRecord
 
 
 def test_rate_uses_recent_committed_samples_and_expires():

@@ -39,6 +39,12 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   timeoutMs?: number;
+  /**
+   * Runtime shape check for the parsed body (see services/validate).
+   * Without one the body is trusted as `T`; with one, a mismatch on a
+   * 2xx response raises ApiError instead of poisoning the caller.
+   */
+  validate?: (parsed: unknown) => boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -73,7 +79,7 @@ export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", query, body, headers, signal, timeoutMs } = options;
+  const { method = "GET", query, body, headers, signal, timeoutMs, validate } = options;
   const controller = new AbortController();
   const timeout = window.setTimeout(
     () => controller.abort(),
@@ -81,12 +87,14 @@ export async function apiFetch<T>(
   );
 
   // Forward an external abort signal to our controller so callers can cancel.
+  const forwardAbort = () => controller.abort();
   if (signal) {
     if (signal.aborted) controller.abort();
-    else signal.addEventListener("abort", () => controller.abort(), { once: true });
+    else signal.addEventListener("abort", forwardAbort, { once: true });
   }
 
   let response: Response;
+  let text: string;
   try {
     response = await fetch(buildUrl(path, query), {
       method,
@@ -102,6 +110,10 @@ export async function apiFetch<T>(
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
+    // The timeout must cover the body, not just the headers: a backend
+    // that sends headers and then stalls used to hang here forever,
+    // because the timer was cleared as soon as fetch() resolved.
+    text = await response.text();
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new NetworkError("The request was cancelled or timed out");
@@ -111,17 +123,29 @@ export async function apiFetch<T>(
     );
   } finally {
     window.clearTimeout(timeout);
+    signal?.removeEventListener("abort", forwardAbort);
   }
-
-  const text = await response.text();
   const parsed: unknown = text ? safeParse(text) : null;
 
   if (!response.ok) {
-    if (response.status === 401 && method === "GET") {
+    if (response.status === 401) {
+      // Any 401 means a key is missing or stale — reads want the
+      // viewer key, writes the operator key. Both go through the
+      // same prompt event; previously a write 401 neither prompted
+      // nor named the right key.
       window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
-      throw new ApiError("Sign-in required: enter the viewer key.", 401, parsed);
+      if (method === "GET") {
+        throw new ApiError("Sign-in required: enter the viewer key.", 401, parsed);
+      }
     }
     throw new ApiError(messageFor(response.status, parsed), response.status, parsed);
+  }
+  if (validate && !validate(parsed)) {
+    throw new ApiError(
+      "The backend returned a response with an unexpected shape.",
+      502,
+      parsed,
+    );
   }
   return parsed as T;
 }

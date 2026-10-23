@@ -35,7 +35,6 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-
 from report_render import TEMPLATES_KEY, render
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -44,17 +43,16 @@ EXP = PROC / "experiments"
 
 sys.path.insert(0, str(ROOT / "src"))
 
-from repro import (  # noqa: E402
-    MAE_UNSTABLE_ABOVE_PCT,
-    R2_UNSTABLE_BELOW,
-    UNSTABLE,
-)
-
 # The BMS contract thresholds live in src/features.py, not in this
 # script. Importing the module (rather than copying the numbers) is
 # what keeps the README's "what a real BMS must provide" section and
 # the model's own contract from drifting apart.
 import features  # noqa: E402
+from repro import (  # noqa: E402
+    MAE_UNSTABLE_ABOVE_PCT,
+    R2_UNSTABLE_BELOW,
+    UNSTABLE,
+)
 
 SRC_FEATURES = ROOT / "src" / "features.py"
 

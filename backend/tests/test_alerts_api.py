@@ -12,13 +12,9 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 
-import pytest
-from fastapi.testclient import TestClient
-
 from app.core.config import get_settings
 from app.db.database import SessionLocal
-from app.db.models import BatteryCycle, Device, SohPrediction, TelemetrySample
-from app.db.models import Base
+from app.db.models import Base, Device, SohPrediction, TelemetrySample
 from app.services.alert_service import (
     RULE_CELL_IMBALANCE,
     RULE_DEVICE_STALE,

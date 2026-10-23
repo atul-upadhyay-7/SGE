@@ -12,9 +12,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 
-from app.api.deps import require_read_access
-from app.services.report_queue import ReportQueue
 from app.api import (
     alerts,
     anomalies,
@@ -27,7 +26,9 @@ from app.api import (
     rul,
     stream,
     telemetry,
+    validation,
 )
+from app.api.deps import require_read_access
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.database import SessionLocal, engine
@@ -38,6 +39,7 @@ from app.services.device_cache import DeviceCache
 from app.services.event_bus import EventBus
 from app.services.ingestion_service import IngestionService
 from app.services.monitor_service import MonitorService
+from app.services.report_queue import ReportQueue
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -139,6 +141,67 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+
+class IngestBodySizeLimitMiddleware:
+    """Cap telemetry ingestion bodies before FastAPI buffers them.
+
+    Only ``POST .../telemetry`` is bounded (a sample is a handful of
+    numbers). The body is read up to the limit and replayed to the
+    app; one byte over and the request is a 413 without the payload
+    ever reaching validation or the quarantine table. Chunked
+    requests without a Content-Length are counted the same way.
+    """
+
+    def __init__(self, app, *, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send) -> None:
+        if (
+            scope["type"] != "http"
+            or scope.get("method") != "POST"
+            or not scope.get("path", "").endswith("/telemetry")
+        ):
+            await self.app(scope, receive, send)
+            return
+
+        messages = []
+        total = 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.request":
+                total += len(message.get("body", b""))
+                if total > self.max_bytes:
+                    response = JSONResponse(
+                        status_code=413,
+                        content={
+                            "detail": (
+                                "telemetry body exceeds "
+                                f"{self.max_bytes} bytes"
+                            )
+                        },
+                    )
+                    await response(scope, receive, send)
+                    return
+                messages.append(message)
+                if not message.get("more_body", False):
+                    break
+            elif message["type"] == "http.disconnect":
+                break
+
+        async def replay():
+            if messages:
+                return messages.pop(0)
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        await self.app(scope, replay, send)
+
+
+app.add_middleware(
+    IngestBodySizeLimitMiddleware,
+    max_bytes=settings.telemetry_max_body_bytes,
+)
+
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(devices.router, prefix=settings.api_prefix)
 app.include_router(telemetry.router, prefix=settings.api_prefix)
@@ -150,3 +213,4 @@ app.include_router(alerts.router, prefix=settings.api_prefix)
 app.include_router(anomalies.router, prefix=settings.api_prefix)
 app.include_router(reports.router, prefix=settings.api_prefix)
 app.include_router(stream.router, prefix=settings.api_prefix)
+app.include_router(validation.router, prefix=settings.api_prefix)

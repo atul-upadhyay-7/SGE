@@ -58,7 +58,6 @@ from features import (  # noqa: E402
     window_model_row,
 )
 from load_data import (  # noqa: E402
-    MIN_CYCLE_SAMPLES,
     resolve_raw_dir,
     to_1d,
     to_scalar,

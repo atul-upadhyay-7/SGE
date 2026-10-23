@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AlertRead(BaseModel):
@@ -31,7 +31,9 @@ class AlertPage(BaseModel):
 
 
 class AlertAckRequest(BaseModel):
-    acked_by: str
+    # Matches the acked_by column width; an over-long actor is a
+    # 422 at the boundary, not a silent truncation at the endpoint.
+    acked_by: str = Field(max_length=64)
 
 
 class AlertEvaluationResult(BaseModel):

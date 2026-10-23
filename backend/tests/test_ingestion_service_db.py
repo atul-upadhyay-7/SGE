@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from sqlalchemy import func, select
-
 from app.core.config import Settings
 from app.db.database import SessionLocal
 from app.db.models import TelemetryRejection, TelemetrySample
 from app.repositories.device_repository import DeviceRepository
 from app.services.device_cache import DeviceCache
 from app.services.ingestion_service import IngestionService
+from sqlalchemy import func, select
 
 
 class _Device:

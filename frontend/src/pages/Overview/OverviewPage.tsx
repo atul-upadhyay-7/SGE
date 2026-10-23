@@ -63,8 +63,11 @@ export function OverviewPage() {
   }
 
   const anomalies = alertState.data?.items ?? [];
+  // "Active" excludes both terminal states; false_positive is a closed
+  // outcome (the details page treats it as resolved), so counting it here
+  // inflated the KPI and could light the critical banner for a non-issue.
   const activeAnomalies = anomalies.filter(
-    (a) => a.status !== "resolved",
+    (a) => a.status !== "resolved" && a.status !== "false_positive",
   );
   const criticalAnomalies = activeAnomalies.filter(
     (a) => a.severity === "critical",
@@ -85,7 +88,14 @@ export function OverviewPage() {
       <PageHeader
         title="Overview"
         subtitle={device ? `${device.name} · ${device.device_id}` : deviceId}
-        actions={<StaleBadge lastUpdated={telemetryState.lastUpdated ?? null} />}
+        actions={
+          <>
+            <span className="pill" title="Tested on NASA lab data and demo packs — not a hardware-proven BMS">
+              PoC · Lab + demo data
+            </span>
+            <StaleBadge lastUpdated={telemetryState.lastUpdated ?? null} />
+          </>
+        }
       />
 
       {device && freshness.stale && (

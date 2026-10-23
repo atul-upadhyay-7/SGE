@@ -34,8 +34,8 @@ from pathlib import Path
 
 from report_render import (
     NUMBER,
-    RenderError,
     TEMPLATES_KEY,
+    RenderError,
     numeric_renderings,
     placeholder_ids,
     render_into,

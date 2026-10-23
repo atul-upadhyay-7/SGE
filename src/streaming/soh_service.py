@@ -66,20 +66,13 @@ import pandas as pd
 
 try:
     from cycle_tracker import CycleTracker
+
     from causal import CausalFeatureTracker
-    from predict import (
-        SohModelLoadError,
-        load_soh_model,
-        predict_soh
-    )
+    from predict import SohModelLoadError, load_soh_model, predict_soh
 except ImportError:
-    from .cycle_tracker import CycleTracker
     from ..causal import CausalFeatureTracker
-    from ..predict import (
-        SohModelLoadError,
-        load_soh_model,
-        predict_soh
-    )
+    from ..predict import SohModelLoadError, load_soh_model, predict_soh
+    from .cycle_tracker import CycleTracker
 
 
 WARMING_UP = "warming_up"

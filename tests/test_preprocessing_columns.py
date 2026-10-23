@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pandas as pd
 
 EXPECTED = ['group', 'nominal_current_a', 'nominal_temperature_c']

@@ -6,7 +6,7 @@
  * never invents counts, and the time-bucketed activity uses persisted events
  * (PRD §4.5, §8) rather than resampled telemetry.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Card, KpiCard, PageHeader } from "@/components/cards/Cards";
@@ -42,12 +42,6 @@ const PAGE_SIZE = 25;
 
 type SortKey = "detected_at" | "severity" | "anomaly_type" | "duration_seconds";
 type SortDir = "asc" | "desc";
-
-const SEVERITY_ORDER: Record<string, number> = {
-  info: 0,
-  warning: 1,
-  critical: 2,
-};
 
 interface Filters {
   severity: string;
@@ -88,33 +82,77 @@ export function AnomalyCenterPage() {
   const { deviceId } = useSelectedDevice();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<Filters>(() => ({
+  // Draft vs applied filters: inputs edit the draft, and the
+  // queries run off `applied`. Previously every keystroke wrote
+  // straight into the query state, so typing a category fired a
+  // request per character (each aborting the last) and reset the
+  // page. The draft auto-applies after a short pause; Apply,
+  // quick ranges and Clear commit immediately.
+  const [initialFilters] = useState<Filters>(() => ({
     ...EMPTY_FILTERS,
     severity: searchParams.get("severity") ?? "",
     anomalyType: searchParams.get("anomaly_type") ?? "",
     status: searchParams.get("status") ?? "",
   }));
+  const [draft, setDraft] = useState<Filters>(initialFilters);
+  const [applied, setApplied] = useState<Filters>(initialFilters);
   const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    if (filtersEqual(applied, draft)) return;
+    const timer = setTimeout(() => {
+      setApplied(draft);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [draft, applied]);
+
+  function applyNow(next: Filters) {
+    setDraft(next);
+    setApplied(next);
+    setPage(0);
+  }
   const [sortKey, setSortKey] = useState<SortKey>("detected_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const range = useMemo(
     () => ({
-      from: fromDatetimeLocal(filters.from),
-      to: fromDatetimeLocal(filters.to),
+      from: fromDatetimeLocal(applied.from),
+      to: fromDatetimeLocal(applied.to),
     }),
-    [filters.from, filters.to],
+    [applied.from, applied.to],
   );
 
-  const query: AnomalyQuery = {
+  const filterDeps = [
+    deviceId,
+    applied.severity,
+    applied.anomalyType,
+    applied.status,
+    applied.affectedCell,
+    applied.minRecurrence,
+    range.from,
+    range.to,
+  ];
+
+  const baseQuery: AnomalyQuery = {
     device_id: deviceId ?? undefined,
-    severity: filters.severity || undefined,
-    anomaly_type: filters.anomalyType || undefined,
-    status: filters.status || undefined,
-    affected_cell: filters.affectedCell === "" ? undefined : Number(filters.affectedCell),
-    min_recurrence: Number(filters.minRecurrence),
+    severity: applied.severity || undefined,
+    anomaly_type: applied.anomalyType || undefined,
+    status: applied.status || undefined,
+    affected_cell: applied.affectedCell === "" ? undefined : Number(applied.affectedCell),
+    min_recurrence: Number(applied.minRecurrence),
     from: range.from,
     to: range.to,
+  };
+
+  // Sorting is server-side: the API orders before it pages, so the
+  // order holds across the whole result set - a client-side sort
+  // could only ever order the 25 rows on screen.
+  const query: AnomalyQuery = {
+    ...baseQuery,
+    sort: sortKey,
+    sort_dir: sortDir,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   };
@@ -122,51 +160,24 @@ export function AnomalyCenterPage() {
   const listState = usePolling(
     (signal) => listAnomalies(query, signal),
     15_000,
-    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to, page],
+    [...filterDeps, page, sortKey, sortDir],
   );
   const summaryState = usePolling(
-    (signal) =>
-      getAnomalySummary(
-        { ...query, limit: undefined, offset: undefined },
-        signal,
-      ),
+    (signal) => getAnomalySummary({ ...baseQuery }, signal),
     15_000,
-    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to],
+    filterDeps,
   );
   const hourlyState = useAsync(
-    (signal) =>
-      getAnomalyHourly(
-        { ...query, limit: undefined, offset: undefined },
-        signal,
-      ),
-    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to],
+    (signal) => getAnomalyHourly({ ...baseQuery }, signal),
+    filterDeps,
   );
 
   const comparisonState = useAsync(
-    signal => range.from && range.to ? getAnomalyComparison(query, signal) : Promise.resolve(null),
-    [deviceId, filters.severity, filters.anomalyType, filters.status, filters.affectedCell, filters.minRecurrence, range.from, range.to],
+    signal => range.from && range.to ? getAnomalyComparison(baseQuery, signal) : Promise.resolve(null),
+    filterDeps,
   );
   const total = listState.data?.total ?? 0;
   const rows = listState.data?.items ?? [];
-  const sorted = useMemo(() => {
-    const copy = [...rows];
-    copy.sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === "detected_at") {
-        cmp = a.detected_at.localeCompare(b.detected_at);
-      } else if (sortKey === "severity") {
-        cmp =
-          (SEVERITY_ORDER[String(a.severity)] ?? 0) -
-          (SEVERITY_ORDER[String(b.severity)] ?? 0);
-      } else if (sortKey === "anomaly_type") {
-        cmp = a.anomaly_type.localeCompare(b.anomaly_type);
-      } else {
-        cmp = a.duration_seconds - b.duration_seconds;
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return copy;
-  }, [rows, sortKey, sortDir]);
 
   const summary = summaryState.data;
   const buckets = hourlyState.data?.buckets ?? [];
@@ -181,17 +192,41 @@ export function AnomalyCenterPage() {
     }
   }
 
-  function handleExport() {
-    const csv = toCsv(
-      CSV_COLUMNS,
-      sorted.map((row) => ({ ...row })),
-    );
-    downloadCsv(`anomalies-${new Date().toISOString().slice(0, 10)}.csv`, csv);
-  }
-
-  function applyFilters(next: Filters) {
-    setFilters(next);
-    setPage(0);
+  // Export means the filtered set, not the page on screen: walk
+  // the paged API (bounded at 1,000 rows) with the same filters
+  // and sort, then download.
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const exportPageSize = 200;
+      const maxRows = 1000;
+      const all: AnomalyEvent[] = [];
+      let offset = 0;
+      let totalCount = Number.POSITIVE_INFINITY;
+      while (all.length < Math.min(totalCount, maxRows)) {
+        const pageData = await listAnomalies({
+          ...baseQuery,
+          sort: sortKey,
+          sort_dir: sortDir,
+          limit: exportPageSize,
+          offset,
+        });
+        totalCount = pageData.total;
+        all.push(...pageData.items);
+        if (pageData.items.length < exportPageSize) break;
+        offset += exportPageSize;
+      }
+      const csv = toCsv(
+        CSV_COLUMNS,
+        all.map((row) => ({ ...row })),
+      );
+      downloadCsv(`anomalies-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+    } catch {
+      // A failed export simply produces no file; the list and its
+      // own error state are unaffected.
+    } finally {
+      setExporting(false);
+    }
   }
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -208,9 +243,9 @@ export function AnomalyCenterPage() {
               type="button"
               className="btn"
               onClick={handleExport}
-              disabled={sorted.length === 0}
+              disabled={total === 0 || exporting}
             >
-              Export CSV
+              {exporting ? "Exporting..." : "Export CSV"}
             </button>
           </div>
         }
@@ -243,20 +278,20 @@ export function AnomalyCenterPage() {
 
       <Card title="Filters">
         <div className="page-header__actions">
-          {[1, 7, 30].map(days => <button key={days} type="button" className="btn" onClick={() => applyFilters({...filters, from: toDatetimeLocal(new Date(Date.now()-days*86400000).toISOString()), to: toDatetimeLocal(new Date().toISOString())})}>{days === 1 ? '24h' : `${days}d`}</button>)}
+          {[1, 7, 30].map(days => <button key={days} type="button" className="btn" onClick={() => applyNow({...draft, from: toDatetimeLocal(new Date(Date.now()-days*86400000).toISOString()), to: toDatetimeLocal(new Date().toISOString())})}>{days === 1 ? '24h' : `${days}d`}</button>)}
         </div>
         <form
           className="form form--grid"
           onSubmit={(event) => {
             event.preventDefault();
-            applyFilters({ ...filters });
+            applyNow(draft);
           }}
         >
           <label>
             Severity
             <select
-              value={filters.severity}
-              onChange={(e) => applyFilters({ ...filters, severity: e.target.value })}
+              value={draft.severity}
+              onChange={(e) => setDraft({ ...draft, severity: e.target.value })}
             >
               <option value="">All</option>
               <option value="info">info</option>
@@ -267,9 +302,9 @@ export function AnomalyCenterPage() {
           <label>
             Category
             <input
-              value={filters.anomalyType}
+              value={draft.anomalyType}
               onChange={(e) =>
-                applyFilters({ ...filters, anomalyType: e.target.value })
+                setDraft({ ...draft, anomalyType: e.target.value })
               }
               placeholder="e.g. cell_voltage_imbalance"
             />
@@ -277,8 +312,8 @@ export function AnomalyCenterPage() {
           <label>
             Status
             <select
-              value={filters.status}
-              onChange={(e) => applyFilters({ ...filters, status: e.target.value })}
+              value={draft.status}
+              onChange={(e) => setDraft({ ...draft, status: e.target.value })}
             >
               <option value="">All</option>
               <option value="open">open</option>
@@ -290,26 +325,26 @@ export function AnomalyCenterPage() {
           </label>
           <label>
             Affected cell (0 = pack-level)
-            <input type="number" min="0" value={filters.affectedCell} onChange={e => applyFilters({...filters, affectedCell: e.target.value})} />
+            <input type="number" min="0" value={draft.affectedCell} onChange={e => setDraft({...draft, affectedCell: e.target.value})} />
           </label>
           <label>
             Minimum recurrence in filtered period
-            <input type="number" min="1" value={filters.minRecurrence} onChange={e => applyFilters({...filters, minRecurrence: e.target.value || '1'})} />
+            <input type="number" min="1" value={draft.minRecurrence} onChange={e => setDraft({...draft, minRecurrence: e.target.value || '1'})} />
           </label>
           <label>
             From (local time)
             <input
               type="datetime-local"
-              value={filters.from}
-              onChange={(e) => applyFilters({ ...filters, from: e.target.value })}
+              value={draft.from}
+              onChange={(e) => setDraft({ ...draft, from: e.target.value })}
             />
           </label>
           <label>
             To (local time)
             <input
               type="datetime-local"
-              value={filters.to}
-              onChange={(e) => applyFilters({ ...filters, to: e.target.value })}
+              value={draft.to}
+              onChange={(e) => setDraft({ ...draft, to: e.target.value })}
             />
           </label>
           <div className="form__actions" style={{ gap: 8 }}>
@@ -319,7 +354,7 @@ export function AnomalyCenterPage() {
             <button
               type="button"
               className="btn"
-              onClick={() => applyFilters(EMPTY_FILTERS)}
+              onClick={() => applyNow(EMPTY_FILTERS)}
             >
               Clear
             </button>
@@ -394,7 +429,7 @@ export function AnomalyCenterPage() {
             detail="Adjust the time range or filters, or clear them to see all detected anomalies."
           />
         )}
-        {sorted.length > 0 && (
+        {rows.length > 0 && (
           <>
             <div className="table-wrap">
               <table className="table table--clickable">
@@ -479,7 +514,7 @@ export function AnomalyCenterPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.map((event) => (
+                  {rows.map((event) => (
                     <AnomalyRow
                       key={event.id}
                       event={event}
@@ -549,6 +584,9 @@ function AnomalyRow({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => {
+        // The row nests an Investigate link: keys aimed at the
+        // link are the link's, not the row's.
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onOpen();
@@ -600,4 +638,16 @@ function repeatCount(byType: { count: number }[]): number {
 function summaryCount(buckets: { total: number }[]): number | string {
   if (buckets.length === 0) return "—";
   return buckets.reduce((sum, b) => sum + b.total, 0);
+}
+
+function filtersEqual(a: Filters, b: Filters): boolean {
+  return (
+    a.severity === b.severity &&
+    a.anomalyType === b.anomalyType &&
+    a.status === b.status &&
+    a.affectedCell === b.affectedCell &&
+    a.minRecurrence === b.minRecurrence &&
+    a.from === b.from &&
+    a.to === b.to
+  );
 }

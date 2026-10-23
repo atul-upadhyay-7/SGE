@@ -5,14 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi.testclient import TestClient
-
 from app.services.event_bus import (
     EVENT_ALERT,
     EVENT_TELEMETRY,
     Event,
     EventBus,
 )
+from fastapi.testclient import TestClient
 
 API = "/api/v1"
 

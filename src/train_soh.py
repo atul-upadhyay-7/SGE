@@ -32,22 +32,14 @@ What this script reports
 """
 
 
-from pathlib import Path
-
 import os
+from pathlib import Path
 
 import joblib
 import pandas as pd
+from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import LeaveOneGroupOut, RandomizedSearchCV
 
-from sklearn.metrics import (
-    mean_absolute_error
-)
-from sklearn.model_selection import (
-    LeaveOneGroupOut,
-    RandomizedSearchCV
-)
-
-from repro import rounded
 from evaluation import (
     MODEL_NAMES,
     BlendRegressor,
@@ -55,23 +47,21 @@ from evaluation import (
     coulomb_baseline,
     loco_evaluate,
     score,
-    split_by_cell
+    split_by_cell,
+)
+from features import drop_preregistered_constants, make_xy
+from repro import rounded
+
+ROOT = Path(__file__).resolve().parent.parent
+
+DATA_FILE = (
+    ROOT / "data/processed/nasa_ml_dataset_clean.csv"
 )
 
-from features import (
-    drop_constant_features,
-    make_xy
-)
+MODEL_DIR = ROOT / "models"
 
-
-DATA_FILE = Path(
-    "data/processed/nasa_ml_dataset_clean.csv"
-)
-
-MODEL_DIR = Path("models")
-
-RESULT_DIR = Path(
-    "data/processed"
+RESULT_DIR = (
+    ROOT / "data/processed"
 )
 
 TARGET = "soh"
@@ -392,8 +382,11 @@ def main():
         TARGET
     )
 
-    features, dropped = drop_constant_features(
-        df[features]
+    # Pre-registered constants only: running the data-driven
+    # drop on the full frame here would let held-out cells
+    # influence the feature set before LOCO splits exist.
+    features, dropped = drop_preregistered_constants(
+        features
     )
 
     MODEL_DIR.mkdir(
@@ -918,6 +911,7 @@ def _save_portable(
 
     import json
     import platform
+
     import sklearn
     import xgboost
 

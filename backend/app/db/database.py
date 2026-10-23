@@ -20,8 +20,10 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 
 _settings = get_settings()
+logger = get_logger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -61,11 +63,16 @@ async def check_connection() -> tuple[bool, str | None]:
     """Probe the database for the health endpoint.
 
     Returns ``(True, None)`` when a trivial query succeeds, otherwise
-    ``(False, "<reason>")``. Never raises.
+    ``(False, "database unreachable")``. Never raises.
+
+    The raw driver error is logged server-side, not returned: the
+    health endpoint is reachable without a key in local setups, and
+    driver text leaks host, port and authentication detail.
     """
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return True, None
-    except Exception as exc:  # noqa: BLE001 - health must report any failure
-        return False, str(exc)
+    except Exception:  # noqa: BLE001 - health must report any failure
+        logger.exception("Database health check failed")
+        return False, "database unreachable"

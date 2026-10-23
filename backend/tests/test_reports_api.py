@@ -13,14 +13,13 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.db.database import SessionLocal
 from app.repositories.anomaly_repository import AnomalyRepository
 from app.repositories.cycle_repository import CycleRepository
 from app.repositories.device_repository import DeviceRepository
 from app.repositories.telemetry_repository import TelemetryRepository
 from app.schemas.telemetry import ValidatedSample
+from fastapi.testclient import TestClient
 
 UTC = timezone.utc
 BASE = datetime(2026, 10, 17, 6, 0, tzinfo=UTC)
@@ -363,6 +362,7 @@ def test_fleet_report_has_telemetry_soh_and_period_scoped_rejections(client, see
 
 def test_gap_summary_keeps_devices_separate_and_counts_internal_gaps(client, require_db):
     import asyncio
+
     from app.db.models import TelemetryRejection
     async def prepare():
         devices = [f'GAP_{uuid4().hex[:8]}' for _ in range(2)]

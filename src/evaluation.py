@@ -14,30 +14,16 @@ something real rather than memorising a cell identity.
 """
 
 import numpy as np
-
-from sklearn.ensemble import (
-    RandomForestRegressor
-)
+from joblib import Parallel, delayed
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import (
-    ElasticNet,
-    LinearRegression,
-    Ridge
-)
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score
-)
+from sklearn.linear_model import ElasticNet, LinearRegression, Ridge
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
-from joblib import Parallel, delayed
-
 from xgboost import XGBRegressor
 
 import features as _features
-
 
 # Defaults tuned by hand and used as the fixed comparison
 # point before any search is run.
@@ -521,113 +507,4 @@ def coulomb_baseline(df, target="soh"):
         frames.append(group)
 
     return rows, frames
-
-
-def split_by_group(df, test_group, group_col="group"):
-    """
-    Split rows into everything outside test_group and
-    everything inside it.
-    """
-
-    mask = df[group_col] == test_group
-
-    return df[~mask].copy(), df[mask].copy()
-
-
-def logo_evaluate(
-    df,
-    target,
-    features,
-    model_name,
-    prediction_column,
-    group_col="group",
-    leaky_columns=(),
-    with_baselines=True
-):
-    """
-    Leave-one-group-out evaluation for one model.
-
-    Same interface as loco_evaluate but splits on group
-    instead of cell_id, which is the correct protocol when
-    cells within a group share operating conditions.
-
-    Returns (rows, predictions, baselines) where rows is a
-    list of per-group metric dicts with per-cell detail.
-    """
-
-    assert_no_leakage(
-        features,
-        leaky_columns
-    )
-
-    rows = []
-    predictions = []
-    baselines = []
-
-    for test_group in sorted(
-        df[group_col].unique()
-    ):
-
-        train_df, test_df = split_by_group(
-            df,
-            test_group,
-            group_col
-        )
-
-        model = build_model(
-            model_name
-        )
-
-        model.fit(
-            train_df[features],
-            train_df[target]
-        )
-
-        prediction = model.predict(
-            test_df[features]
-        )
-
-        mae, rmse, r2 = score(
-            test_df[target],
-            prediction
-        )
-
-        rows.append({
-            "model": model_name,
-            "test_group": test_group,
-            "MAE": mae,
-            "RMSE": rmse,
-            "R2": r2,
-            "n_cells": test_df["cell_id"].nunique(),
-            "n_cycles": len(test_df),
-        })
-
-        # Per-cell detail within the held-out group
-        frame = test_df.copy()
-        frame[prediction_column] = prediction
-        predictions.append(frame)
-
-        if not with_baselines:
-            continue
-
-        for name, (
-            baseline_mae,
-            value
-        ) in null_baselines(
-            df,
-            target,
-            train_df,
-            test_df
-        ).items():
-
-            baselines.append({
-                "test_group": test_group,
-                "baseline": name,
-                "MAE": baseline_mae,
-                "value": value
-            })
-
-    return rows, predictions, baselines
-
-
 

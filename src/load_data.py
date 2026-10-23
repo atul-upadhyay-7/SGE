@@ -5,23 +5,25 @@ Load NASA Battery Dataset (.mat files) and convert to usable Python structures.
 """
 
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-from repro import rounded
 from features import WINDOW_VOLTAGE_HIGH, WINDOW_VOLTAGE_LOW
+from repro import rounded
 
+ROOT = Path(__file__).resolve().parent.parent
 
-PROCESSED_DIR = Path("data/processed")
+PROCESSED_DIR = ROOT / "data/processed"
 
 # Directories searched, in order, for the NASA .mat files.
 # data/raw is the documented drop location and is gitignored.
 # The BMS Dataset folder ships a copy in the repository,
 # so the pipeline stays runnable without a manual download.
 RAW_DIR_CANDIDATES = [
-    Path("data/raw"),
-    Path("BMS Dataset/Battery_DataSet/Battery_DataSet")
+    ROOT / "data/raw",
+    ROOT / "BMS Dataset/Battery_DataSet/Battery_DataSet"
 ]
 
 

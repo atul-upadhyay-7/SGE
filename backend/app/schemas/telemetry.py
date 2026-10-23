@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 DEFAULT_SCHEMA_VERSION = 1
 
@@ -48,7 +48,10 @@ class TelemetryPayload(BaseModel):
     measured_at: datetime
     current: float
     temperature: float
-    cell_voltages: list[float]
+    # Bounded so a malformed/hostile payload cannot allocate unbounded
+    # memory before the per-device cell-count check runs (devices declare
+    # at most 64 cells; this leaves generous headroom for pack layouts).
+    cell_voltages: list[float] = Field(max_length=1024)
     pack_voltage: float | None = None
 
     @property

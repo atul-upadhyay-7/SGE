@@ -12,9 +12,6 @@ payload must agree with it.
 from __future__ import annotations
 
 import json
-from typing import Any
-
-import aiomqtt
 
 from app.core.logging import get_logger
 from app.services.ingestion_service import IngestionService

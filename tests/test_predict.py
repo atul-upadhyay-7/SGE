@@ -13,7 +13,6 @@ operator and a silent stale reading.
 import numpy as np
 import pandas as pd
 import pytest
-
 from conftest import ACTIVE_FEATURES, make_bundle
 
 import predict
@@ -22,7 +21,7 @@ from predict import (
     assemble_features,
     clear_model_cache,
     load_soh_model,
-    predict_soh
+    predict_soh,
 )
 
 
@@ -316,6 +315,23 @@ def test_active_features_carry_no_target_derived_column():
     )
 
     assert leaked == []
+
+
+def test_active_features_mirror_the_real_feature_contract():
+
+    # ACTIVE_FEATURES claims to be "features.FEATURES less
+    # ambient_temperature" (the one constant train_soh drops on G1).
+    # It drifted once already — it carried "cycle", which is
+    # deliberately not a feature, and none of the sixteen causal
+    # features the shipped model consumes — so pin it to the source
+    # of truth instead of trusting the copy.
+    import features
+
+    expected = [
+        f for f in features.FEATURES if f != "ambient_temperature"
+    ]
+
+    assert ACTIVE_FEATURES == expected
 
 
 def test_trained_artifact_feature_list_is_leak_free():
