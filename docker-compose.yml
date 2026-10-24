@@ -83,6 +83,8 @@ services:
       BMS_DATABASE_URL: postgresql+asyncpg://bms:${BMS_POSTGRES_PASSWORD:-bms}@postgres:5432/bms
       BMS_MQTT_HOST: mosquitto
       BMS_MQTT_PORT: "1883"
+      BMS_GRAFANA_PG_PASSWORD: ${BMS_GRAFANA_PG_PASSWORD:-bms_ro}
+      BMS_PACK_VOLTAGE_MAX_V: "100.0"
     ports: ["127.0.0.1:8000:8000"]
     depends_on:
       postgres:
@@ -92,6 +94,7 @@ services:
     # Migrate on boot, then serve. Schema changes stay in Alembic (PRD §5).
     command: >
       sh -c "alembic upgrade head &&
+             python -m scripts.setup_grafana_reader &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   soh:                       # three per-cell SOH services
@@ -153,7 +156,7 @@ services:
       BMS_POSTGRES_PORT: "5432"
       BMS_POSTGRES_DB: bms
       BMS_GRAFANA_PG_USER: bms_ro
-      BMS_GRAFANA_PG_PASSWORD: ${BMS_GRAFANA_PG_PASSWORD:-}
+      BMS_GRAFANA_PG_PASSWORD: ${BMS_GRAFANA_PG_PASSWORD:-bms_ro}
       BMS_PROMETHEUS_URL: http://prometheus:9090
       BMS_GRAFANA_DASHBOARDS_PATH: /var/lib/grafana/bms-dashboards
     volumes:
@@ -192,6 +195,29 @@ services:
       python src/pack/publisher.py --host mosquitto --delay 1
       --fault CELL2:resistance_spike:40 --fault CELL3:thermal:60
     depends_on: [soh, bridge]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  telemetry-simulator:       # live 1 Hz telemetry stream for the demo fleet
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    command: >
+      python -m scripts.simulate_publisher --host mosquitto --fleet --hz 1
+    healthcheck:
+      disable: true
+    depends_on:
+      mosquitto:
+        condition: service_started
+      bms-api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
 
   frontend:                  # React dashboard (built bundle served by nginx)

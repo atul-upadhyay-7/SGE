@@ -8,6 +8,7 @@ already be registered (``POST /api/v1/devices``) with a matching
 Usage::
 
     python scripts/simulate_publisher.py --device-id BMS_001 --cell-count 3
+    python scripts/simulate_publisher.py --fleet --hz 1
     python scripts/simulate_publisher.py --hz 5 --count 20 --chaos 0.1
 """
 
@@ -22,6 +23,13 @@ from datetime import UTC, datetime
 
 import aiomqtt
 
+DEFAULT_FLEET = [
+    ("PACK-UPS-01", 16),
+    ("PACK-SOLAR-02", 8),
+    ("PACK-FORK-03", 12),
+    ("PACK-EV-04", 14),
+]
+
 
 def _configure_event_loop() -> None:
     """paho/aiomqtt need the selector loop on Windows (Proactor lacks add_writer)."""
@@ -30,9 +38,16 @@ def _configure_event_loop() -> None:
 
 
 def build_payload(device_id: str, cell_count: int, seq: int, chaos: float) -> dict:
-    cells = [round(random.uniform(3.75, 4.10), 3) for _ in range(cell_count)]
-    temperature = round(random.uniform(20.0, 38.0), 2)
-    current = round(random.uniform(-5.0, 5.0), 3)
+    now = datetime.now(UTC)
+    base_v = random.uniform(3.75, 4.05)
+    cells = [round(base_v + random.uniform(-0.015, 0.015), 3) for _ in range(cell_count)]
+
+    # In the demo fleet scenario, PACK-UPS-01 has a weak cell 7 that sags slightly
+    if device_id == "PACK-UPS-01" and cell_count >= 7:
+        cells[6] = round(max(cells[6] - 0.06, 3.20), 3)
+
+    temperature = round(random.uniform(22.0, 34.0), 2)
+    current = round(random.uniform(-4.5, 4.5), 3)
 
     if chaos and random.random() < chaos:
         # Inject a single "impossible" cell to prove rejection + quarantine.
@@ -40,9 +55,9 @@ def build_payload(device_id: str, cell_count: int, seq: int, chaos: float) -> di
 
     return {
         "schema_version": 1,
-        "message_id": f"{device_id}-{seq:08d}",
+        "message_id": f"{device_id}-{int(now.timestamp())}-{seq:06d}",
         "device_id": device_id,
-        "measured_at": datetime.now(UTC).isoformat(),
+        "measured_at": now.isoformat(),
         "pack_voltage": round(sum(cells), 3),
         "current": current,
         "temperature": temperature,
@@ -51,32 +66,47 @@ def build_payload(device_id: str, cell_count: int, seq: int, chaos: float) -> di
 
 
 async def run(args: argparse.Namespace) -> None:
-    topic = f"{args.prefix}/{args.device_id}/telemetry"
+    targets = (
+        DEFAULT_FLEET
+        if args.fleet
+        else [(args.device_id, args.cell_count)]
+    )
+
     interval = 1.0 / args.hz
     sent = 0
 
-    async with aiomqtt.Client(
-        hostname=args.host,
-        port=args.port,
-        identifier=f"{args.device_id}-simulator",
-    ) as client:
-        print(f"Publishing to {topic} at {args.hz} Hz (ctrl-c to stop)")
-        while args.count == 0 or sent < args.count:
-            payload = build_payload(
-                args.device_id, args.cell_count, sent, args.chaos
-            )
-            await client.publish(topic, json.dumps(payload), qos=args.qos)
-            sent += 1
-            if sent % max(1, int(args.hz)) == 0:
-                print(f"  sent {sent} message(s)")
-            await asyncio.sleep(interval)
-    print(f"Done: {sent} message(s)")
+    client_id = "fleet-simulator" if args.fleet else f"{args.device_id}-simulator"
+
+    while True:
+        try:
+            async with aiomqtt.Client(
+                hostname=args.host,
+                port=args.port,
+                identifier=client_id,
+            ) as client:
+                desc = "demo fleet (4 packs)" if args.fleet else f"{args.device_id}"
+                print(f"Publishing live telemetry for {desc} at {args.hz} Hz to {args.host}:{args.port}")
+                while args.count == 0 or sent < args.count:
+                    for device_id, cell_count in targets:
+                        topic = f"{args.prefix}/{device_id}/telemetry"
+                        payload = build_payload(device_id, cell_count, sent, args.chaos)
+                        await client.publish(topic, json.dumps(payload), qos=args.qos)
+                    sent += 1
+                    if sent % max(1, int(args.hz * 5)) == 0:
+                        print(f"  sent {sent} message cycle(s)")
+                    await asyncio.sleep(interval)
+                break
+        except (aiomqtt.MqttError, OSError) as exc:
+            print(f"MQTT connection error: {exc}. Retrying in 2s...")
+            await asyncio.sleep(2.0)
+    print(f"Done: {sent} message cycle(s)")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Simulated BMS telemetry publisher")
     parser.add_argument("--device-id", default="BMS_001")
     parser.add_argument("--cell-count", type=int, default=3)
+    parser.add_argument("--fleet", action="store_true", help="publish for all 4 demo fleet devices")
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=1883)
     parser.add_argument("--prefix", default="bms")

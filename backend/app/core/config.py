@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     cell_voltage_min_v: float = 1.5
     cell_voltage_max_v: float = 4.5
     pack_voltage_min_v: float = 5.0
-    pack_voltage_max_v: float = 60.0
+    pack_voltage_max_v: float = 100.0
     current_min_a: float = -200.0
     current_max_a: float = 200.0
     temperature_min_c: float = -40.0

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,7 +53,7 @@ class AlertRepository:
             )
             .on_conflict_do_update(
                 index_elements=["device_id", "rule_code"],
-                index_where=(DeviceAlert.status != "resolved"),
+                index_where=text("status <> 'resolved'"),
                 set_={
                     "severity": severity,
                     "message": message[:512],

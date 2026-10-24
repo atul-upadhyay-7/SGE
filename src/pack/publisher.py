@@ -107,12 +107,18 @@ def publish_group(client, topic, group, clock, qos=1):
 
         for i in range(len(ts)):
 
+            v = float(cycle["voltage"][i])
+            c = float(cycle["current"][i])
+            t = float(cycle["temperature"][i])
+            if not (np.isfinite(v) and np.isfinite(c) and np.isfinite(t)):
+                continue
+
             body = json.dumps(
                 {
                     "timestamp": clock + float(offsets[i]),
-                    "voltage": float(cycle["voltage"][i]),
-                    "current": float(cycle["current"][i]),
-                    "temperature": float(cycle["temperature"][i]),
+                    "voltage": v,
+                    "current": c,
+                    "temperature": t,
                 }
             )
 

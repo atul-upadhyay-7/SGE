@@ -7,9 +7,7 @@ from sqlalchemy import text
 
 
 async def main():
-    password = os.environ["BMS_GRAFANA_PG_PASSWORD"]
-    if not password:
-        raise SystemExit("BMS_GRAFANA_PG_PASSWORD must not be empty")
+    password = os.environ.get("BMS_GRAFANA_PG_PASSWORD") or "bms_ro"
     async with engine.begin() as conn:
         exists = await conn.scalar(text("SELECT 1 FROM pg_roles WHERE rolname='bms_ro'"))
         # PostgreSQL role passwords cannot be bind parameters. Escape using the

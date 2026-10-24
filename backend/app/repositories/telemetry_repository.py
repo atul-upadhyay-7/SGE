@@ -10,8 +10,10 @@ so operators can see that a device reused a message identifier.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -30,17 +32,33 @@ _ROUND = 6
 _MAX_RAW_PAYLOAD_CHARS = 16_384
 
 
+def _sanitize_for_json(obj: Any) -> Any:
+    """Replace non-finite floats (NaN, Inf, -Inf) so JSON/JSONB serialisation succeeds."""
+    if isinstance(obj, float):
+        if math.isnan(obj):
+            return "NaN"
+        if math.isinf(obj):
+            return "Infinity" if obj > 0 else "-Infinity"
+        return obj
+    if isinstance(obj, dict):
+        return {str(k): _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
+
+
 def _bounded_payload(raw: dict | None) -> dict | None:
     """Return ``raw`` unchanged unless its JSON form is oversized,
     in which case store a marked preview instead of the whole."""
     if raw is None:
         return None
+    sanitized = _sanitize_for_json(raw)
     try:
-        text = json.dumps(raw, default=str)
+        text = json.dumps(sanitized, default=str)
     except (TypeError, ValueError):
-        text = str(raw)
+        text = str(sanitized)
     if len(text) <= _MAX_RAW_PAYLOAD_CHARS:
-        return raw
+        return sanitized
     return {
         "_truncated": True,
         "original_chars": len(text),
@@ -78,8 +96,8 @@ class TelemetryRepository:
                 "current": s.current,
                 "temperature": s.temperature,
                 "cell_voltages": s.cell_voltages,
-                "additional_data": s.additional_data,
-                "quality_flags": s.quality_flags,
+                "additional_data": _sanitize_for_json(s.additional_data) if s.additional_data else None,
+                "quality_flags": _sanitize_for_json(s.quality_flags) if s.quality_flags else None,
             }
             for s in samples
         ]
