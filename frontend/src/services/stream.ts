@@ -7,7 +7,11 @@
  */
 import { config } from "@/config";
 import { apiFetch } from "@/services/api";
-import { AUTH_REQUIRED_EVENT, readAccessHeaders } from "@/services/operatorKey";
+import {
+  AUTH_REQUIRED_EVENT,
+  AUTH_RESOLVED_EVENT,
+  readAccessHeaders,
+} from "@/services/operatorKey";
 import { isLiveEvent } from "@/services/validate";
 import type { LiveEvent } from "@/types/domain";
 
@@ -33,8 +37,10 @@ const MAX_BUFFER_CHARS = 1_048_576;
 /**
  * Opens the SSE stream with ``fetch`` instead of ``EventSource`` so the viewer
  * key can travel in a header (``EventSource`` cannot set headers, and a key in
- * the URL would leak into logs). Reconnects until closed; a 401 stops it and
- * asks the app to show the sign-in prompt.
+ * the URL would leak into logs). Reconnects until closed; a 401 pauses it and
+ * asks the app to show the sign-in prompt, and it reconnects as soon as the
+ * prompt resolves (AUTH_RESOLVED_EVENT) — the provider mounts before any key
+ * is typed, so without that retry the stream would stay dead all session.
  */
 export function openEventStream(handlers: StreamHandlers): StreamConnection {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
@@ -47,7 +53,17 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
   let controller: AbortController | null = null;
   let retryTimer: number | undefined;
   let retryDelay = RETRY_MS;
+  let stoppedForAuth = false;
   handlers.onState?.("connecting");
+
+  function onAuthResolved() {
+    if (closed || !stoppedForAuth) return;
+    stoppedForAuth = false;
+    retryDelay = RETRY_MS;
+    handlers.onState?.("connecting");
+    void run();
+  }
+  window.addEventListener(AUTH_RESOLVED_EVENT, onAuthResolved);
 
   function dispatch(frame: string) {
     const data = frame
@@ -75,6 +91,9 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
         signal: controller.signal,
       });
       if (response.status === 401) {
+        // Pause (do not retry blindly): reconnect when the sign-in
+        // prompt resolves, via onAuthResolved above.
+        stoppedForAuth = true;
         window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
         handlers.onState?.("error");
         return;
@@ -113,6 +132,7 @@ export function openEventStream(handlers: StreamHandlers): StreamConnection {
   return {
     close: () => {
       closed = true;
+      window.removeEventListener(AUTH_RESOLVED_EVENT, onAuthResolved);
       window.clearTimeout(retryTimer);
       controller?.abort();
       handlers.onState?.("closed");
