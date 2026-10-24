@@ -14,7 +14,7 @@
 # route tree.
 fastapi==0.161.1
 starlette==1.9.0
-uvicorn[standard]==0.35.0
+uvicorn[standard]==0.54.0
 
 # Async MQTT client (FR-02)
 aiomqtt==2.5.1
