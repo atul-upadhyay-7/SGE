@@ -202,6 +202,23 @@ app.add_middleware(
     max_bytes=settings.telemetry_max_body_bytes,
 )
 
+@app.get("/", include_in_schema=False)
+async def root() -> dict[str, str]:
+    """Service identity for humans and uptime probes hitting the base URL.
+
+    Without this, ``GET /`` was a bare 404 that read like a broken
+    deployment. It sits behind the same global read guard as every
+    other route, and points at the versioned API and its health check.
+    """
+    return {
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "api": settings.api_prefix,
+        "health": f"{settings.api_prefix}/health",
+        "docs": "/docs",
+    }
+
+
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(devices.router, prefix=settings.api_prefix)
 app.include_router(telemetry.router, prefix=settings.api_prefix)
