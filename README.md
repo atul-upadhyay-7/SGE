@@ -240,8 +240,10 @@ The seed loads four named demo packs with 24 h of telemetry, cycles,
 SoH predictions and an anomaly history into Postgres. To reset the demo
 data deliberately, run `scripts/seed_demo_data.py` itself against the
 database — unlike the seed-if-empty wrapper it **truncates every data
-table first**, so run it only against a throwaway database. The `demo`
-profile also provides `demo-publisher`, a synthetic MQTT replay with
+table first**, so run it only against a throwaway database. The compose stack
+also runs `telemetry-simulator` to stream continuous 1 Hz live telemetry for
+the demo fleet so the Live Monitoring dashboard stays live in real time. The `demo`
+profile additionally provides `demo-publisher`, a synthetic MQTT replay with
 injected faults that stands in for the ESP32.
 
 Without Docker (host path): create the schema with

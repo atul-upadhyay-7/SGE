@@ -70,19 +70,18 @@ BMS dashboards at a distinct path from the legacy dashboards. PostgreSQL is a
 startup dependency. Only BMS PostgreSQL is the default datasource.
 
 Set a dedicated `BMS_GRAFANA_PG_PASSWORD` in your local environment or secrets
-manager. Do not commit it. After migrations, provision the role using the backend
-Python environment from `backend/`:
+manager (compose defaults to `bms_ro`). After migrations, `bms-api` runs the
+provisioning script automatically on startup, or you can provision it directly:
 
 ```
 python -m scripts.setup_grafana_reader
 ```
 
-For compose, pass that variable into the one-off container, then start Grafana:
+For compose, `bms-api` configures the reader on boot and Grafana connects
+automatically:
 
 ```
-docker compose up -d postgres mosquitto bms-api
-docker compose exec -e BMS_GRAFANA_PG_PASSWORD bms-api python -m scripts.setup_grafana_reader
-docker compose up -d grafana
+docker compose up -d
 ```
 
 The script grants SELECT on existing tables and default SELECT privileges on

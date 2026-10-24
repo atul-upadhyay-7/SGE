@@ -37,7 +37,9 @@ docker compose up -d --build
 On first run the compose `demo-seed` service loads the demo fleet
 (4 packs, telemetry, predictions, anomalies) automatically — it seeds
 only when the database is empty (`scripts/seed_if_empty.py`), so
-restarts never wipe data and re-running it is a no-op.
+restarts never wipe data and re-running it is a no-op. The `telemetry-simulator`
+service publishes continuous 1 Hz live telemetry so the Live Monitoring page,
+real-time SSE stream, and embedded Grafana panels update live out of the box.
 
 Then open http://localhost:5173. No access keys are configured in the
 compose stack, so the dashboard opens directly. Grafana and the

@@ -393,6 +393,8 @@ curl -X POST http://localhost:8000/api/v1/devices \
 
 # 2. publish ~1 Hz telemetry; --chaos injects impossible cells for testing
 python backend/scripts/simulate_publisher.py --device-id BMS_001 --cell-count 3
+# or stream live telemetry across all four demo fleet devices:
+# python backend/scripts/simulate_publisher.py --fleet --hz 1
 
 # 3. watch counters: stored / duplicates / rejected / dropped
 curl http://localhost:8000/api/v1/health/ingestion
