@@ -80,6 +80,9 @@ def load_df(cells=None):
 
     df = pd.read_csv(PROC / "nasa_ml_dataset_clean.csv")
 
+    if cells is not None:
+        df = df[df["cell_id"].isin(cells)].reset_index(drop=True)
+
     pred = []
 
     for c in sorted(df["cell_id"].unique()):
@@ -120,9 +123,6 @@ def load_df(cells=None):
             "(data/processed/soh_predictions_<cell>.csv); run the SOH "
             "stage first. Refusing to score packs against true SOH."
         )
-
-    if cells is not None:
-        df = df[df["cell_id"].isin(cells)].reset_index(drop=True)
 
     return df
 
