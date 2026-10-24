@@ -53,7 +53,7 @@ const OPERATOR_KEY_HEADER = "X-Operator-Key";
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
   const suffix = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${base}${suffix}`);
+  const url = new URL(`${base}${suffix}`, window.location.origin);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value === undefined || value === null || value === "") continue;

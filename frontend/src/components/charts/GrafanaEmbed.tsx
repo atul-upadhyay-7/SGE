@@ -40,7 +40,7 @@ function buildEmbedUrl(
   variables: Record<string, string>,
 ): string {
   const base = config.grafanaUrl.replace(/\/+$/, "");
-  const url = new URL(`${base}/d/${dashboardUid}`);
+  const url = new URL(`${base}/d/${dashboardUid}`, window.location.origin);
   // kiosk strips Grafana's own chrome so only the panels show (PRD §4.2).
   url.searchParams.set("kiosk", "");
   url.searchParams.set("theme", "dark");

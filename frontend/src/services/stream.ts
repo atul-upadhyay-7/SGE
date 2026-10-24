@@ -44,7 +44,7 @@ const MAX_BUFFER_CHARS = 1_048_576;
  */
 export function openEventStream(handlers: StreamHandlers): StreamConnection {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
-  const url = new URL(`${base}/stream`);
+  const url = new URL(`${base}/stream`, window.location.origin);
   if (handlers.kinds?.length) {
     url.searchParams.set("kinds", handlers.kinds.join(","));
   }
