@@ -40,7 +40,7 @@ pytest-asyncio==1.4.0
 # partial-window artifacts in `models/`. Pins match the repo-root file.
 numpy==2.3.2
 pandas==2.3.2
-scipy==1.16.1
+scipy==1.18.1
 scikit-learn==1.7.1
 xgboost==3.4.0
 joblib==1.5.2
