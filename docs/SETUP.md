@@ -2,6 +2,17 @@
 
 Everything needed to install, run, monitor and understand the pipeline. For the measured results see `docs/RESULTS.md`.
 
+> **Two stacks live in this repo.** (1) The **BMS product**: FastAPI
+> backend (`backend/`) + PostgreSQL + the React dashboard (`frontend/`)
+> + MQTT ingestion — to run it, follow *Run the dashboard (demo)* in
+> the root `README.md` (one `docker compose up --build -d`; the demo
+> fleet seeds itself on first run). (2) The **offline ML pipeline and
+> pack monitor**: the NASA-data pipeline (`src/`), its Grafana/Flask
+> results dashboards (`dashboard/`), and the MQTT 3S pack services —
+> most of this document (architecture, Steps 1–11, live pack monitor)
+> describes this second stack. The *Dashboard* section near the end
+> covers both surfaces.
+
 ## Architecture
 
 ```

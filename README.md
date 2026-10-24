@@ -218,12 +218,14 @@ production accuracy claim.
 The whole stack runs from the root `docker-compose.yml`:
 
 ```bash
-docker compose up --build -d                       # core stack
-docker compose --profile demo run --rm demo-seed   # one-off: load the demo fleet
+docker compose up --build -d                       # the whole stack
 ```
 
-On first boot, give `bms-api` a few seconds to run its migrations before
-seeding. Then open:
+On first boot the `demo-seed` service waits for `bms-api` to migrate the
+schema, then loads the demo fleet automatically — a first run therefore
+opens on a populated dashboard. It seeds **only when the database is
+empty** (`scripts/seed_if_empty.py`), so restarting the stack never
+wipes data. Then open:
 
 - **Dashboard:** http://localhost:5173 — the React app, served by nginx
   (the compose `frontend` service), which proxies `/api` to the backend,
@@ -234,11 +236,21 @@ seeding. Then open:
   ship alongside the React app; the admin password is
   `GRAFANA_ADMIN_PASSWORD` (default `admin`, change it).
 
-The seed (`scripts/seed_demo_data.py`) loads four named demo packs with
-24 h of telemetry, cycles, SoH predictions and an anomaly history into
-Postgres. It truncates every data table first, so run it only against a
-throwaway database. The `demo` profile also provides `demo-publisher`, a
-synthetic MQTT replay with injected faults that stands in for the ESP32.
+The seed loads four named demo packs with 24 h of telemetry, cycles,
+SoH predictions and an anomaly history into Postgres. To reset the demo
+data deliberately, run `scripts/seed_demo_data.py` itself against the
+database — unlike the seed-if-empty wrapper it **truncates every data
+table first**, so run it only against a throwaway database. The `demo`
+profile also provides `demo-publisher`, a synthetic MQTT replay with
+injected faults that stands in for the ESP32.
+
+Without Docker (host path): create the schema with
+`alembic upgrade head` (from `backend/`), run
+`python scripts/seed_if_empty.py`, start the backend
+(`uvicorn app.main:app --port 8000`), then the frontend
+(`npm run dev` in `frontend/`, or `npm run build` and serve `dist/`
+behind the `frontend/nginx.conf` proxy). See `backend/README.md` and
+`frontend/README.md` for details.
 
 API access keys are off by default and the dashboard opens without one.
 To require them, set `BMS_VIEWER_API_KEY`, `BMS_OPERATOR_API_KEY` and
@@ -255,6 +267,17 @@ operator keys and keeps them in the tab's `sessionStorage` only.
 ```bash
 bash scripts/verify.sh
 ```
+
+The same gate runs in GitHub Actions as the **Verify BMS** workflow
+(`.github/workflows/verify.yml`) on every push and pull request: lint
+(Ruff), root ML tests, the backend suite against a dedicated test
+database, frontend unit tests + typecheck + build, a Playwright
+browser suite (28 end-to-end tests against the production build), and
+a compose smoke test. A `merge-gate` job aggregates them into a
+single status that reports success only if every job passed (see
+`CONTRIBUTING.md`). `verify.sh` is the local equivalent; it needs
+Docker (throwaway Postgres) and network access for the dataset
+download.
 
 To run the pipeline directly instead:
 

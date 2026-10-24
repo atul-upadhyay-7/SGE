@@ -358,6 +358,11 @@ docker compose up -d postgres mosquitto      # datastore + broker
 docker compose up --build bms-api            # migrates on boot, then serves
 ```
 
+A plain `docker compose up --build -d` of the whole stack also runs
+the `demo-seed` service, which loads the demo fleet **only if the
+database is empty** (`scripts/seed_if_empty.py`); restarts never wipe
+data. `GET /` on the API answers with the service identity and links.
+
 - API: http://localhost:8000/docs
 - Postgres is published on host port **5433** (not 5432, to avoid colliding
   with a Postgres already installed on the host). The `bms-api` container
@@ -415,6 +420,11 @@ alembic upgrade head                       # apply
 alembic revision --autogenerate -m "..."   # create after editing models
 alembic downgrade base                     # tear down (dev only)
 ```
+
+For a drift check that matches CI, run `BMS_REQUIRE_DB=true alembic
+check`: without it, `env.py` suppresses compare logging and an offline
+URL renders type-only placeholder diffs that look like drift but are
+not.
 
 ## Tests
 

@@ -31,10 +31,13 @@ and this dashboard (nginx serving the built bundle, proxying `/api` to
 the backend):
 
 ```bash
-docker compose up -d --build postgres bms-api frontend
-# optional: load the demo fleet (4 packs, telemetry, anomalies)
-docker compose --profile demo run --rm demo-seed
+docker compose up -d --build
 ```
+
+On first run the compose `demo-seed` service loads the demo fleet
+(4 packs, telemetry, predictions, anomalies) automatically — it seeds
+only when the database is empty (`scripts/seed_if_empty.py`), so
+restarts never wipe data and re-running it is a no-op.
 
 Then open http://localhost:5173. No access keys are configured in the
 compose stack, so the dashboard opens directly. Grafana and the
@@ -46,9 +49,12 @@ for the dashboard itself.
 ```bash
 npm install
 npm run dev        # Vite dev server on http://localhost:5173
+npm run test       # vitest unit tests
 npm run typecheck  # tsc project build (no emit)
 npm run build      # typecheck + production bundle into dist/
 npm run preview    # serve the built bundle
+npm run e2e        # Playwright browser suite (28 tests; serves the
+                   # production build via vite preview, backend mocked)
 ```
 
 ## Pages
@@ -60,6 +66,7 @@ npm run preview    # serve the built bundle
 | `/anomalies` | Anomaly Center | Live: summary counts, filters, sortable/paginated table, hourly severity chart, CSV export |
 | `/anomalies/:anomalyId` | Anomaly Details | Live: identification, measurements + trace, diagnosis, recommendations, resolution workflow |
 | `/health` | Battery Health (SoH) | Live: latest predicted SoH, predicted-vs-measured history, model/feature metadata |
+| `/validation` | Model Validation | Live: the production-path validation harness report — live XGBoost scored vs measured SoH (lab sample; held-out B0005 benchmark shown alongside, ElasticNet offline only) |
 | `/reports` | Historical Reports | Live: generate from filters + section toggles, browse stored reports, render the persisted snapshot, export JSON/CSV |
 | `/devices` | Device Management | Live: list (cells, rate, status, last seen, last telemetry, ingestion errors), registration, per-device details drill-down |
 | `/system` | System Health | Live: independent panels for FastAPI, PostgreSQL, MQTT, ingestion, monitor, ML models and the live stream, plus last message per device |
@@ -68,9 +75,9 @@ Pages whose backend feature does not exist yet show an explicit
 "not available yet" panel listing what they will contain — they never render
 invented data.## Design notes
 
-- **Dark monitoring theme** with severity colours (green normal, yellow warning,
-  orange high-priority, red critical, blue voltage) defined as tokens in
-  `src/styles/tokens.css`.
+- **Monochrome dark theme**: black/white/neutral-grey UI chrome, defined
+  as tokens in `src/styles/tokens.css`; colour is reserved for chart
+  series and minimal semantic status (severity text/dots).
 - **Accessibility**: severity and connection state are never conveyed by colour
   alone — every indicator carries a text label and a glyph.
 - **Polling**: the 1 Hz hardware rate is never used to poll the API. Pages poll
@@ -91,9 +98,11 @@ invented data.## Design notes
   the backend sets `confirmed: true`; everything else is labelled
   "unconfirmed" and the page never asserts a specific failed component
   (PRD §4.4).
-- **One stream**: a single `EventSource` is opened by `StreamProvider` and shared
-  through context, so the connection indicator and every event log observe the
-  same connection.
+- **One stream**: a single SSE connection (fetch-based, so the viewer key
+  travels in a header — `EventSource` cannot set headers) is opened by
+  `StreamProvider` and shared through context, so the connection indicator
+  and every event log observe the same connection. After a viewer-key
+  unlock it reconnects automatically.
 - **Four states**: every data page renders loading, error (with retry), empty,
   and success, plus a last-updated freshness badge.
 - **Accessibility**: a skip link jumps to `<main id="main-content">`, a global
