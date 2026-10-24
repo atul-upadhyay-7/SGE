@@ -99,8 +99,11 @@ function ValidationReportView({ report }: { report: ValidationReport }) {
         <div className="banner banner--warn" role="status">
           <strong>Lab-sample validation — real sensor validation pending.</strong>{" "}
           This run uses lab data, not a real sensor export. It verifies the
-          validation harness and pipeline; it is not held-out accuracy and
-          not hardware validation.
+          validation harness and pipeline (in-sample on the lab sample); it
+          is not held-out accuracy and not hardware validation. Equal weight
+          is given below to the harness result and the held-out XGBoost
+          number from{" "}
+          {report.offline_benchmark?.source_file ?? "soh_window_heldout_B0005.csv"}.
         </div>
       )}
 
@@ -118,20 +121,55 @@ function ValidationReportView({ report }: { report: ValidationReport }) {
           tone={summary.refused_rows > 0 ? "warn" : "ok"}
           hint="refused, never guessed"
         />
-        <KpiCard
-          label="MAE"
-          value={summary.mae_pct === null ? "—" : `${summary.mae_pct.toFixed(2)}%`}
-          hint="predicted vs measured SoH"
-        />
-        <KpiCard
-          label="RMSE"
-          value={summary.rmse_pct === null ? "—" : `${summary.rmse_pct.toFixed(2)}%`}
-        />
-        <KpiCard
-          label="Bias"
-          value={summary.bias_pct === null ? "—" : `${summary.bias_pct.toFixed(2)}%`}
-          hint="mean predicted − measured"
-        />
+        {isLabSample && report.offline_benchmark ? (
+          <>
+            <KpiCard
+              label="MAE — in-sample (harness), lab sample"
+              value={summary.mae_pct === null ? "—" : `${summary.mae_pct.toFixed(2)}%`}
+              hint="checks the pipeline; not held-out accuracy"
+              tone="warn"
+            />
+            <KpiCard
+              label={`MAE — held-out XGBoost (${report.offline_benchmark.cell_id ?? "B0005"})`}
+              value={`${report.offline_benchmark.xgboost_mae_pct.toFixed(2)}%`}
+              hint={`from ${report.offline_benchmark.source_file}`}
+              tone="info"
+            />
+            <KpiCard
+              label="ElasticNet — held-out (offline)"
+              value={`${report.offline_benchmark.elasticnet_mae_pct.toFixed(2)}%`}
+              hint="not live; offline benchmark only"
+              tone="warn"
+            />
+            <KpiCard
+              label="RMSE (harness)"
+              value={summary.rmse_pct === null ? "—" : `${summary.rmse_pct.toFixed(2)}%`}
+              hint="lab sample"
+            />
+            <KpiCard
+              label="Bias (harness)"
+              value={summary.bias_pct === null ? "—" : `${summary.bias_pct.toFixed(2)}%`}
+              hint="mean predicted − measured"
+            />
+          </>
+        ) : (
+          <>
+            <KpiCard
+              label="MAE"
+              value={summary.mae_pct === null ? "—" : `${summary.mae_pct.toFixed(2)}%`}
+              hint="predicted vs measured SoH"
+            />
+            <KpiCard
+              label="RMSE"
+              value={summary.rmse_pct === null ? "—" : `${summary.rmse_pct.toFixed(2)}%`}
+            />
+            <KpiCard
+              label="Bias"
+              value={summary.bias_pct === null ? "—" : `${summary.bias_pct.toFixed(2)}%`}
+              hint="mean predicted − measured"
+            />
+          </>
+        )}
       </div>
 
       <Card title="Predicted vs measured SoH">
@@ -188,8 +226,9 @@ function ValidationReportView({ report }: { report: ValidationReport }) {
             Held-out {report.offline_benchmark.cell_id ?? "cell"} from{" "}
             <span className="mono">{report.offline_benchmark.source_file}</span>{" "}
             ({report.offline_benchmark.rows} discharges): XGBoost MAE{" "}
-            {report.offline_benchmark.xgboost_mae_pct.toFixed(2)}%, ElasticNet
-            MAE {report.offline_benchmark.elasticnet_mae_pct.toFixed(2)}%.
+            {report.offline_benchmark.xgboost_mae_pct.toFixed(2)}% (held-out,
+            equal weight with the lab-sample harness), ElasticNet MAE{" "}
+            {report.offline_benchmark.elasticnet_mae_pct.toFixed(2)}%.
             ElasticNet is compared offline only — it does not produce live
             predictions and is not a live improvement.
           </p>
