@@ -1,6 +1,8 @@
 # Battery pack monitor: Mosquitto + SOH services + pack bridge + JSON API + Grafana.
 #
-#   docker compose up --build                     # core stack, waits for an ESP32
+#   docker compose up --build                     # core stack; on first run the demo
+#                                                   # fleet is seeded automatically
+#                                                   # (seed-if-empty, never wipes data)
 #   docker compose --profile demo up --build      # + replay of NASA cells with injected faults
 #
 # Grafana: http://localhost:3050  (admin / admin, change it)
@@ -180,7 +182,7 @@ services:
       bms-api:
         condition: service_started
 
-  demo-seed:                 # one-off: load the demo fleet into Postgres
+  demo-seed:                 # one-off: load the demo fleet on FIRST run only
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -188,11 +190,15 @@ services:
       BMS_DATABASE_URL: postgresql+asyncpg://bms:${BMS_POSTGRES_PASSWORD:-bms}@postgres:5432/bms
     volumes:
       - ./scripts:/app/scripts:ro
-    command: ["python", "/app/scripts/seed_demo_data.py"]
+    # seed_if_empty waits for the migrated schema, then seeds ONLY when
+    # the devices table is empty - the seed itself truncates, so it must
+    # never run unconditionally. Part of the default stack so a first
+    # `docker compose up` shows a populated dashboard; later runs are a
+    # no-op and never wipe data.
+    command: ["python", "/app/scripts/seed_if_empty.py"]
     depends_on:
       postgres:
         condition: service_healthy
-    profiles: ["demo"]
 
 volumes:
   bms_pgdata:
