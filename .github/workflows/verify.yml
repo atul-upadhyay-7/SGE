@@ -134,3 +134,23 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+  merge-gate:
+    # The single required status check for branch protection. It stays
+    # closed unless every verification job succeeded; a failed, cancelled
+    # or skipped dependency blocks the merge. Configure this job as the
+    # required check in the branch protection rule for `main`.
+    if: always()
+    needs: [lint, root-tests, backend, frontend, browser, compose]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every verification job to pass
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS"
+          if echo "$NEEDS" | grep -qE '"(failure|cancelled|skipped)"'; then
+            echo "::error::At least one verification job did not succeed; merge gate is closed."
+            exit 1
+          fi
+          echo "All verification jobs succeeded; merge gate is open."
