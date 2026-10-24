@@ -8,7 +8,7 @@ def test_load_df_filters_before_checking_predictions(tmp_path, monkeypatch):
     proc.mkdir(parents=True)
     # 9 cells total in clean dataset
     rows = []
-    for cid in ["B0001", "B0002", "B0003", "B0004", "B0005", "B0006", "B0007", "B0008", "B0009"]:
+    for cid in ["B0001", "B0002", "B0003", "B0004", "B0005", "B0006", "B0007", "B0008", "B0009", "B0018"]:
         for cy in [1, 2]:
             rows.append({"cell_id": cid, "cycle": cy, "capacity_ah": 1.0})
     df_clean = pd.DataFrame(rows)
