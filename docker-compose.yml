@@ -35,6 +35,10 @@ x-app: &app
   volumes:
     - ./data:/app/data
     - ./models:/app/models
+  deploy:
+    resources:
+      limits:
+        memory: 256M
 
 services:
   mosquitto:
@@ -42,6 +46,10 @@ services:
     ports: ["1883:1883"]
     volumes:
       - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   postgres:                  # backend datastore for the BMS ingestion path
     image: postgres:16-alpine
@@ -61,6 +69,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   bms-api:                   # FastAPI telemetry + SoH backend
     build:
@@ -115,6 +127,10 @@ services:
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     depends_on: [exporter]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   grafana:
     image: grafana/grafana-oss:11.2.0
@@ -149,6 +165,10 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   alert-sink:                # mock webhook receiver: where firing alerts land
     <<: *app
@@ -181,6 +201,10 @@ services:
     depends_on:
       bms-api:
         condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
   demo-seed:                 # one-off: load the demo fleet on FIRST run only
     build:
@@ -199,6 +223,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 volumes:
   bms_pgdata:
