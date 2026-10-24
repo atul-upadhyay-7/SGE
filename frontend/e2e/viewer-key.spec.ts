@@ -61,5 +61,6 @@ test("a key rejected mid-session sends the user back to the prompt", async ({ pa
   await expect(page.getByRole("navigation")).toBeVisible();
   // Key rotated on the server: the next read is refused.
   await page.route(`${API}/anomalies**`, route => json(route, { detail: "nope" }, 401));
-  await expect(page.getByRole("heading", { name: "Viewer key required" })).toBeVisible({ timeout: 15_000 });
+  // The refusal only lands on the Overview page's 15 s poll, so this window must exceed that interval plus margin.
+  await expect(page.getByRole("heading", { name: "Viewer key required" })).toBeVisible({ timeout: 30_000 });
 });
