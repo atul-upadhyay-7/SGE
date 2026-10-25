@@ -85,6 +85,11 @@ services:
       BMS_MQTT_PORT: "1883"
       BMS_GRAFANA_PG_PASSWORD: ${BMS_GRAFANA_PG_PASSWORD:-bms_ro}
       BMS_PACK_VOLTAGE_MAX_V: "100.0"
+    volumes:
+      - ./data:/app/data:ro
+      - ./scripts:/app/scripts:ro
+      - ./docker:/app/docker:ro
+      - ./docker-compose.yml:/app/docker-compose.yml:ro
     ports: ["127.0.0.1:8000:8000"]
     depends_on:
       postgres:

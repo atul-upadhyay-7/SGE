@@ -21,6 +21,8 @@ COPY backend/ ./backend
 # itself, so `src/` and `models/` must sit beside `backend/` at /app.
 COPY src/ ./src
 COPY models/ ./models
+COPY scripts/ ./scripts
+COPY data/processed/validation/ ./data/processed/validation/
 
 WORKDIR /app/backend
 
