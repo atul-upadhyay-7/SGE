@@ -3,6 +3,8 @@
 
 An end-to-end machine-learning pipeline and interactive monitoring dashboard for predicting the **State of Health (SOH)** and **Remaining Useful Life (RUL)** of lithium-ion batteries. Built on the NASA Battery Dataset, the system trains per-cell and global XGBoost models using a rigorous leave-one-cell-out cross-validation protocol and serves results through a FastAPI backend backed by PostgreSQL, with the React (Vite) dashboard in `frontend/` as the operator interface, MQTT telemetry ingestion, and Grafana provisioned alongside for the pack and offline-results views.
 
+![Battery Health Dashboard](docs/screenshots/battery_health.png)
+
 > **Two SOH regimes, and which one uses learning.** When a **full discharge** is measured, SOH is read directly from the capacity by Coulomb counting — that is a formula, not a model, and its error is measurement error, so no machine learning competes with it there. When only the **partial window** is available — what a BMS actually sees online — SOH is predicted by a cell-relative window model, and that partial-discharge task is the one place a model is compared against a physics formula (the window formula). The wider feature-set benchmark further down uses signals that exist only after a complete discharge, so it is an offline reference, not the online estimator.
 
 ---
@@ -254,11 +256,91 @@ Without Docker (host path): create the schema with
 behind the `frontend/nginx.conf` proxy). See `backend/README.md` and
 `frontend/README.md` for details.
 
-API access keys are off by default and the dashboard opens without one.
-To require them, set `BMS_VIEWER_API_KEY`, `BMS_OPERATOR_API_KEY` and
-`BMS_ADMIN_API_KEY` in the `bms-api` service environment (see
-`backend/.env.example`); the dashboard then asks for the viewer and
-operator keys and keeps them in the tab's `sessionStorage` only.
+---
+
+## Dashboard Tour & User Interface
+
+The React operator interface (`frontend/`) provides 8 specialized operational views for battery analytics:
+
+### 1. Battery Health (SoH & RUL)
+State-of-Health prediction and Remaining-Useful-Life estimation:
+- **Predicted vs. Measured SoH**: Compares the live partial-window XGBoost model prediction with Coulomb-counted capacity measurements.
+- **Estimated RUL with P10–P90 Confidence Bounds**: Displays median estimated discharges to 80% EOL alongside 10th and 90th percentile bounds derived from empirical degradation trajectory matching.
+- **Health Status Indicator**: Automated status grading (`Healthy` for >90%, `Aging` for 80%–90%, and `Degraded (EOL)` for <80% nominal capacity).
+- **80% EOL Reference Threshold**: Industry-standard 80.0% End-of-Life dashed reference line to immediately gauge distance to replacement.
+- **Dual View Modes**:
+  - **Time (Date)**: Groups degradation across calendar timelines with smart multi-day date tick formatting.
+  - **Cycle (#)**: Displays degradation strictly indexed by cycle number.
+
+![Battery Health — Time View](docs/screenshots/battery_health.png)
+*Figure 1: Battery Health page in Time (Date) view showing multi-week degradation curve and 80% EOL threshold.*
+
+![Battery Health — Cycle View](docs/screenshots/battery_health_cycles.png)
+*Figure 2: Battery Health page in Cycle (#) view showing discrete discharge cycles.*
+
+### 2. Live Telemetry & Streaming
+Real-time 1 Hz streaming telemetry ingested via MQTT and SSE:
+- Sub-second freshness indicators and connection health.
+- Live 24-hour rolling Grafana embed with pack voltage, individual cell voltages, current waveforms, and thermal gradients.
+- Automated anomaly marker flags aligned directly with telemetry events.
+
+![Live Monitoring](docs/screenshots/live_monitoring.png)
+*Figure 3: Live Monitoring interface with 1 Hz continuous telemetry and rolling Grafana visualizer.*
+
+### 3. Fleet Overview
+High-level operational summary of all registered battery packs:
+- Fleet-wide active anomaly counters, healthy pack ratios, and quick pack selection.
+- High-density Grafana time-series monitoring for rapid fleet diagnosis.
+
+![Overview](docs/screenshots/overview.png)
+*Figure 4: Fleet Overview dashboard with aggregated KPIs and high-density Grafana telemetry.*
+
+### 4. Anomaly Center & Fault Triage
+Automated anomaly detection powered by an Isolation Forest model and deterministic safety rules:
+- Detects cell voltage spread, overtemperature, overcurrent, and rapid voltage drop anomalies.
+- Full incident workflow with audit trail (`open` → `acknowledged` → `investigating` → `resolved`).
+- Multi-dimensional filters (time range, severity, category, cell) and instant CSV export.
+
+![Anomaly Center](docs/screenshots/anomaly_center.png)
+*Figure 5: Anomaly Center incident management console.*
+
+### 5. Model Validation & Benchmark Harness
+Live performance tracking of the production XGBoost model:
+- Real-time Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), and bias metrics.
+- Side-by-side comparison between the live XGBoost model and offline ElasticNet benchmarks.
+- Held-out validation curve ensuring no model drift or extrapolation hallucinations.
+
+![Model Validation](docs/screenshots/model_validation.png)
+*Figure 6: Model Validation interface tracking prediction accuracy and error distributions.*
+
+### 6. System & Inference Health
+Operational telemetry for the backend services and ML inference runtime:
+- Tracks live model inference calls, latency (in ms), success rates, and input refusal events.
+- Database connectivity status for PostgreSQL and FastAPI process metrics.
+
+![System Health](docs/screenshots/system_health.png)
+*Figure 7: System Health and live inference runtime telemetry.*
+
+---
+
+## Authentication & Operator Key
+
+The dashboard includes role-based access control for administrative actions:
+- **Viewer Access**: Read-only monitoring of all metrics, charts, and telemetry.
+- **Operator Access**: Enables write operations, including:
+  - Acknowledging and resolving anomaly incidents.
+  - Quarantining packs or overriding device parameters.
+  - Triggering manual cycle re-aggregation and SoH refreshes.
+
+**How the Operator Key works:**
+1. In the `bms-api` service environment (`docker-compose.yml` or `.env`), define `BMS_OPERATOR_API_KEY`:
+   ```bash
+   BMS_OPERATOR_API_KEY=your-secret-operator-key
+   ```
+   *(When left unset, operator authentication defaults to local development mode and actions are permitted without a key).*
+2. In the dashboard top navigation bar, click the **Operator key** button.
+3. Enter your configured key. It is saved in the browser tab's `sessionStorage` and sent via the `X-Operator-Key` HTTP header on write requests.
+4. For read-only protection across the entire dashboard, set `BMS_VIEWER_API_KEY` (sent via `X-Viewer-Key`).
 
 ---
 

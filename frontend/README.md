@@ -67,7 +67,7 @@ npm run e2e        # Playwright browser suite (28 tests; serves the
 | `/live` | Live Monitoring | Live: embedded Grafana 24 h telemetry, data-freshness/connection KPIs, shared SSE event log |
 | `/anomalies` | Anomaly Center | Live: summary counts, filters, sortable/paginated table, hourly severity chart, CSV export |
 | `/anomalies/:anomalyId` | Anomaly Details | Live: identification, measurements + trace, diagnosis, recommendations, resolution workflow |
-| `/health` | Battery Health (SoH) | Live: latest predicted SoH, predicted-vs-measured history, model/feature metadata |
+| `/health` | Battery Health (SoH) | Live: predicted vs measured SoH, Remaining Useful Life (RUL) with P10–P90 spread, Health Status indicator, 80% EOL threshold line, Time (Date) vs Cycle (#) toggle, model/feature metadata |
 | `/validation` | Model Validation | Live: the production-path validation harness report — live XGBoost scored vs measured SoH (lab sample; held-out B0005 benchmark shown alongside, ElasticNet offline only) |
 | `/reports` | Historical Reports | Live: generate from filters + section toggles, browse stored reports, render the persisted snapshot, export JSON/CSV |
 | `/devices` | Device Management | Live: list (cells, rate, status, last seen, last telemetry, ingestion errors), registration, per-device details drill-down |
@@ -75,7 +75,17 @@ npm run e2e        # Playwright browser suite (28 tests; serves the
 
 Pages whose backend feature does not exist yet show an explicit
 "not available yet" panel listing what they will contain — they never render
-invented data.## Design notes
+invented data.
+
+## Visual Tour
+
+![Battery Health Dashboard](../docs/screenshots/battery_health.png)
+*Battery Health: State of Health degradation curve, 80% EOL reference threshold, Estimated RUL KPI card, and Health Status badge.*
+
+![Live Telemetry Monitoring](../docs/screenshots/live_monitoring.png)
+*Live Monitoring: 1 Hz telemetry stream, sub-second data freshness indicators, and rolling Grafana panel.*
+
+## Design notes
 
 - **Monochrome dark theme**: black/white/neutral-grey UI chrome, defined
   as tokens in `src/styles/tokens.css`; colour is reserved for chart
