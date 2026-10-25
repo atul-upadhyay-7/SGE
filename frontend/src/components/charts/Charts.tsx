@@ -52,33 +52,35 @@ function ChartDataTable({
   rows: (string | number)[][];
 }) {
   return (
-    <table className="sr-only">
-      <caption>{title}</caption>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column} scope="col">
-              {column}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, index) => (
-          <tr key={index}>
-            {row.map((cell, cellIndex) =>
-              cellIndex === 0 ? (
-                <th key={cellIndex} scope="row">
-                  {cell}
-                </th>
-              ) : (
-                <td key={cellIndex}>{cell}</td>
-              ),
-            )}
+    <div className="sr-only">
+      <table>
+        <caption>{title}</caption>
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column} scope="col">
+                {column}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={index}>
+              {row.map((cell, cellIndex) =>
+                cellIndex === 0 ? (
+                  <th key={cellIndex} scope="row">
+                    {cell}
+                  </th>
+                ) : (
+                  <td key={cellIndex}>{cell}</td>
+                ),
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -369,6 +371,8 @@ export function LineChart({
               y2={line.y}
               stroke="var(--border)"
               strokeWidth={1}
+              strokeDasharray="2 3"
+              opacity={0.6}
             />
             <text
               x={padding.left - 6}
@@ -391,26 +395,32 @@ export function LineChart({
               d={d}
               fill="none"
               stroke={s.color}
-              strokeWidth={2}
-              strokeDasharray={s.dashed ? "5 4" : undefined}
+              strokeWidth={1.5}
+              strokeDasharray={s.dashed ? "4 3" : undefined}
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               <title>{s.label}</title>
             </path>
           );
         })}
-        {series.map((s) =>
-          s.points.map((p, i) => (
+        {series.map((s) => {
+          // If a series has many points (e.g. > 35), drawing overlapping solid circles
+          // creates an excessively bold, blotchy line. The smooth stroke path
+          // renders the curve cleanly. For sparser series, render subtle dots.
+          if (s.points.length > 35) return null;
+          return s.points.map((p, i) => (
             <circle
               key={`${s.key}-${i}`}
               cx={sx(p.x)}
               cy={sy(p.y)}
-              r={2.5}
+              r={1.75}
               fill={s.color}
             >
               <title>{`${s.label}: ${formatY(p.y)} ${unit}`}</title>
             </circle>
-          )),
-        )}
+          ));
+        })}
         {formatTick &&
           xTicks.map((tick, i) => (
             <text

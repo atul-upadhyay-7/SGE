@@ -177,7 +177,7 @@ function ValidationReportView({ report }: { report: ValidationReport }) {
       </Card>
 
       <Card title={`Latest cycles (${latest.length} of ${report.rows.length})`}>
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--scroll">
           <table className="table">
             <thead>
               <tr>
@@ -215,37 +215,39 @@ function ValidationReportView({ report }: { report: ValidationReport }) {
         </div>
       </Card>
 
-      {report.offline_benchmark && (
-        <Card title="Offline benchmark — not live">
-          <p>
-            <span className="pill pill--warning">
-              Offline benchmark only — not live, not deployed
-            </span>
-          </p>
-          <p className="muted detail-note">
-            Held-out {report.offline_benchmark.cell_id ?? "cell"} from{" "}
-            <span className="mono">{report.offline_benchmark.source_file}</span>{" "}
-            ({report.offline_benchmark.rows} discharges): XGBoost MAE{" "}
-            {report.offline_benchmark.xgboost_mae_pct.toFixed(2)}% (held-out,
-            equal weight with the lab-sample harness), ElasticNet MAE{" "}
-            {report.offline_benchmark.elasticnet_mae_pct.toFixed(2)}%.
-            ElasticNet is compared offline only — it does not produce live
-            predictions and is not a live improvement.
-          </p>
-        </Card>
-      )}
+      <div className="grid grid--2">
+        {report.offline_benchmark && (
+          <Card title="Offline benchmark — not live">
+            <p>
+              <span className="pill pill--warning">
+                Offline benchmark only — not live, not deployed
+              </span>
+            </p>
+            <p className="muted detail-note">
+              Held-out {report.offline_benchmark.cell_id ?? "cell"} from{" "}
+              <span className="mono">{report.offline_benchmark.source_file}</span>{" "}
+              ({report.offline_benchmark.rows} discharges): XGBoost MAE{" "}
+              {report.offline_benchmark.xgboost_mae_pct.toFixed(2)}% (held-out,
+              equal weight with the lab-sample harness), ElasticNet MAE{" "}
+              {report.offline_benchmark.elasticnet_mae_pct.toFixed(2)}%.
+              ElasticNet is compared offline only — it does not produce live
+              predictions and is not a live improvement.
+            </p>
+          </Card>
+        )}
 
-      <Card title="Scope & honesty notes">
-        <ul>
-          {report.notes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-          <li>
-            PoC — validated on lab data so far; real sensor validation
-            pending. This is not a hardware-proven BMS.
-          </li>
-        </ul>
-      </Card>
+        <Card title="Scope & honesty notes">
+          <ul style={{ margin: 0, paddingLeft: "1.2rem" }}>
+            {report.notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+            <li>
+              PoC — validated on lab data so far; real sensor validation
+              pending. This is not a hardware-proven BMS.
+            </li>
+          </ul>
+        </Card>
+      </div>
     </>
   );
 }

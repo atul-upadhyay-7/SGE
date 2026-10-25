@@ -218,7 +218,7 @@ export function OverviewPage() {
         }
       >
         {deviceId ? (
-          <GrafanaEmbed variables={{ "var-device": deviceId }} height={360} />
+          <GrafanaEmbed variables={{ "var-device": deviceId }} height={650} />
         ) : (
           <EmptyState
             title="Select a device"
