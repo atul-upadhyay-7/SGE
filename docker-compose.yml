@@ -85,6 +85,7 @@ services:
       BMS_MQTT_PORT: "1883"
       BMS_GRAFANA_PG_PASSWORD: ${BMS_GRAFANA_PG_PASSWORD:-bms_ro}
       BMS_PACK_VOLTAGE_MAX_V: "100.0"
+      BMS_AUTO_AGGREGATE: "false"
     volumes:
       - ./data:/app/data:ro
       - ./scripts:/app/scripts:ro

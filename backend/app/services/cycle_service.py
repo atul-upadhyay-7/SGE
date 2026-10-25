@@ -140,11 +140,15 @@ class CycleAggregationService:
                 last_owned = sample.measured_at
 
             if emitted is not None:
-                rows.append((emitted, last_owned or sample.measured_at))
+                duration = _finite(emitted.get("discharge_duration_s")) or 0.0
+                if duration >= 10.0:
+                    rows.append((emitted, last_owned or sample.measured_at))
 
         tail = tracker.flush()
         if tail is not None:
-            rows.append((tail, last_owned))
+            duration = _finite(tail.get("discharge_duration_s")) or 0.0
+            if duration >= 10.0:
+                rows.append((tail, last_owned or sample.measured_at))
 
         return rows, samples
 
@@ -252,7 +256,7 @@ async def _predictions(
     rows: list[dict] = []
     refused = 0
 
-    for row, _ in cycle_rows:
+    for row, end_time in cycle_rows:
         try:
             # XGBoost inference is synchronous CPU work; running it
             # inline would stall the single event loop that also
@@ -278,6 +282,7 @@ async def _predictions(
                 "measured_soh": measured.get(number),
                 "model_version": model_version,
                 "feature_schema_version": registry.FEATURE_SCHEMA_VERSION,
+                "predicted_at": end_time,
                 "input_quality_status": (
                     "ok" if _window_complete(row) else "imputed"
                 ),

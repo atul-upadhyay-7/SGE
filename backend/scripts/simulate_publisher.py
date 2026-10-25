@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import random
 import sys
 from datetime import UTC, datetime
@@ -47,7 +48,9 @@ def build_payload(device_id: str, cell_count: int, seq: int, chaos: float) -> di
         cells[6] = round(max(cells[6] - 0.06, 3.20), 3)
 
     temperature = round(random.uniform(22.0, 34.0), 2)
-    current = round(random.uniform(-4.5, 4.5), 3)
+    # Smooth, continuous discharge load with realistic operating variation
+    t_sec = seq
+    current = round(-12.5 + 2.0 * math.sin(t_sec / 60.0) + random.uniform(-0.4, 0.4), 2)
 
     if chaos and random.random() < chaos:
         # Inject a single "impossible" cell to prove rejection + quarantine.

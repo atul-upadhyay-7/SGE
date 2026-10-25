@@ -201,6 +201,19 @@ export interface SohPrediction {
   input_quality_status: string;
 }
 
+export interface RulEstimate {
+  device_id: string;
+  status: "ok" | "insufficient_history" | "no_predictions" | "target_reached" | string;
+  rul_discharges: number | null;
+  p10_discharges: number | null;
+  p90_discharges: number | null;
+  threshold_soh_pct: number;
+  reference_count: number;
+  history_count: number;
+  total_predictions?: number;
+  basis: string;
+}
+
 /** One scored/refused cycle in a validation report. */
 export interface ValidationRow {
   cell_id: string;

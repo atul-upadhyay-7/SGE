@@ -408,7 +408,7 @@ export function LineChart({
           // If a series has many points (e.g. > 35), drawing overlapping solid circles
           // creates an excessively bold, blotchy line. The smooth stroke path
           // renders the curve cleanly. For sparser series, render subtle dots.
-          if (s.points.length > 35) return null;
+          if (s.points.length > 35 || s.key.startsWith("threshold")) return null;
           return s.points.map((p, i) => (
             <circle
               key={`${s.key}-${i}`}

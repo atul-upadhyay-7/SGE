@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 
 import { Card, KpiCard, PageHeader } from "@/components/cards/Cards";
 import { LineChart } from "@/components/charts/Charts";
+import type { LineSeries } from "@/components/charts/Charts";
 import {
   EmptyState,
   ErrorState,
@@ -23,8 +24,9 @@ import {
   getActiveModels,
   getLatestPrediction,
   getPredictionHistory,
+  getRul,
 } from "@/services/predictions";
-import type { SohPrediction } from "@/types/domain";
+import type { RulEstimate, SohPrediction } from "@/types/domain";
 import {
   formatAxisTime,
   formatDateTime,
@@ -40,12 +42,19 @@ export function BatteryHealthPage() {
   const { deviceId } = useSelectedDevice();
   const [rangeKey, setRangeKey] = useState<"24h" | "7d" | "30d" | "all">("all");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
+  const [viewMode, setViewMode] = useState<"time" | "cycle">("time");
 
   const from = rangeStart(rangeKey);
 
   const latestState = usePolling(
     (signal) =>
       deviceId ? getLatestPrediction(deviceId, signal) : Promise.resolve(null),
+    30_000,
+    [deviceId],
+  );
+  const rulState = usePolling(
+    (signal) =>
+      deviceId ? getRul(deviceId, signal) : Promise.resolve(null),
     30_000,
     [deviceId],
   );
@@ -67,6 +76,7 @@ export function BatteryHealthPage() {
   );
 
   const latest = latestState.data;
+  const rul = rulState.data;
   const history = historyState.data?.items ?? [];
 
   if (!deviceId) {
@@ -148,6 +158,18 @@ export function BatteryHealthPage() {
             tone="default"
             hint="predicted − measured"
           />
+          <KpiCard
+            label="Health Status"
+            value={healthStatus(latest.predicted_soh).label}
+            tone={healthStatus(latest.predicted_soh).tone}
+            hint={healthStatus(latest.predicted_soh).hint}
+          />
+          <KpiCard
+            label="Estimated RUL"
+            value={rulLabel(rul)}
+            tone={rulTone(rul)}
+            hint={rulHint(rul)}
+          />
           <KpiCard label="Model version" value={latest.model_version} hint="active artifact" />
           <KpiCard
             label="Input quality"
@@ -166,6 +188,16 @@ export function BatteryHealthPage() {
         title="SoH history"
         actions={
           <div className="page-header__actions">
+            <label className="chart-select">
+              View
+              <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value as "time" | "cycle")}
+              >
+                <option value="time">Time (Date)</option>
+                <option value="cycle">Cycle (#)</option>
+              </select>
+            </label>
             <label className="chart-select">
               Range
               <select
@@ -206,7 +238,9 @@ export function BatteryHealthPage() {
             detail="Widen the range, or aggregate charge cycles to generate predictions."
           />
         )}
-        {history.length > 0 && <SohHistoryChart items={history} />}
+        {history.length > 0 && (
+          <SohHistoryChart items={history} viewMode={viewMode} />
+        )}
       </Card>
 
       <Card title="Model & feature metadata">
@@ -309,24 +343,54 @@ function PredictionMeta({ prediction }: { prediction: SohPrediction }) {
   );
 }
 
-function SohHistoryChart({ items }: { items: SohPrediction[] }) {
-  const ordered = useMemo(
-    () => [...items].sort((a, b) => a.predicted_at.localeCompare(b.predicted_at)),
-    [items],
-  );
+function SohHistoryChart({
+  items,
+  viewMode,
+}: {
+  items: SohPrediction[];
+  viewMode: "time" | "cycle";
+}) {
+  const ordered = useMemo(() => {
+    return [...items].sort((a, b) => {
+      if (viewMode === "cycle" && a.cycle_id !== null && b.cycle_id !== null) {
+        return a.cycle_id - b.cycle_id;
+      }
+      return a.predicted_at.localeCompare(b.predicted_at);
+    });
+  }, [items, viewMode]);
 
-  const series = useMemo(() => {
-    const predicted = ordered.map((item) => ({
-      x: new Date(item.predicted_at).getTime(),
+  const { series, yMin, formatX, xLabel } = useMemo(() => {
+    const isCycle = viewMode === "cycle";
+
+    const getX = (item: SohPrediction, index: number) => {
+      if (isCycle) {
+        return item.cycle_id ?? index + 1;
+      }
+      return new Date(item.predicted_at).getTime();
+    };
+
+    const predicted = ordered.map((item, index) => ({
+      x: getX(item, index),
       y: item.predicted_soh,
     }));
+
     const measured = ordered
       .filter((item) => item.measured_soh !== null)
-      .map((item) => ({
-        x: new Date(item.predicted_at).getTime(),
+      .map((item, index) => ({
+        x: getX(item, index),
         y: item.measured_soh as number,
       }));
-    const out = [
+
+    const allPoints = [...predicted, ...measured];
+    const xs = allPoints.map((p) => p.x);
+    const ys = allPoints.map((p) => p.y);
+    const minX = xs.length ? Math.min(...xs) : 0;
+    const maxX = xs.length ? Math.max(...xs) : 1;
+    const lowestY = ys.length ? Math.min(...ys) : 80;
+    // Set dynamic range minimum so the degradation curve has distinct vertical span
+    const calculatedMinY = Math.min(75, Math.floor(lowestY / 5) * 5);
+
+    const out: LineSeries[] = [
       {
         key: "predicted",
         label: "Predicted SoH (%)",
@@ -334,6 +398,7 @@ function SohHistoryChart({ items }: { items: SohPrediction[] }) {
         points: predicted,
       },
     ];
+
     if (measured.length > 0) {
       out.push({
         key: "measured",
@@ -341,24 +406,121 @@ function SohHistoryChart({ items }: { items: SohPrediction[] }) {
         color: "var(--normal)",
         points: measured,
         dashed: true,
-      } as (typeof out)[number]);
+      });
     }
-    return out;
-  }, [ordered]);
+
+    // 80% EOL reference threshold line
+    const thresholdMinX = minX === maxX ? minX - 1 : minX;
+    const thresholdMaxX = minX === maxX ? maxX + 1 : maxX;
+    out.push({
+      key: "threshold-eol",
+      label: "EOL Threshold (80%)",
+      color: "var(--critical)",
+      points: [
+        { x: thresholdMinX, y: 80 },
+        { x: thresholdMaxX, y: 80 },
+      ],
+      dashed: true,
+    });
+
+    let xFormatter: (v: number) => string;
+    let label: string;
+
+    if (isCycle) {
+      xFormatter = (v) => `#${Math.round(v)}`;
+      label = "Cycle Number (#)";
+    } else {
+      const spanMs = maxX - minX;
+      if (spanMs > 24 * 3600 * 1000) {
+        xFormatter = (v) => {
+          const d = new Date(v);
+          return Number.isNaN(d.getTime())
+            ? ""
+            : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        };
+      } else {
+        xFormatter = formatAxisTime;
+      }
+      label = `Time (${localZoneName()})`;
+    }
+
+    return {
+      series: out,
+      yMin: Math.max(0, calculatedMinY),
+      formatX: xFormatter,
+      xLabel: label,
+    };
+  }, [ordered, viewMode]);
 
   return (
     <LineChart
-      title="Predicted vs measured SoH over time"
+      title={
+        viewMode === "cycle"
+          ? "SoH Degradation Curve by Cycle Number"
+          : "Predicted vs Measured SoH Over Time"
+      }
       series={series}
       unit="%"
       formatY={(v) => `${v.toFixed(1)}`}
-      formatX={formatAxisTime}
-      xLabel={`Time (${localZoneName()})`}
-      yMin={0}
+      formatX={formatX}
+      xLabel={xLabel}
+      yMin={yMin}
       yMax={100}
       emptyLabel="No SoH history"
     />
   );
+}
+
+function healthStatus(soh: number): {
+  label: string;
+  tone: "ok" | "warn" | "danger" | "default";
+  hint: string;
+} {
+  if (soh >= 90) {
+    return {
+      label: "Healthy",
+      tone: "ok",
+      hint: "Nominal capacity (>90%)",
+    };
+  }
+  if (soh >= 80) {
+    return {
+      label: "Aging",
+      tone: "warn",
+      hint: "Acceptable degradation (80–90%)",
+    };
+  }
+  return {
+    label: "Degraded (EOL)",
+    tone: "danger",
+    hint: "Below 80% EOL threshold",
+  };
+}
+
+function rulLabel(rul: RulEstimate | null | undefined): string {
+  if (!rul) return "—";
+  if (rul.status === "target_reached") return "EOL Reached";
+  if (rul.rul_discharges !== null && rul.rul_discharges !== undefined) {
+    return `~${Math.round(rul.rul_discharges)} cycles`;
+  }
+  if (rul.status === "insufficient_history") return "Evaluating...";
+  return "—";
+}
+
+function rulTone(rul: RulEstimate | null | undefined): "ok" | "warn" | "danger" | "default" {
+  if (!rul || rul.rul_discharges === null || rul.rul_discharges === undefined) return "default";
+  if (rul.rul_discharges > 30) return "ok";
+  if (rul.rul_discharges > 10) return "warn";
+  return "danger";
+}
+
+function rulHint(rul: RulEstimate | null | undefined): string {
+  if (!rul) return "Remaining useful life to EOL";
+  if (rul.status === "target_reached") return "Pack has reached 80% capacity limit";
+  if (rul.p10_discharges !== null && rul.p90_discharges !== null) {
+    return `P10–P90: ${Math.round(rul.p10_discharges)}–${Math.round(rul.p90_discharges)} cycles to ${rul.threshold_soh_pct}% EOL`;
+  }
+  return `To ${rul.threshold_soh_pct}% nominal capacity`;
 }
 
 function rangeStart(rangeKey: "24h" | "7d" | "30d" | "all"): string | undefined {

@@ -7,7 +7,7 @@
  */
 import { apiFetch } from "@/services/api";
 import { isSohPrediction } from "@/services/validate";
-import type { ModelInfo, SohPrediction } from "@/types/domain";
+import type { ModelInfo, RulEstimate, SohPrediction } from "@/types/domain";
 
 export interface PredictionHistoryQuery {
   from?: string;
@@ -63,4 +63,14 @@ export function getActiveModels(signal?: AbortSignal): Promise<{
   return apiFetch<{ count: number; items: ModelInfo[] }>("/models/active", {
     signal,
   });
+}
+
+export function getRul(
+  deviceId: string,
+  signal?: AbortSignal,
+): Promise<RulEstimate> {
+  return apiFetch<RulEstimate>(
+    `/devices/${encodeURIComponent(deviceId)}/rul`,
+    { signal },
+  );
 }
