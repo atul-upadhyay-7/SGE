@@ -20,7 +20,7 @@ uvicorn[standard]==0.35.0
 aiomqtt==2.5.1
 
 # Persistence: Postgres via SQLAlchemy 2.x async + Alembic migrations
-SQLAlchemy[asyncio]==2.0.51
+SQLAlchemy[asyncio]==2.1.6
 asyncpg==0.32.0
 alembic==1.20.0
 
