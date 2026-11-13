@@ -3,7 +3,7 @@
 # Built from the repository root (see the `bms-api` service in
 # docker-compose.yml) so later phases can COPY the shared ML code in
 # `src/` and the artifacts in `models/` alongside the backend.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
